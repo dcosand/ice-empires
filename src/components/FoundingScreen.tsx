@@ -1,13 +1,16 @@
 import type { Dispatch } from "react";
-import type { GameAction } from "../types/game";
-import { arizonaMonsoon } from "../data/clubs";
+import type { GameAction, GameState } from "../types/game";
+import { CLUBS, arizonaMonsoon } from "../data/clubs";
 
 export function FoundingScreen({
+  state,
   dispatch,
 }: {
+  state: GameState;
   dispatch: Dispatch<GameAction>;
 }) {
-  const club = arizonaMonsoon;
+  const club =
+    (state.selectedClubId && CLUBS[state.selectedClubId]) || arizonaMonsoon;
   return (
     <div className="center-screen">
       <div className="center-card">
@@ -39,9 +42,20 @@ export function FoundingScreen({
 
         <button
           className="btn btn-gold btn-lg btn-block"
-          onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
+          onClick={() => dispatch({ type: "START_FOUNDING" })}
         >
-          Found {club.name}
+          Begin the Founding Expedition →
+        </button>
+        <div className="faint" style={{ marginTop: 8, fontSize: 12 }}>
+          You'll lead a Founding Group across the ice and choose where to plant
+          the club.
+        </div>
+        <button
+          className="btn btn-block"
+          style={{ marginTop: 10 }}
+          onClick={() => dispatch({ type: "START_GAME" })}
+        >
+          ← Choose a different club
         </button>
       </div>
     </div>

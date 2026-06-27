@@ -16,15 +16,20 @@ export function LandingScreen({
         </p>
         <p className="flavor">
           It starts with almost nothing — a sheet of ice, a stubborn idea, and a
-          hockey world you have not yet discovered. Found a club. Survive twelve
-          months. See what you become.
+          hockey world you have not yet discovered. Found a club. Build it across
+          eras. Turn a rumor of hockey into a dynasty.
         </p>
         <button
           className="btn btn-primary btn-lg btn-block"
           onClick={() => dispatch({ type: "START_GAME" })}
         >
-          Start First 12 Months
+          Start New Dynasty
         </button>
+        <div className="cta-subtext">Opening Scenario: First 12 Months</div>
+        <div className="faint" style={{ marginTop: 6, fontSize: 12 }}>
+          The full campaign spans many years and eras. This scenario covers your
+          founding year.
+        </div>
       </div>
     </div>
   );

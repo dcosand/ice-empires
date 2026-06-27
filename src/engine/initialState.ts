@@ -14,6 +14,8 @@ export function createInitialState(): GameState {
     maxMonths: MAX_MONTHS,
     eraId: PUND_HOCKEY_ERA_ID,
     nextEraUnlocked: false,
+    selectedClubId: null,
+    foundingMap: null,
     club: null,
     resources: { ...EMPTY_RESOURCES },
     facilities: [],
@@ -30,14 +32,15 @@ export function createInitialState(): GameState {
   };
 }
 
-// Apply club founding: seed resources, month 1, opening log entry.
+// Apply club founding: seed resources, month 1, opening log entry. Does NOT
+// change phase — the founding map keeps the player on the tile until they
+// choose to begin the season (BEGIN_SEASON).
 export function foundClub(state: GameState, clubId: string): GameState {
   const club = CLUBS[clubId];
   if (!club) return state;
 
   return {
     ...state,
-    phase: "playing",
     month: 1,
     club,
     resources: { ...club.startingResources },

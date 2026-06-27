@@ -3,11 +3,12 @@ import type { GameAction, GameState } from "../types/game";
 import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
 import { TopBar } from "./TopBar";
 import { ResourceBar } from "./ResourceBar";
+import { WorldMap } from "./WorldMap";
+import { DiscoveryPanel } from "./DiscoveryPanel";
+import { ThisMonthPanel } from "./ThisMonthPanel";
 import { ClubHQPanel } from "./ClubHQPanel";
 import { BuildPanel } from "./BuildPanel";
 import { ResearchPanel } from "./ResearchPanel";
-import { DiscoveryPanel } from "./DiscoveryPanel";
-import { RegionsPanel } from "./RegionsPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
@@ -20,10 +21,6 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const pastTwelve = state.month > state.maxMonths;
-  const endLabel =
-    state.month >= state.maxMonths
-      ? `End Month ${state.month} →`
-      : `End Month ${state.month}`;
 
   return (
     <div className="dashboard">
@@ -38,45 +35,32 @@ export function Dashboard({
 
       {pastTwelve && (
         <div className="teaser-banner">
-          <strong>The first twelve months are behind you.</strong> Arizona Monsoon
-          HC made it through Year One — and you are already into Month{" "}
-          {state.month}. The deeper hockey world is waiting.
+          <strong>The opening scenario is behind you.</strong>{" "}
+          {state.club?.name} made it through Year One — and you are already into
+          Month {state.month}. The deeper hockey world, and the eras beyond it,
+          are waiting.
         </div>
       )}
 
       <ResourceBar state={state} />
 
-      <div className="grid">
-        <div>
-          <ClubHQPanel state={state} />
-          <EraProgressPanel state={state} />
+      <div className="strategy-grid">
+        {/* Map-first: the world dominates the center/left */}
+        <div className="map-col">
+          <WorldMap state={state} />
+          <DiscoveryPanel state={state} dispatch={dispatch} />
         </div>
-        <div>
+
+        {/* Decisions live in the command sidebar */}
+        <div className="control-col">
+          <ThisMonthPanel state={state} dispatch={dispatch} />
           <BuildPanel state={state} dispatch={dispatch} />
           <ResearchPanel state={state} dispatch={dispatch} />
-        </div>
-        <div>
-          <DiscoveryPanel state={state} dispatch={dispatch} />
           <CardsPanel state={state} />
-        </div>
-      </div>
-
-      <div className="grid" style={{ marginTop: 0 }}>
-        <div className="col-span-2">
-          <RegionsPanel state={state} />
-        </div>
-        <div>
+          <EraProgressPanel state={state} />
+          <ClubHQPanel state={state} />
           <EventLog state={state} />
         </div>
-      </div>
-
-      <div className="turn-footer">
-        <button
-          className="btn btn-gold btn-lg btn-block"
-          onClick={() => dispatch({ type: "END_MONTH" })}
-        >
-          {endLabel}
-        </button>
       </div>
     </div>
   );

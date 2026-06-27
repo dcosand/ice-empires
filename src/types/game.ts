@@ -14,7 +14,13 @@ export type ResourceSet = {
   reputation: number;
 };
 
-export type Phase = "landing" | "founding" | "playing" | "complete";
+export type Phase =
+  | "landing"
+  | "clubSelect"
+  | "founding"
+  | "foundingMap"
+  | "playing"
+  | "complete";
 
 // ---------------------------------------------------------------------------
 // Club
@@ -61,10 +67,12 @@ export type FacilityDef = {
   eraId: string;
 };
 
+// Builds are funded by Operations production each month (not paid upfront).
+// Mirrors ActiveResearch so Operations reads as production-toward-builds.
 export type ActiveBuild = {
   facilityId: string;
-  monthsRemaining: number;
-  progressMonths: number;
+  operationsRemaining: number;
+  progressOperations: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -109,14 +117,20 @@ export type RegionDef = {
   tags: string[];
   scoutReport: string;
   unusual: boolean;
+  // Fixed position on the stylized world map, as percentages (0-100) of the
+  // map area. Not a real tile grid — just a hand-placed layout.
+  map: { x: number; y: number };
 };
 
+// Early-game "Local Hockey Search" options. Deliberately informal — the club
+// has no formal scouting department yet (that unlocks later).
 export type DiscoveryPriorityId =
-  | "survey-nearby-ice"
-  | "follow-prospect-rumor"
-  | "listen-local-rinks"
-  | "study-strange-culture"
-  | "build-relationships";
+  | "find-local-players"
+  | "ask-around-the-rinks"
+  | "search-for-playable-ice"
+  | "recruit-volunteers"
+  | "host-an-open-skate"
+  | "follow-a-local-rumor";
 
 export type DiscoveryPriorityDef = {
   id: DiscoveryPriorityId;
@@ -205,6 +219,30 @@ export type EraRequirement = {
 };
 
 // ---------------------------------------------------------------------------
+// Founding map (pre-club tile layer)
+// ---------------------------------------------------------------------------
+
+export type FoundingTerrain = "desert" | "ice" | "plains" | "water";
+
+export type FoundingTile = {
+  x: number;
+  y: number;
+  terrain: FoundingTerrain;
+  valid: boolean; // can be entered / founded on (water is not)
+};
+
+export type FoundingMapState = {
+  width: number;
+  height: number;
+  tiles: FoundingTile[]; // flat, length width*height
+  unit: { x: number; y: number }; // Founding Group position
+  selected: boolean;
+  revealed: string[]; // "x,y" keys revealed from the fog
+  moves: number;
+  founded: { x: number; y: number } | null; // HQ tile once founded
+};
+
+// ---------------------------------------------------------------------------
 // Game state
 // ---------------------------------------------------------------------------
 
@@ -214,6 +252,8 @@ export type GameState = {
   maxMonths: number;
   eraId: string;
   nextEraUnlocked: boolean;
+  selectedClubId: string | null;
+  foundingMap: FoundingMapState | null;
   club: ClubDef | null;
   resources: ResourceSet;
   facilities: string[]; // completed facility ids
@@ -232,7 +272,12 @@ export type GameState = {
 
 export type GameAction =
   | { type: "START_GAME" }
+  | { type: "SELECT_CLUB"; clubId: string }
+  | { type: "START_FOUNDING" }
+  | { type: "SELECT_FOUNDING_UNIT" }
+  | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
   | { type: "FOUND_CLUB"; clubId: string }
+  | { type: "BEGIN_SEASON" }
   | { type: "SELECT_BUILD"; facilityId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
