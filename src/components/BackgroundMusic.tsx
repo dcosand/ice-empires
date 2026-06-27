@@ -9,25 +9,31 @@ const TRACKS = [
 
 // Single looping playlist, mounted once at the app root so music persists across
 // every screen. Browsers block autoplay-with-sound until the user interacts, so
-// we attempt to play immediately and also retry on the first interaction. A mini
-// player lets the player skip, pause, and cycle tracks.
+// we attempt to play immediately and retry once on the first interaction. After
+// playback has begun (or the player takes control), that fallback is disabled so
+// Pause stays paused. A mini player lets the player skip, pause, and cycle tracks.
 export function BackgroundMusic() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const playingRef = useRef(false); // are we meant to be playing?
+  const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
 
-  // Initial autoplay attempt + first-interaction fallback.
+  // Initial autoplay attempt + a one-shot first-interaction fallback.
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
     audio.volume = 0.35;
 
-    const tryPlay = () => audio.play().catch(() => {});
-    tryPlay();
+    audio.play().catch(() => {});
 
-    const onInteract = () => {
-      if (audio.paused) tryPlay();
+    const onInteract = (e: Event) => {
+      if (startedRef.current) return; // already playing / under user control
+      // Ignore clicks on the mini player itself (its buttons handle playback).
+      const t = e.target;
+      if (t instanceof Element && t.closest(".miniplayer")) return;
+      if (audio.paused) audio.play().catch(() => {});
     };
     window.addEventListener("pointerdown", onInteract);
     window.addEventListener("keydown", onInteract);
@@ -37,21 +43,22 @@ export function BackgroundMusic() {
     };
   }, []);
 
-  // When the track changes (skip/auto-advance), load and play the new one.
+  // Track change: load the new source; resume only if we were already playing.
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
-      return; // initial track is handled by the autoplay effect
+      return; // initial track handled by the autoplay effect
     }
     const audio = audioRef.current;
     if (!audio) return;
     audio.load();
-    audio.play().catch(() => {});
+    if (playingRef.current) audio.play().catch(() => {});
   }, [index]);
 
   const togglePlay = () => {
     const audio = audioRef.current;
     if (!audio) return;
+    startedRef.current = true; // user is in control from here on
     if (audio.paused) audio.play().catch(() => {});
     else audio.pause();
   };
@@ -68,8 +75,15 @@ export function BackgroundMusic() {
         src={track.url}
         preload="auto"
         onEnded={() => go(1)}
-        onPlay={() => setPlaying(true)}
-        onPause={() => setPlaying(false)}
+        onPlay={() => {
+          setPlaying(true);
+          playingRef.current = true;
+          startedRef.current = true;
+        }}
+        onPause={() => {
+          setPlaying(false);
+          playingRef.current = false;
+        }}
       />
       <button
         className="mp-btn"
