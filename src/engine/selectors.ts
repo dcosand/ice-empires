@@ -113,13 +113,14 @@ export function allEraRequirementsMet(state: GameState): boolean {
   );
 }
 
-// Build progress as a 0..1 fraction for the active build.
+// Build progress as a 0..1 fraction for the active build (Operations produced).
 export function getActiveBuildProgress(state: GameState): number {
   const build = state.activeBuild;
   if (!build) return 0;
   const def = FACILITIES_BY_ID[build.facilityId];
-  if (!def || def.buildMonths === 0) return 0;
-  return build.progressMonths / def.buildMonths;
+  const cost = def?.cost.operations ?? 0;
+  if (cost === 0) return 0;
+  return build.progressOperations / cost;
 }
 
 export function getActiveResearchProgress(state: GameState): number {

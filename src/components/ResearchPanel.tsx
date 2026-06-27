@@ -28,8 +28,12 @@ export function ResearchPanel({
           <div className="active-name">Researching: {activeDef.name}</div>
           <ProgressBar
             fraction={active.progressKnowledge / activeDef.cost}
-            left={`${active.knowledgeRemaining} HK to go`}
-            right={`${active.progressKnowledge}/${activeDef.cost}`}
+            left={`${active.progressKnowledge}/${activeDef.cost} Hockey Knowledge`}
+            right={
+              hkPerMonth > 0
+                ? `~${Math.ceil(active.knowledgeRemaining / hkPerMonth)} mo left`
+                : "needs knowledge"
+            }
           />
         </div>
       )}
@@ -38,7 +42,10 @@ export function ResearchPanel({
         <div className={`option${active ? " disabled" : ""}`} key={r.id}>
           <div className="option-head">
             <span className="option-name">{r.name}</span>
-            <span className="cost">{r.cost} HK</span>
+            <span className="cost">
+              {r.cost} HK ·{" "}
+              {hkPerMonth > 0 ? `~${Math.ceil(r.cost / hkPerMonth)} mo` : "needs HK"}
+            </span>
           </div>
           <div className="option-flavor">{r.flavor}</div>
           <button

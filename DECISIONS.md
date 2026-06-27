@@ -8,9 +8,13 @@ for research. Each month, your Hockey Knowledge income is applied as progress
 toward the active tech (`progressKnowledge += hkIncome`). Research has a point
 cost; no upfront payment. This keeps the Civ-like "science per turn" feel.
 
-## D2 — Build costs are paid upfront
-Selecting a facility immediately deducts its Operations cost. Build then takes N
-months of real time. (Recommended in the data-model doc.)
+## D2 — Builds are production-per-turn (revised v3)
+~~Originally: Operations cost paid upfront, build takes N months.~~ Revised so
+Operations reads as *production toward builds* (Civ-style), mirroring research:
+selecting a facility costs nothing upfront; each month your Operations income is
+applied to the active build's progress, and it completes when produced
+Operations ≥ the facility's Operations cost. `buildMonths` is no longer a gate
+(UI shows an estimated months-remaining from current production instead).
 
 ## D3 — Discovery is seeded-random, not pure-random
 A deterministic mulberry32 PRNG is threaded through `state.rngSeed`. Outcomes

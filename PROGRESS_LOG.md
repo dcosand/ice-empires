@@ -1,5 +1,48 @@
 # Ice Empires — Progress Log
 
+## 2026-06-27 — v3: founding map + production clarity
+Adds a minimal Civ-style founding flow and reframes resources.
+- **Pre-founding tile phase** (`foundingMap`, "Month 0"): a small hand-authored
+  9×6 tile map (`engine/foundingMap.ts`) with terrain, fog, and a **Founding
+  Group** unit. Click to select → adjacent valid land tiles highlight → click to
+  move → radius-1 fog reveal. No procedural gen / pathfinding.
+- **Found Club** from the unit's tile creates the **Club HQ** there; the unit
+  becomes "Club Leadership"; an "Enter the Pond Hockey Era · Month 1" button
+  transitions to play. New actions: START_FOUNDING / SELECT_FOUNDING_UNIT /
+  MOVE_FOUNDING_UNIT / FOUND_CLUB (now tile-aware) / BEGIN_SEASON. `foundClub`
+  no longer forces the phase.
+- **"Local Hockey Search"** replaces early "Scouting Focus" with six grassroots
+  options (Find Local Players, Ask Around the Rinks, Search for Playable Ice,
+  Recruit Volunteers, Host an Open Skate, Follow a Local Rumor); discovery system
+  rewired to match. Added a locked hint: formal scouts unlock later.
+- **Production/research clarity**: builds are now production-per-turn (Operations
+  income flows into the active build — no upfront drop to zero; see DECISIONS D2).
+  Build/research panels show readable progress bars (produced X / Y + ~months
+  left). Resource bar gains per-stat captions + tooltips.
+- Music path updated to the moved `public/assets/Forge of Empires.mp3`.
+
+## 2026-06-27 — v2: strategy / map-first visual revision
+Driven by the first visual review ("too much like a web dashboard of rectangles").
+Engine, resources, build/research/discovery/era logic all preserved.
+- Landing CTA → "Start New Dynasty" with "Opening Scenario: First 12 Months"
+  subtext and copy framing the full game as longer than 12 months.
+- New **club selection screen** (phase `clubSelect`): Arizona Monsoon HC playable
+  + 5 "Coming Soon" fictional clubs (Halifax, Helsinki, Saskatoon, Prague,
+  Minneapolis) in `data/clubRoster.ts` to sell the 4X fantasy.
+- New **WorldMap** ("Mythic Hockey World"): stylized 2D map (Civ-II-flavored
+  gridlines + desert→ice terrain), HQ home marker, region nodes placed via new
+  `region.map` coords, fog/rumor/discovered states, scouting-route lines, a
+  pulsing fog scan, and click-to-inspect region detail. No tile-gen/pathfinding.
+- **Scouting Focus** chip selector under the map (replaces the old button list);
+  active focus is flagged on the map, pointing at the fog.
+- **This Month** guidance panel with a Month-1 checklist (build / research /
+  scouting focus / End Month) + hint that only Local Notice Board is affordable;
+  "Affordable" badge added in the Build panel. End Month now lives in this panel.
+- Dashboard relaid out as map-first: map+scouting on the left, command sidebar
+  (This Month, Build, Research, Cards, Era, Club HQ, Log) on the right. Removed
+  the dead RegionsPanel (folded into the map).
+
+
 ## 2026-06-27 — Initial prototype scaffold
 - Read all source docs; produced implementation plan and recorded decisions
   (`DECISIONS.md`).

@@ -1,52 +1,55 @@
 import type { GameState } from "../types/game";
 import { FACILITIES_BY_ID } from "../data/facilities";
-import { canAfford, subtractResources } from "./resources";
-import { getAvailableFacilities } from "./selectors";
+import { getAvailableFacilities, getMonthlyIncome } from "./selectors";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
 
-// Player selects a facility to build. Cost is paid upfront (see DECISIONS.md).
-// Returns the new state, or the unchanged state if invalid/unaffordable.
+// Operations cost of a facility (the production needed to complete it).
+export function facilityCost(facilityId: string): number {
+  return FACILITIES_BY_ID[facilityId]?.cost.operations ?? 0;
+}
+
+// Player selects a facility to build. No upfront payment — Operations production
+// flows into it each month (see DECISIONS.md D2).
 export function selectBuild(state: GameState, facilityId: string): GameState {
   const def = FACILITIES_BY_ID[facilityId];
   if (!def) return state;
   if (!getAvailableFacilities(state).some((f) => f.id === facilityId)) {
     return state;
   }
-  if (!canAfford(state.resources, def.cost)) return state;
 
   return {
     ...state,
-    resources: subtractResources(state.resources, def.cost),
     activeBuild: {
       facilityId,
-      monthsRemaining: def.buildMonths,
-      progressMonths: 0,
+      operationsRemaining: facilityCost(facilityId),
+      progressOperations: 0,
     },
   };
 }
 
-// Advance the active build one month; complete it when months run out.
+// Apply this month's Operations production toward the active build.
 export function progressBuild(draft: GameState, push: PushLog): void {
   const build = draft.activeBuild;
   if (!build) return;
-
-  build.progressMonths += 1;
-  build.monthsRemaining -= 1;
-
   const def = FACILITIES_BY_ID[build.facilityId];
   if (!def) {
     draft.activeBuild = null;
     return;
   }
 
-  if (build.monthsRemaining > 0) {
+  const cost = facilityCost(build.facilityId);
+  const opsPerMonth = getMonthlyIncome(draft).operations;
+  build.progressOperations += opsPerMonth;
+  build.operationsRemaining = Math.max(0, cost - build.progressOperations);
+
+  if (build.progressOperations < cost) {
     push(
       "build",
       `${def.name} underway`,
-      `${def.name} construction is ${Math.round(
-        (build.progressMonths / def.buildMonths) * 100,
-      )}% complete.`,
+      `${def.name} is ${Math.round(
+        (build.progressOperations / cost) * 100,
+      )}% built (${build.progressOperations}/${cost} Operations).`,
     );
     return;
   }
