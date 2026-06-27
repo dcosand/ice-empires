@@ -1,7 +1,11 @@
-import type { Dispatch } from "react";
+import type { Dispatch, SyntheticEvent } from "react";
 import type { GameAction, GameState } from "../types/game";
-import { CLUBS, arizonaMonsoon } from "../data/clubs";
+import { CLUBS, arizonaMonsoon, clubAsset } from "../data/clubs";
 import { moveableTiles, tileAt, tileKey } from "../engine/foundingMap";
+
+function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
 
 const TERRAIN_GLYPH: Record<string, string> = {
   desert: "🏜",
@@ -106,8 +110,20 @@ export function FoundingMap({
       </div>
 
       <aside className="fm-side panel">
-        <h3>{club.name}</h3>
-        <div className="panel-sub">{club.leaderArchetype}</div>
+        <div className="fm-club-head">
+          <img
+            className="fm-club-logo"
+            src={clubAsset(club, "logo")}
+            alt={`${club.name} logo`}
+            onError={hideOnError}
+          />
+          <div>
+            <h3 style={{ margin: 0 }}>{club.name}</h3>
+            <div className="panel-sub" style={{ margin: 0 }}>
+              {club.leaderArchetype}
+            </div>
+          </div>
+        </div>
         <p className="flavor" style={{ margin: "0 0 14px" }}>
           {club.identityText}
         </p>
@@ -118,28 +134,38 @@ export function FoundingMap({
               <strong>1.</strong> Click the 🧭 Founding Group to select it.
             </div>
             <div className="fm-step">
-              <strong>2.</strong> Click a highlighted tile to move and reveal fog.
+              <strong>2.</strong> Click a highlighted tile to move (1 point each).
             </div>
             <div className="fm-step">
               <strong>3.</strong> Found your club where you want your home.
             </div>
 
-            <div className="fm-status muted">
-              {fm.selected
-                ? fm.moves > 0
-                  ? `Founding Group selected · ${fm.moves} move${
-                      fm.moves === 1 ? "" : "s"
-                    } made.`
-                  : "Founding Group selected. Move it, or found here."
-                : "Founding Group not selected."}
+            <div className="fm-moves">
+              Moves remaining:{" "}
+              <strong>
+                {fm.movesRemaining} / {fm.movesPerTurn}
+              </strong>
+              {!fm.selected && (
+                <span className="faint"> · select the Founding Group first</span>
+              )}
+              {fm.selected && fm.movesRemaining === 0 && (
+                <span className="faint"> · end the founding turn for more</span>
+              )}
             </div>
+
+            <button
+              className="btn btn-block"
+              style={{ marginBottom: 10 }}
+              disabled={fm.movesRemaining === fm.movesPerTurn}
+              onClick={() => dispatch({ type: "END_FOUNDING_TURN" })}
+            >
+              End Founding Turn (refill moves)
+            </button>
 
             <button
               className="btn btn-gold btn-lg btn-block"
               disabled={!fm.selected}
-              onClick={() =>
-                dispatch({ type: "FOUND_CLUB", clubId: club.id })
-              }
+              onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
             >
               Found {club.name}
             </button>
@@ -157,7 +183,8 @@ export function FoundingMap({
               <h3>Club HQ established</h3>
               <div className="muted">
                 The Founding Group becomes your <strong>Club Leadership</strong>.
-                Arizona Monsoon HC enters the Pond Hockey Era.
+                {" "}
+                {club.name} enters the Pond Hockey Era.
               </div>
             </div>
             <button

@@ -38,3 +38,31 @@ roster/contracts in this prototype.
 Monthly-income effects from club base + facilities + cards are summed in
 `getMonthlyIncome`. Income is recomputed from state each month (not stored), so a
 facility completed this month begins yielding next month.
+
+## D8 — Six selectable clubs share First-12-Months mechanics (temporary)
+All six clubs (Arizona, Halifax, Helsinki, Saskatoon, Prague, Minneapolis North)
+are selectable and fully playable. Non-Arizona clubs currently reuse Arizona's
+starting profile and mechanics; they differ only in name, leader title, flavor,
+identity text, accent color, and art. Unique per-club mechanics are a future
+pass. Removed the "Recommended" tag and the "Coming Soon" lock.
+
+## D9 — Club art via `assetKey`, not `id`
+Each `ClubDef` has an `assetKey` naming its `/public/assets/clubs/<assetKey>/`
+folder (logo/leader/background `.png`). This decouples folder names from club ids
+(e.g., `minneapolis-north` → `minnesota`). `clubAsset(club, kind)` builds paths;
+`<img onError>` hides any missing image so there are no broken images.
+
+## D10 — Turn discipline
+- Month cannot end unless a build AND a research project are active (a Local
+  Hockey Search always has a default). If a project completed last month its slot
+  is empty and must be re-selected. If no options remain (not expected in
+  year-one content), the slot counts as satisfied so End Month isn't soft-locked.
+- Founding Group has 2 movement points per founding turn; a move to an adjacent
+  valid land tile costs 1; water is impassable. At 0 points, movement is disabled
+  until "End Founding Turn" refills. Initial fog reveals only the tiles around the
+  start, so the player can't sweep the whole board in one go.
+
+## D11 — Rival AI & multiplayer deferred
+No rival GM AI and no human multiplayer (hotseat/async) in this prototype. They
+need a dedicated design pass (opponent turns, diplomacy/contact, networking).
+See the TODO in `engine/gameReducer.ts`. No backend/auth/networking.

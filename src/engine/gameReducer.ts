@@ -3,8 +3,17 @@ import { createInitialState, foundClub } from "./initialState";
 import { selectBuild } from "./buildSystem";
 import { selectResearch } from "./researchSystem";
 import { selectDiscoveryPriority } from "./discoverySystem";
-import { createFoundingMap, moveFoundingUnit } from "./foundingMap";
+import {
+  createFoundingMap,
+  endFoundingTurn,
+  moveFoundingUnit,
+} from "./foundingMap";
 import { endMonth } from "./turnResolution";
+
+// TODO (future design pass): Rival GMs / Rival AI and any human multiplayer
+// (hotseat or async) are intentionally NOT implemented. They need their own
+// design pass — opponent turns, contact/diplomacy, and a networking model are
+// all out of scope for the single-player First 12 Months prototype.
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
@@ -30,6 +39,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "MOVE_FOUNDING_UNIT":
       return moveFoundingUnit(state, action.x, action.y);
+
+    case "END_FOUNDING_TURN":
+      return endFoundingTurn(state);
 
     case "FOUND_CLUB": {
       const fm = state.foundingMap;

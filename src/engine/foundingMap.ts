@@ -9,6 +9,7 @@ import type {
 // procedural — just enough to move a unit, peel back fog, and pick a spot.
 export const FM_WIDTH = 9;
 export const FM_HEIGHT = 6;
+export const MOVES_PER_TURN = 2;
 const START = { x: 4, y: 3 };
 
 const CHAR_TO_TERRAIN: Record<string, FoundingTerrain> = {
@@ -81,12 +82,14 @@ export function createFoundingMap(): FoundingMapState {
     unit: { ...START },
     selected: false,
     revealed: revealKeys(START.x, START.y),
-    moves: 0,
+    movesPerTurn: MOVES_PER_TURN,
+    movesRemaining: MOVES_PER_TURN,
     founded: null,
   };
 }
 
-// Move the Founding Group to an adjacent valid tile and reveal the fog around it.
+// Move the Founding Group to an adjacent valid tile (costs 1 movement point),
+// revealing the fog around it. No-op when out of movement points.
 export function moveFoundingUnit(
   state: GameState,
   x: number,
@@ -94,6 +97,7 @@ export function moveFoundingUnit(
 ): GameState {
   const fm = state.foundingMap;
   if (!fm || fm.founded) return state;
+  if (fm.movesRemaining <= 0) return state;
   if (!isAdjacent(fm.unit, { x, y })) return state;
   const tile = tileAt(fm, x, y);
   if (!tile || !tile.valid) return state;
@@ -105,16 +109,26 @@ export function moveFoundingUnit(
       ...fm,
       unit: { x, y },
       revealed,
-      moves: fm.moves + 1,
+      movesRemaining: fm.movesRemaining - 1,
       selected: true,
     },
   };
 }
 
-// Tiles the unit may move to right now (adjacent, in-bounds, valid land).
+// Refresh movement points for a new founding turn.
+export function endFoundingTurn(state: GameState): GameState {
+  const fm = state.foundingMap;
+  if (!fm || fm.founded) return state;
+  return {
+    ...state,
+    foundingMap: { ...fm, movesRemaining: fm.movesPerTurn, selected: true },
+  };
+}
+
+// Tiles the unit may move to right now (adjacent, valid land, points remaining).
 export function moveableTiles(fm: FoundingMapState): Set<string> {
   const out = new Set<string>();
-  if (fm.founded) return out;
+  if (fm.founded || fm.movesRemaining <= 0) return out;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
       if (dx === 0 && dy === 0) continue;

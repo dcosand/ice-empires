@@ -37,6 +37,13 @@ export type ClubDef = {
   monthlyBaseIncome: ResourceSet;
   identityText: string;
   foundingFlavor: string;
+  // Short fantasy line for the club-selection card.
+  tagline: string;
+  // Club-specific accent color (hex) for light theming.
+  accent: string;
+  // Folder under /public/assets/clubs/<assetKey>/ (logo/leader/background.png).
+  // Kept separate from `id` so folder names need not match club ids exactly.
+  assetKey: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -238,7 +245,8 @@ export type FoundingMapState = {
   unit: { x: number; y: number }; // Founding Group position
   selected: boolean;
   revealed: string[]; // "x,y" keys revealed from the fog
-  moves: number;
+  movesPerTurn: number; // movement points granted each founding turn
+  movesRemaining: number; // movement points left this founding turn
   founded: { x: number; y: number } | null; // HQ tile once founded
 };
 
@@ -276,6 +284,7 @@ export type GameAction =
   | { type: "START_FOUNDING" }
   | { type: "SELECT_FOUNDING_UNIT" }
   | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
+  | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
   | { type: "BEGIN_SEASON" }
   | { type: "SELECT_BUILD"; facilityId: string }
