@@ -1,26 +1,35 @@
 import type { Dispatch } from "react";
 import type { GameAction } from "../types/game";
 
+const TITLE_BG = "/assets/title%20screen%20background.png";
+const TITLE_LOGO = "/assets/ice%20empires%20logo.png";
+
 export function LandingScreen({
   dispatch,
 }: {
   dispatch: Dispatch<GameAction>;
 }) {
   return (
-    <div className="center-screen">
-      <div className="center-card">
-        <div className="eyebrow">A Hockey Civilization Strategy Game</div>
-        <h1 className="title-xl">Ice Empires</h1>
-        <p className="subtitle">
+    <div
+      className="title-screen"
+      style={{ backgroundImage: `url("${TITLE_BG}")` }}
+    >
+      <div className="title-scrim" />
+      <div className="title-content">
+        <img
+          className="title-logo"
+          src={TITLE_LOGO}
+          alt="Ice Empires"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+        <p className="title-tagline">
           Build a hockey civilization from pond ice to dynasty.
         </p>
-        <p className="flavor">
-          It starts with almost nothing — a sheet of ice, a stubborn idea, and a
-          hockey world you have not yet discovered. Found a club. Build it across
-          eras. Turn a rumor of hockey into a dynasty.
-        </p>
+
         <button
-          className="btn btn-primary btn-lg btn-block"
+          className="btn btn-primary btn-lg title-cta"
           onClick={() => dispatch({ type: "START_GAME" })}
         >
           Start New Dynasty
