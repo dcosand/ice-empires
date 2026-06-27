@@ -1,0 +1,513 @@
+:root {
+  --bg: #0a1018;
+  --bg-2: #0f1824;
+  --panel: #131f2e;
+  --panel-2: #18293b;
+  --border: #24384f;
+  --border-bright: #3a5a7d;
+  --text: #e6eef6;
+  --text-dim: #94a9bf;
+  --text-faint: #607389;
+  --accent: #38bdf8; /* ice blue */
+  --accent-2: #7dd3fc;
+  --gold: #f2c14e; /* desert / monsoon warmth */
+  --gold-dim: #b8923a;
+  --good: #5fd08a;
+  --bad: #ef6f6f;
+  --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --radius: 12px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background:
+    radial-gradient(1200px 600px at 70% -10%, rgba(56, 189, 248, 0.08), transparent 60%),
+    radial-gradient(900px 500px at 0% 110%, rgba(242, 193, 78, 0.06), transparent 55%),
+    var(--bg);
+  color: var(--text);
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 0;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--text-dim);
+}
+.faint {
+  color: var(--text-faint);
+}
+
+/* ---------- Buttons ---------- */
+.btn {
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 14px;
+  transition: border-color 0.15s, background 0.15s, transform 0.05s;
+}
+.btn:hover:not(:disabled) {
+  border-color: var(--border-bright);
+  background: #1d3146;
+}
+.btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: linear-gradient(180deg, var(--accent) 0%, #1f9fd6 100%);
+  border-color: #1f9fd6;
+  color: #05121c;
+  font-weight: 700;
+}
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(180deg, var(--accent-2) 0%, var(--accent) 100%);
+}
+.btn-gold {
+  background: linear-gradient(180deg, var(--gold) 0%, var(--gold-dim) 100%);
+  border-color: var(--gold-dim);
+  color: #1a1304;
+  font-weight: 700;
+}
+.btn-block {
+  width: 100%;
+  justify-content: center;
+}
+.btn-lg {
+  padding: 14px 28px;
+  font-size: 17px;
+}
+
+/* ---------- Centered screens (landing / founding) ---------- */
+.center-screen {
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 40px 20px;
+}
+.center-card {
+  max-width: 620px;
+  width: 100%;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 40px 36px;
+}
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+  font-size: 12px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.title-xl {
+  font-size: 52px;
+  line-height: 1.05;
+  margin: 10px 0 6px;
+  background: linear-gradient(180deg, #fff 0%, var(--accent-2) 120%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.subtitle {
+  color: var(--text-dim);
+  font-size: 18px;
+  margin-bottom: 28px;
+}
+.flavor {
+  color: var(--text-dim);
+  font-style: italic;
+  border-left: 3px solid var(--gold);
+  padding-left: 14px;
+  text-align: left;
+  margin: 22px 0;
+}
+
+/* ---------- Dashboard layout ---------- */
+.dashboard {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 18px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+.col-span-2 {
+  grid-column: span 2;
+}
+@media (max-width: 900px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  .col-span-2 {
+    grid-column: span 1;
+  }
+}
+
+/* ---------- Top bar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 18px;
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  margin-bottom: 16px;
+}
+.topbar .club-name {
+  font-size: 20px;
+}
+.topbar .meta {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.pill strong {
+  color: var(--text);
+}
+.pill-era {
+  border-color: var(--gold-dim);
+  color: var(--gold);
+}
+
+/* ---------- Resource bar ---------- */
+.resource-bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+@media (max-width: 700px) {
+  .resource-bar {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.resource {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+}
+.resource .label {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+}
+.resource .value {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.resource .income {
+  font-size: 13px;
+  color: var(--good);
+}
+
+/* ---------- Panels ---------- */
+.panel {
+  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  margin-bottom: 16px;
+}
+.panel h3 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-bottom: 4px;
+}
+.panel .panel-sub {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-bottom: 14px;
+}
+
+/* ---------- Option rows (build / research / discovery) ---------- */
+.option {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.option.selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.option.disabled {
+  opacity: 0.5;
+}
+.option .option-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 10px;
+}
+.option .option-name {
+  font-weight: 700;
+  font-size: 15px;
+}
+.option .cost {
+  font-size: 12px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+.option .option-flavor {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-style: italic;
+  margin: 4px 0 8px;
+}
+
+/* ---------- Progress bar ---------- */
+.progress {
+  height: 8px;
+  background: #0a141e;
+  border-radius: 999px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+.progress > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--accent-2) 100%);
+}
+.progress-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-bottom: 4px;
+}
+
+.active-banner {
+  border: 1px dashed var(--accent);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+  background: rgba(56, 189, 248, 0.06);
+}
+.active-banner .active-name {
+  font-weight: 700;
+}
+
+/* ---------- Cards ---------- */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+.gcard {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  background: var(--panel-2);
+}
+.gcard .tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+}
+.gcard.staff .tag {
+  color: var(--accent-2);
+}
+.gcard.prospect .tag {
+  color: var(--gold);
+}
+.gcard .gcard-name {
+  font-weight: 700;
+  margin: 2px 0;
+}
+.gcard .gcard-flavor {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.gcard .gcard-meta {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: 6px;
+}
+
+/* ---------- Region cards ---------- */
+.region {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--panel-2);
+}
+.region.hidden {
+  border-style: dashed;
+  opacity: 0.65;
+}
+.region .region-name {
+  font-weight: 700;
+}
+.region .region-resource {
+  font-size: 12px;
+  color: var(--gold);
+}
+.region .region-report {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-style: italic;
+}
+.region .state-tag {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+/* ---------- Event log ---------- */
+.log {
+  max-height: 420px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.log-entry {
+  border-left: 3px solid var(--border-bright);
+  padding: 6px 0 6px 12px;
+  margin-bottom: 10px;
+}
+.log-entry.type-era {
+  border-color: var(--gold);
+}
+.log-entry.type-discovery {
+  border-color: var(--accent);
+}
+.log-entry.type-build,
+.log-entry.type-research {
+  border-color: var(--good);
+}
+.log-entry .log-month {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+}
+.log-entry .log-title {
+  font-weight: 700;
+  font-size: 14px;
+}
+.log-entry .log-msg {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* ---------- Era requirements ---------- */
+.req {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 14px;
+}
+.req .box {
+  width: 18px;
+  height: 18px;
+  border-radius: 5px;
+  border: 1px solid var(--border-bright);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex: 0 0 auto;
+}
+.req.met .box {
+  background: var(--good);
+  border-color: var(--good);
+  color: #05121c;
+}
+.req.met {
+  color: var(--text);
+}
+.req:not(.met) {
+  color: var(--text-dim);
+}
+
+/* ---------- End-month / footer action ---------- */
+.turn-footer {
+  position: sticky;
+  bottom: 0;
+  margin-top: 8px;
+  padding: 14px 0 4px;
+}
+
+/* ---------- Era unlock banner ---------- */
+.era-banner {
+  border: 1px solid var(--gold-dim);
+  background: linear-gradient(180deg, rgba(242, 193, 78, 0.12), rgba(242, 193, 78, 0.03));
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 16px;
+}
+.era-banner h3 {
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+
+.teaser-banner {
+  border: 1px solid var(--accent);
+  background: rgba(56, 189, 248, 0.08);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin-bottom: 16px;
+  text-align: center;
+}
