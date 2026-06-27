@@ -1,39 +1,51 @@
 import type { DiscoveryPriorityDef } from "../types/game";
 
+// Early-game "Local Hockey Search". The club has no formal scouts yet, so these
+// are grassroots, hands-on actions by the founding group.
 export const DISCOVERY_PRIORITIES: DiscoveryPriorityDef[] = [
   {
-    id: "survey-nearby-ice",
-    name: "Survey Nearby Ice",
-    description: "Reveal a hidden nearby region.",
-    flavor: "Someone has to be the first to skate out and look.",
+    id: "find-local-players",
+    name: "Find Local Players",
+    description: "Hunt for raw local talent worth a look.",
+    flavor: "Somebody's kid is always 'pretty good, actually.'",
   },
   {
-    id: "follow-prospect-rumor",
-    name: "Follow Prospect Rumor",
-    description: "Chance to reveal a prospect or a region clue.",
-    flavor: "A name keeps coming up at the rink. You go find out why.",
+    id: "ask-around-the-rinks",
+    name: "Ask Around the Rinks",
+    description: "Work the local rinks for tips, gossip, and goodwill.",
+    flavor: "Buy the coffee, ask the questions, hear the rumors.",
   },
   {
-    id: "listen-local-rinks",
-    name: "Listen to Local Rinks",
-    description: "Generate Reputation or a local staff/player event.",
-    flavor: "Buy the coffee, ask the questions, hear the gossip.",
+    id: "search-for-playable-ice",
+    name: "Search for Playable Ice",
+    description: "Look for nearby ice and hockey regions to map.",
+    flavor: "Any sheet of ice is a lead worth chasing.",
   },
   {
-    id: "study-strange-culture",
-    name: "Study Strange Hockey Culture",
-    description: "Better chance to reveal an unusual region.",
-    flavor: "The weird places are where your club has an edge.",
+    id: "recruit-volunteers",
+    name: "Recruit Volunteers",
+    description: "Find helpers, organizers, and would-be staff.",
+    flavor: "Hockey runs on people who say 'sure, I'll help.'",
   },
   {
-    id: "build-relationships",
-    name: "Build Relationships",
-    description: "Chance to reveal a partner region, staff, or diplomacy hint.",
-    flavor: "Hockey is a small world. Be the person people call.",
+    id: "host-an-open-skate",
+    name: "Host an Open Skate",
+    description: "Throw open the doors and see who shows up.",
+    flavor: "Bring skates. Or courage. Both is better.",
+  },
+  {
+    id: "follow-a-local-rumor",
+    name: "Follow a Local Rumor",
+    description: "Chase a strange story toward an unusual region.",
+    flavor: "The weird leads are where a desert club has an edge.",
   },
 ];
 
 export const DISCOVERY_BY_ID: Record<string, DiscoveryPriorityDef> =
   Object.fromEntries(DISCOVERY_PRIORITIES.map((d) => [d.id, d]));
 
-export const DEFAULT_DISCOVERY_PRIORITY = "survey-nearby-ice" as const;
+export const DEFAULT_DISCOVERY_PRIORITY = "search-for-playable-ice" as const;
+
+// Shown while formal scouting is still locked.
+export const FORMAL_SCOUT_LOCK_HINT =
+  "Formal scouts unlock after Scouting Reports and basic club infrastructure.";

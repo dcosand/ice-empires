@@ -1,7 +1,13 @@
 import type { Dispatch } from "react";
 import type { GameAction, GameState } from "../types/game";
-import { DISCOVERY_PRIORITIES } from "../data/discovery";
+import {
+  DISCOVERY_PRIORITIES,
+  DISCOVERY_BY_ID,
+  FORMAL_SCOUT_LOCK_HINT,
+} from "../data/discovery";
 
+// Local Hockey Search — grassroots discovery before the club has formal scouts.
+// Chip-style so it reads as a directional control, not a form.
 export function DiscoveryPanel({
   state,
   dispatch,
@@ -10,33 +16,35 @@ export function DiscoveryPanel({
   dispatch: Dispatch<GameAction>;
 }) {
   const activeId = state.discovery.activePriorityId;
+  const active = DISCOVERY_BY_ID[activeId];
 
   return (
-    <div className="panel">
-      <h3>Discovery</h3>
+    <div className="panel scouting-panel">
+      <h3>Local Hockey Search →</h3>
       <div className="panel-sub">
-        Choose where to point your attention. It resolves at End Month.
+        Grassroots legwork by the founding group. Resolves at End Month.
       </div>
 
-      {DISCOVERY_PRIORITIES.map((p) => {
-        const selected = p.id === activeId;
-        return (
-          <div
-            className={`option${selected ? " selected" : ""}`}
+      <div className="chip-row">
+        {DISCOVERY_PRIORITIES.map((p) => (
+          <button
             key={p.id}
+            className={`chip${p.id === activeId ? " selected" : ""}`}
             onClick={() =>
               dispatch({ type: "SELECT_DISCOVERY_PRIORITY", priorityId: p.id })
             }
-            style={{ cursor: "pointer" }}
           >
-            <div className="option-head">
-              <span className="option-name">{p.name}</span>
-              {selected && <span className="cost">● selected</span>}
-            </div>
-            <div className="option-flavor">{p.description}</div>
-          </div>
-        );
-      })}
+            {p.name}
+          </button>
+        ))}
+      </div>
+
+      <div className="scouting-active">
+        <strong>{active?.name}:</strong>{" "}
+        <span className="muted">{active?.description}</span>
+      </div>
+
+      <div className="scout-lock">🔒 {FORMAL_SCOUT_LOCK_HINT}</div>
     </div>
   );
 }

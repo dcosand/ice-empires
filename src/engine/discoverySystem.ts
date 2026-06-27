@@ -61,7 +61,7 @@ export function resolveDiscovery(draft: GameState, push: PushLog): void {
   const deeper = hasUnlock(draft, "deeperDiscovery");
 
   switch (priority) {
-    case "survey-nearby-ice": {
+    case "search-for-playable-ice": {
       const pool = hiddenRegions(draft);
       if (pool.length > 0) {
         revealRegion(draft, pool[Math.floor(r * pool.length)], push);
@@ -70,18 +70,18 @@ export function resolveDiscovery(draft: GameState, push: PushLog): void {
       }
       break;
     }
-    case "study-strange-culture": {
+    case "follow-a-local-rumor": {
       const unusual = hiddenRegions(draft, true);
       const pool = unusual.length > 0 ? unusual : hiddenRegions(draft);
       if (pool.length > 0) {
         revealRegion(draft, pool[Math.floor(r * pool.length)], push);
       } else {
-        push("discovery", "The weird places are quiet", "No strange new cultures surfaced this month.");
+        revealClue(draft, push);
       }
       break;
     }
-    case "follow-prospect-rumor": {
-      // Better odds of a card with deeper-discovery research; otherwise a clue.
+    case "find-local-players": {
+      // Better odds of a prospect with deeper-discovery research; otherwise a clue.
       const cardChance = deeper ? 0.7 : 0.5;
       if (r < cardChance) {
         const granted = grantRandomCard(
@@ -96,7 +96,7 @@ export function resolveDiscovery(draft: GameState, push: PushLog): void {
       }
       break;
     }
-    case "listen-local-rinks": {
+    case "ask-around-the-rinks": {
       if (r < 0.45) {
         const granted = grantRandomCard(
           draft,
@@ -107,17 +107,10 @@ export function resolveDiscovery(draft: GameState, push: PushLog): void {
         if (granted) break;
       }
       draft.resources = addResources(draft.resources, { reputation: 1 });
-      push("discovery", "Word gets around", "Time spent at the local rinks earned +1 Reputation.");
+      push("discovery", "Word gets around", "Asking around the local rinks earned +1 Reputation.");
       break;
     }
-    case "build-relationships": {
-      if (r < 0.5) {
-        const pool = hiddenRegions(draft);
-        if (pool.length > 0) {
-          revealRegion(draft, pool[Math.floor(r * pool.length)], push);
-          break;
-        }
-      }
+    case "recruit-volunteers": {
       const granted = grantRandomCard(
         draft,
         ["volunteer-trainer", "local-coach"],
@@ -126,7 +119,21 @@ export function resolveDiscovery(draft: GameState, push: PushLog): void {
       );
       if (!granted) {
         draft.resources = addResources(draft.resources, { reputation: 1 });
-        push("discovery", "A handshake worth keeping", "New connections earned +1 Reputation.");
+        push("discovery", "More hands on deck", "Word of mouth brought in goodwill: +1 Reputation.");
+      }
+      break;
+    }
+    case "host-an-open-skate": {
+      // A community event: reputation, with a chance at a local prospect.
+      draft.resources = addResources(draft.resources, { reputation: 1 });
+      push("discovery", "Open skate", "The open skate drew a crowd: +1 Reputation.");
+      if (r < 0.5) {
+        grantRandomCard(
+          draft,
+          ["raw-desert-winger", "prairie-defenseman"],
+          Math.floor(r * 100),
+          push,
+        );
       }
       break;
     }
