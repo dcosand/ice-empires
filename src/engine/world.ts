@@ -1,6 +1,7 @@
 import type {
   GameState,
   WorldState,
+  WorldFeature,
   WorldTerrain,
   WorldTile,
   WorldUnit,
@@ -8,29 +9,15 @@ import type {
 import { REGIONS } from "../data/regions";
 
 // The persistent world. The founding tile map IS the in-game world — the same
-// grid, fog, and HQ carry from founding into Month 1+. Hand-authored, not
-// procedural.
-export const WORLD_WIDTH = 9;
-export const WORLD_HEIGHT = 6;
+// grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
+export const WORLD_WIDTH = 120;
+export const WORLD_HEIGHT = 75;
 export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
-const START = { x: 4, y: 3 };
-
-const CHAR_TO_TERRAIN: Record<string, WorldTerrain> = {
-  d: "desert",
-  i: "ice",
-  p: "plains",
-  w: "water",
+const START = {
+  x: Math.floor(WORLD_WIDTH / 2),
+  y: Math.floor(WORLD_HEIGHT / 2),
 };
-
-const TERRAIN_ROWS = [
-  "wppdddiiw",
-  "pppdddiip",
-  "pdddddiip",
-  "pddddpipp",
-  "ppdddppip",
-  "wppdpppiw",
-];
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -87,14 +74,38 @@ export function regionIdAtTile(x: number, y: number): string | null {
   return REGION_BY_TILE[tileKey(x, y)] ?? null;
 }
 
-export function createWorld(): WorldState {
+export function createWorld(seed = Date.now()): WorldState {
   const tiles: WorldTile[] = [];
   for (let y = 0; y < WORLD_HEIGHT; y++) {
     for (let x = 0; x < WORLD_WIDTH; x++) {
-      const terrain = CHAR_TO_TERRAIN[TERRAIN_ROWS[y][x]] ?? "plains";
-      tiles.push({ x, y, terrain, valid: terrain !== "water" });
+      const terrain = generatedTerrain(x, y, seed);
+      const feature = generatedFeature(x, y, terrain, seed);
+      const variant = Math.floor(noise2d(x, y, seed + 4049) * 4);
+      tiles.push({
+        x,
+        y,
+        terrain,
+        variant,
+        feature,
+        valid: terrain !== "water" && feature !== "lake",
+      });
     }
   }
+
+  // Keep the opening tile and its immediate choices playable.
+  for (const key of revealKeys(START.x, START.y)) {
+    const [x, y] = key.split(",").map(Number);
+    const tile = tiles[y * WORLD_WIDTH + x];
+    if (tile?.terrain === "water" || tile?.feature === "lake") {
+      tiles[y * WORLD_WIDTH + x] = {
+        ...tile,
+        terrain: "plains",
+        feature: undefined,
+        valid: true,
+      };
+    }
+  }
+
   return {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
@@ -111,6 +122,104 @@ export function createWorld(): WorldState {
     scout: null,
     scoutSelected: false,
   };
+}
+
+function generatedTerrain(x: number, y: number, seed: number): WorldTerrain {
+  const nx = x / (WORLD_WIDTH - 1);
+  const ny = y / (WORLD_HEIGHT - 1);
+  const continental = octaveNoise(x, y, seed);
+  const moisture = octaveNoise(x + 700, y - 300, seed ^ 0x9e3779b9);
+  const ridge = octaveNoise(x - 500, y + 900, seed + 2718);
+  const cold =
+    ny * 0.62 +
+    noise2d(Math.floor(x / 10), Math.floor(y / 10), seed + 77) * 0.38;
+  const elevation = continental * 0.72 + ridge * 0.28;
+  const edgeWater =
+    nx < 0.03 || nx > 0.97 || ny < 0.03 || ny > 0.97 ? 0.16 : 0;
+
+  if (continental + edgeWater < 0.34) return "water";
+  if (continental + edgeWater < 0.42) return "coastal";
+  if (elevation > 0.73) return "mountain";
+  if (cold > 0.72 || (cold > 0.58 && moisture > 0.58)) return "ice";
+  if (cold < 0.32 && moisture > 0.62) return "tropical";
+  if (moisture < 0.28 && ny > 0.18) return "desert";
+  if (moisture < 0.42 && ny > 0.18) return "high-desert";
+  return "plains";
+}
+
+function generatedFeature(
+  x: number,
+  y: number,
+  terrain: WorldTerrain,
+  seed: number,
+): WorldFeature | undefined {
+  if (terrain === "water" || terrain === "mountain") return undefined;
+  if (isRiverTile(x, y, terrain, seed)) return "river";
+
+  const basin = smoothNoise(x / 4, y / 4, seed + 1701);
+  const wet =
+    terrain === "coastal" ||
+    terrain === "tropical" ||
+    terrain === "ice" ||
+    terrain === "plains";
+  if (wet && basin > 0.89) return "lake";
+  if (wet && basin > 0.82) return "pond";
+  return undefined;
+}
+
+function isRiverTile(
+  x: number,
+  y: number,
+  terrain: WorldTerrain,
+  seed: number,
+): boolean {
+  if (terrain === "water" || terrain === "ice") return false;
+  for (let i = 0; i < 4; i++) {
+    const base = ((i + 1) / 5) * WORLD_HEIGHT;
+    const phase = noise2d(i * 17, 0, seed + 909) * Math.PI * 2;
+    const bend =
+      Math.sin(x / (10 + i * 2) + phase) * (5 + i) +
+      Math.sin(x / 23 + phase * 0.5) * 4;
+    const curveY = base + bend;
+    if (Math.abs(y - curveY) < 0.52) return true;
+  }
+  return false;
+}
+
+function octaveNoise(x: number, y: number, seed: number): number {
+  return (
+    smoothNoise(x / 18, y / 18, seed) * 0.55 +
+    smoothNoise(x / 8, y / 8, seed + 101) * 0.3 +
+    smoothNoise(x / 4, y / 4, seed + 211) * 0.15
+  );
+}
+
+function smoothNoise(x: number, y: number, seed: number): number {
+  const x0 = Math.floor(x);
+  const y0 = Math.floor(y);
+  const xf = x - x0;
+  const yf = y - y0;
+  const top = lerp(noise2d(x0, y0, seed), noise2d(x0 + 1, y0, seed), fade(xf));
+  const bottom = lerp(
+    noise2d(x0, y0 + 1, seed),
+    noise2d(x0 + 1, y0 + 1, seed),
+    fade(xf),
+  );
+  return lerp(top, bottom, fade(yf));
+}
+
+function noise2d(x: number, y: number, seed: number): number {
+  let h = seed ^ Math.imul(x, 374761393) ^ Math.imul(y, 668265263);
+  h = Math.imul(h ^ (h >>> 13), 1274126177);
+  return ((h ^ (h >>> 16)) >>> 0) / 4294967295;
+}
+
+function fade(t: number): number {
+  return t * t * (3 - 2 * t);
+}
+
+function lerp(a: number, b: number, t: number): number {
+  return a + (b - a) * t;
 }
 
 // Tiles a unit may move to right now (adjacent, valid land/ice, points left).

@@ -40,7 +40,7 @@ Monthly-income effects from club base + facilities + cards are summed in
 facility completed this month begins yielding next month.
 
 ## D8 — Six selectable clubs share First-12-Months mechanics (temporary)
-All six clubs (Arizona, Halifax, Helsinki, Saskatoon, Prague, Minneapolis North)
+All six clubs (Arizona, Halifax, Helsinki, Saskatoon, Prague, Minnesota Nova)
 are selectable and fully playable. Non-Arizona clubs currently reuse Arizona's
 starting profile and mechanics; they differ only in name, leader title, flavor,
 identity text, accent color, and art. Unique per-club mechanics are a future
@@ -49,7 +49,7 @@ pass. Removed the "Recommended" tag and the "Coming Soon" lock.
 ## D9 — Club art via `assetKey`, not `id`
 Each `ClubDef` has an `assetKey` naming its `/public/assets/clubs/<assetKey>/`
 folder (logo/leader/background `.png`). This decouples folder names from club ids
-(e.g., `minneapolis-north` → `minnesota`). `clubAsset(club, kind)` builds paths;
+(e.g., `minnesota-nova` → `minnesota`). `clubAsset(club, kind)` builds paths;
 `<img onError>` hides any missing image so there are no broken images.
 
 ## D10 — Turn discipline

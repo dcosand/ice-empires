@@ -32,7 +32,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, phase: "founding", selectedClubId: action.clubId };
 
     case "START_FOUNDING":
-      return { ...state, phase: "foundingMap", world: createWorld() };
+      return {
+        ...state,
+        phase: "foundingMap",
+        world: createWorld(Date.now()),
+      };
 
     case "SELECT_FOUNDING_UNIT":
       if (!state.world || state.world.hqTile || !state.world.founder) {

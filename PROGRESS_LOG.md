@@ -29,14 +29,14 @@ rumor) — all core assertions pass.
   active (Local Hockey Search always defaulted), with helper copy naming what's
   missing. A completed project empties its slot, forcing a new pick next month;
   if no options remain, End Month is allowed.
-- **Six playable clubs**: Arizona, Halifax, Helsinki, Saskatoon, Prague,
-  Minneapolis North are all selectable real `ClubDef`s (shared mechanics for now,
-  distinct identity). Removed "Recommended" and "Coming Soon".
+- **Six playable clubs**: Arizona, Halifax, Helsinki, Saskatoon, Prague, and
+  Minnesota Nova are selectable as real `ClubDef`s (shared mechanics for now,
+  distinct identities). Removed "Recommended" and "Coming Soon".
 - **Club art wired** via `assetKey` (`clubAsset()`): logo/leader/background used on
   the club-select cards, the founding intro (now a prominent club "reveal" with a
   large leader portrait, logo banner, and background), the founding-map side
   panel, and the dashboard TopBar. `<img onError>` guards against broken images.
-  Handles the `minneapolis-north` → `minnesota` folder mismatch via assetKey.
+  Handles the `minnesota-nova` → `minnesota` folder mismatch via assetKey.
 - Rival AI / multiplayer explicitly deferred (TODO in `gameReducer.ts`).
 
 ## 2026-06-27 — v3: founding map + production clarity

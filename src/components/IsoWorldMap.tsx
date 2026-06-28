@@ -1,12 +1,16 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch } from "react";
-import { Application, Container, Graphics } from "pixi.js";
+import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
 import type {
   GameAction,
   GameState,
   DiscoveryStateValue,
   WorldState,
+  WorldTerrain,
+  WorldTile,
 } from "../types/game";
+import { CLUBS, clubAsset } from "../data/clubs";
+import type { ClubDef } from "../types/game";
 import { REGIONS_BY_ID } from "../data/regions";
 import {
   moveableTilesFor,
@@ -29,13 +33,17 @@ const isoX = (gx: number, gy: number) => (gx - gy) * (TILE_W / 2);
 const isoY = (gx: number, gy: number) => (gx + gy) * (TILE_H / 2);
 
 // Terrain palette (hockey-world flavored: green plains, tan desert, pale ice).
-const TERRAIN: Record<string, { top: number; side: number }> = {
-  plains: { top: 0x6f9350, side: 0x52703b },
-  desert: { top: 0xd8b673, side: 0xb2904c },
-  ice: { top: 0xcfe8f5, side: 0xa3cadd },
-  water: { top: 0x2f6f9e, side: 0x244f6f },
+const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number }> = {
+  coastal: { top: 0xbfd07d, side: 0x829257, detail: 0x2d7fa6 },
+  desert: { top: 0xd8b673, side: 0xb2904c, detail: 0xf1d28e },
+  "high-desert": { top: 0xb78f62, side: 0x876942, detail: 0x6f7d55 },
+  ice: { top: 0xcfe8f5, side: 0xa3cadd, detail: 0x83c7e3 },
+  mountain: { top: 0x7d8c8d, side: 0x59696d, detail: 0xd7e5e7 },
+  plains: { top: 0x6f9350, side: 0x52703b, detail: 0x9dbb70 },
+  tropical: { top: 0x3f9862, side: 0x2d7048, detail: 0x88c96d },
+  water: { top: 0x2f6f9e, side: 0x244f6f, detail: 0x7ccceb },
 };
-const FOG = { top: 0x111c28, side: 0x0a1119 };
+const FOG = { top: 0x111c28, side: 0x0a1119, detail: 0x1c2b3d };
 
 const PIN_COLOR: Record<DiscoveryStateValue, number> = {
   hidden: 0x000000,
@@ -51,6 +59,14 @@ function accentNumber(hex: string | undefined): number {
   return Number.isNaN(n) ? 0xf2c14e : n;
 }
 
+function getActiveClub(state: GameState): ClubDef | null {
+  return state.club ?? (state.selectedClubId ? CLUBS[state.selectedClubId] : null);
+}
+
+function shortClubLabel(club: ClubDef): string {
+  return club.name.replace(/\s+HC$/, "").split(/\s+/)[0] ?? club.cityRegion;
+}
+
 const diamond = (h = TILE_H): number[] => [0, -h / 2, TILE_W / 2, 0, 0, h / 2, -TILE_W / 2, 0];
 
 // Centroid offset so the map draws centered around the world container origin.
@@ -59,22 +75,37 @@ function centroid(w: WorldState) {
 }
 
 // ---- Scene drawing -------------------------------------------------------
-function drawScene(layer: Container, state: GameState, selectedKey: string | null) {
+function drawScene(
+  layer: Container,
+  state: GameState,
+  selectedKey: string | null,
+  logoTexture: Texture | null,
+) {
   layer.removeChildren().forEach((c) => c.destroy());
   const world = state.world;
   if (!world) return;
   const c = centroid(world);
-  const accent = accentNumber(state.club?.accent);
+  const activeClub = getActiveClub(state);
+  const accent = accentNumber(activeClub?.accent);
+  const clubLabel = activeClub ? shortClubLabel(activeClub) : "";
   const scout = world.scout;
-  const moveable = world.scoutSelected ? moveableTilesFor(world, scout) : new Set<string>();
+  const founder = world.founder;
+  const moveable =
+    world.founderSelected && !world.hqTile
+      ? moveableTilesFor(world, founder)
+      : world.scoutSelected
+        ? moveableTilesFor(world, scout)
+        : new Set<string>();
+  const revealedSet = new Set(world.revealed);
 
   for (let gy = 0; gy < world.height; gy++) {
     for (let gx = 0; gx < world.width; gx++) {
       const key = tileKey(gx, gy);
       const tile = tileAt(world, gx, gy)!;
-      const revealed = world.revealed.includes(key);
+      const revealed = revealedSet.has(key);
       const pal = revealed ? TERRAIN[tile.terrain] ?? TERRAIN.plains : FOG;
-      const lift = tile.terrain === "water" ? 4 : LIFT;
+      const lift = revealed ? tileLift(tile) : LIFT;
+      const topColor = revealed ? variantTopColor(tile, pal.top) : pal.top;
 
       const g = new Graphics();
       g.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
@@ -86,10 +117,11 @@ function drawScene(layer: Container, state: GameState, selectedKey: string | nul
         darken(pal.side),
       );
       // top face
-      g.poly(diamond()).fill(pal.top).stroke({ width: 1, color: 0x0a1018, alpha: 0.3 });
+      g.poly(diamond()).fill(topColor).stroke({ width: 1, color: 0x0a1018, alpha: 0.3 });
+      if (revealed) drawTerrainDetails(g, tile, pal);
 
       if (moveable.has(key)) {
-        g.poly(diamond()).fill({ color: 0x38bdf8, alpha: 0.32 });
+        drawMoveHint(g);
       }
       if (selectedKey === key) {
         g.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
@@ -114,7 +146,11 @@ function drawScene(layer: Container, state: GameState, selectedKey: string | nul
       }
 
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
-      if (isHQ) layer.addChild(hqMarker(gx, gy, c, accent));
+      if (isHQ) layer.addChild(hqMarker(gx, gy, c, accent, clubLabel, logoTexture));
+
+      if (founder && founder.x === gx && founder.y === gy) {
+        layer.addChild(founderMarker(gx, gy, c, world.founderSelected, accent));
+      }
 
       if (scout && scout.x === gx && scout.y === gy) {
         layer.addChild(scoutMarker(gx, gy, c, world.scoutSelected, accent));
@@ -123,19 +159,223 @@ function drawScene(layer: Container, state: GameState, selectedKey: string | nul
   }
 }
 
-function hqMarker(gx: number, gy: number, c: { x: number; y: number }, accent: number) {
+function founderMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  selected: boolean | undefined,
+  accent: number,
+) {
   const m = new Graphics();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  m.zIndex = gx + gy + 0.5;
-  // plinth + building + roof in club accent
-  m.poly([-18, 2, 0, 11, 18, 2, 0, -7]).fill(0x05121c); // shadow base
-  m.rect(-14, -24, 28, 26).fill(accent).stroke({ width: 2, color: 0x1a1304 });
-  m.poly([-16, -24, 0, -36, 16, -24]).fill(darken(accent)).stroke({ width: 2, color: 0x1a1304 });
-  m.rect(-5, -14, 10, 16).fill(0x1a1304); // door
-  // flag
-  m.rect(14, -44, 2, 20).fill(0xffffff);
-  m.poly([16, -44, 30, -39, 16, -34]).fill(accent);
+  m.zIndex = gx + gy + 0.65;
+
+  if (selected) {
+    m.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
+  }
+  m.ellipse(0, 1, 12, 4).fill({ color: 0x000000, alpha: 0.35 });
+
+  // Founding Group: a simple expedition pennant and bundled hockey sticks.
+  m.rect(-2, -36, 3, 34).fill(0xe6eef6);
+  m.poly([1, -36, 20, -31, 1, -25]).fill(accent).stroke({ width: 1.5, color: 0x05121c });
+  m.roundRect(-12, -22, 24, 18, 4).fill(0x18293b).stroke({ width: 2, color: accent });
+  m.circle(0, -27, 7).fill(0xe7b48b).stroke({ width: 1, color: 0xc8946a });
+  m.circle(-2.5, -28, 0.8).fill(0x2a2320);
+  m.circle(2.5, -28, 0.8).fill(0x2a2320);
+  m.roundRect(-14, -14, 5, 16, 2).fill(0x33404f);
+  m.roundRect(9, -14, 5, 16, 2).fill(0x33404f);
+  m.poly([-18, 0, -16, 0, -10, -33, -12, -33]).fill(0xd8b673);
+  m.poly([18, 0, 16, 0, 10, -33, 12, -33]).fill(0xd8b673);
   return m;
+}
+
+function hqMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  accent: number,
+  label: string,
+  logoTexture: Texture | null,
+) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 0.7;
+
+  const base = new Graphics();
+  base.ellipse(0, 1, 20, 7).fill({ color: 0x000000, alpha: 0.35 });
+  base.poly([-18, 0, 0, 9, 18, 0, 0, -9]).fill(0x05121c).stroke({ width: 2, color: accent });
+  base.circle(0, -23, 17).fill(0x0f1824).stroke({ width: 3, color: accent });
+  base.circle(0, -23, 12).fill(0xe6eef6);
+  base.rect(16, -45, 2, 23).fill(0xe6eef6);
+  base.poly([18, -45, 34, -40, 18, -35]).fill(accent).stroke({ width: 1.5, color: 0x05121c });
+  m.addChild(base);
+
+  if (logoTexture) {
+    const logo = new Sprite(logoTexture);
+    logo.anchor.set(0.5);
+    logo.position.set(0, -23);
+    const scale = Math.min(22 / logoTexture.width, 22 / logoTexture.height);
+    logo.scale.set(scale);
+    m.addChild(logo);
+  } else {
+    const fallback = new Graphics();
+    fallback.poly([-7, -30, 7, -30, 9, -18, 0, -12, -9, -18]).fill(accent);
+    m.addChild(fallback);
+  }
+
+  if (label) {
+    const text = new Text({
+      text: label,
+      style: {
+        fontFamily: "Inter, Arial, sans-serif",
+        fontSize: 12,
+        fontWeight: "800",
+        fill: 0xe6eef6,
+        stroke: { color: 0x05121c, width: 4 },
+      },
+    });
+    text.anchor.set(0.5, 0);
+    text.position.set(0, 8);
+    m.addChild(text);
+  }
+
+  return m;
+}
+
+function tileLift(tile: WorldTile): number {
+  if (tile.terrain === "water" || tile.feature === "lake") return 4;
+  if (tile.terrain === "mountain") return 24;
+  if (tile.terrain === "ice") return 9;
+  return LIFT;
+}
+
+function variantTopColor(tile: WorldTile, base: number): number {
+  const v = tile.variant ?? 0;
+  if (tile.feature === "river" || tile.feature === "pond") return mixColor(base, 0x7dd3fc, 0.1);
+  if (tile.feature === "lake") return mixColor(base, 0x2f6f9e, 0.38);
+  const amt = [-0.08, 0.04, 0.1, -0.03][v] ?? 0;
+  return amt >= 0 ? lighten(base, amt) : darkenBy(base, Math.abs(amt));
+}
+
+function drawMoveHint(g: Graphics) {
+  g.poly([-24, -12, -12, -16, -8, -14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
+  g.poly([24, 12, 12, 16, 8, 14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
+  g.circle(0, 0, 3).fill({ color: 0x7dd3fc, alpha: 0.72 });
+}
+
+function drawTerrainDetails(
+  g: Graphics,
+  tile: WorldTile,
+  pal: { top: number; side: number; detail: number },
+) {
+  const v = tile.variant ?? 0;
+
+  switch (tile.terrain) {
+    case "water":
+      drawWater(g, v, pal.detail);
+      break;
+    case "ice":
+      drawIce(g, v, pal.detail);
+      break;
+    case "desert":
+      drawDesert(g, v, pal.detail);
+      break;
+    case "high-desert":
+      drawHighDesert(g, v, pal.detail);
+      break;
+    case "coastal":
+      drawCoastal(g, v, pal.detail);
+      break;
+    case "tropical":
+      drawTropical(g, v, pal.detail);
+      break;
+    case "mountain":
+      drawMountain(g, v, pal.detail);
+      break;
+    case "plains":
+    default:
+      drawPlains(g, v, pal.detail);
+      break;
+  }
+
+  if (tile.feature === "river") drawRiver(g, v);
+  if (tile.feature === "pond") drawPond(g, v, false);
+  if (tile.feature === "lake") drawPond(g, v, true);
+}
+
+function drawWater(g: Graphics, v: number, color: number) {
+  const y = -5 + v * 2;
+  g.poly([-18, y, -7, y - 4, 5, y - 1, 17, y - 5]).stroke({ width: 2, color, alpha: 0.55 });
+  g.poly([-12, y + 8, 0, y + 4, 12, y + 7]).stroke({ width: 2, color, alpha: 0.42 });
+}
+
+function drawIce(g: Graphics, v: number, color: number) {
+  g.poly([-20, -4 + v, -8, -2, 0, -8, 9, -5]).stroke({ width: 1.5, color, alpha: 0.55 });
+  g.poly([-5, 7, 3, 1, 15, 2]).stroke({ width: 1.2, color: 0xffffff, alpha: 0.45 });
+  if (v % 2 === 0) g.circle(11, -4, 3).fill({ color: 0xffffff, alpha: 0.22 });
+}
+
+function drawDesert(g: Graphics, v: number, color: number) {
+  g.poly([-25, -3, -13, -8, -2, -5, 11, -10, 25, -6]).stroke({ width: 2.4, color, alpha: 0.48 });
+  g.poly([-24, 6, -12, 2, 0, 4, 14, -1, 24, 2]).stroke({ width: 1.9, color: 0x9f7a3d, alpha: 0.36 });
+  g.poly([-18, 13 - v, -8, 8 - v, 5, 10 - v]).stroke({ width: 1.7, color: 0xf4d894, alpha: 0.38 });
+  g.circle(13 - v * 4, -1 + v, 2.2).fill({ color: 0x8b6a3a, alpha: 0.72 });
+}
+
+function drawHighDesert(g: Graphics, v: number, color: number) {
+  g.poly([-24, 3, -12, -3, 1, 0, 16, -6, 25, -4]).stroke({ width: 2, color, alpha: 0.55 });
+  g.poly([-19, 12, -7, 6, 5, 9, 18, 3]).stroke({ width: 1.6, color: 0x80613e, alpha: 0.45 });
+  g.circle(-12 + v * 7, 4, 2.2).fill({ color: 0x5d6d4a, alpha: 0.75 });
+  g.poly([9, 8, 13, 0, 17, 8]).stroke({ width: 2, color: 0x54613e, alpha: 0.8 });
+  if (v > 1) g.poly([-18, -3, -14, -10, -10, -3]).stroke({ width: 1.6, color: 0x65754d, alpha: 0.7 });
+}
+
+function drawCoastal(g: Graphics, v: number, color: number) {
+  g.poly([-30, 0, -15, 7, 0, 12, 15, 7, 30, 0, 16, 4, 0, 8, -16, 4]).fill({ color: 0xe6ca89, alpha: 0.5 });
+  g.poly([-19, -3 + v, -7, -7 + v, 8, -5 + v, 19, -9 + v]).stroke({ width: 2, color, alpha: 0.5 });
+}
+
+function drawTropical(g: Graphics, v: number, color: number) {
+  const x = -10 + v * 6;
+  g.circle(x, -2, 4).fill({ color, alpha: 0.75 });
+  g.circle(x + 5, 1, 4).fill({ color: 0x2f7a3f, alpha: 0.75 });
+  g.circle(x - 4, 3, 3).fill({ color: 0x9ed36d, alpha: 0.65 });
+  g.poly([10, 7, 14, 0, 18, 7]).stroke({ width: 1.5, color, alpha: 0.8 });
+  g.poly([-22, 8, -8, 2, 6, 6, 21, 0]).stroke({ width: 1.4, color: 0x1f6a45, alpha: 0.48 });
+}
+
+function drawMountain(g: Graphics, v: number, color: number) {
+  const offset = v % 2 === 0 ? -3 : 3;
+  g.poly([-18, 5, -7 + offset, -18, 5, 5]).fill(0x5f6d70).stroke({ width: 1, color: 0x334044, alpha: 0.7 });
+  g.poly([-7 + offset, -18, -2 + offset, -7, -11 + offset, -7]).fill(color);
+  g.poly([0, 8, 11 - offset, -13, 21, 8]).fill(0x6e7b7c).stroke({ width: 1, color: 0x334044, alpha: 0.7 });
+  g.poly([11 - offset, -13, 15 - offset, -4, 7 - offset, -4]).fill(0xe6eef6);
+}
+
+function drawPlains(g: Graphics, v: number, color: number) {
+  g.poly([-24, -3, -12, -7, 2, -4, 18, -10]).stroke({ width: 1.7, color, alpha: 0.42 });
+  g.poly([-22, 8, -10, 4, 4, 7, 20, 1]).stroke({ width: 1.5, color: 0x517c45, alpha: 0.38 });
+  g.poly([-13 + v * 2, 10, -10 + v * 2, 3, -7 + v * 2, 10]).stroke({ width: 1.7, color, alpha: 0.68 });
+  if (v > 1) g.circle(11, 2, 2.4).fill({ color: 0x426c3c, alpha: 0.62 });
+}
+
+function drawRiver(g: Graphics, v: number) {
+  const y = v % 2 === 0 ? 0 : -2;
+  g.poly([-32, y - 1, -16, y + 5, 0, y + 1, 16, y + 5, 32, y - 1, 32, y + 4, 16, y + 9, 0, y + 5, -16, y + 9, -32, y + 4]).fill({
+    color: 0x4bb4d8,
+    alpha: 0.68,
+  });
+  g.poly([-24, y + 1, -10, y + 5, 6, y + 3, 22, y + 6]).stroke({ width: 1.2, color: 0xcfe8f5, alpha: 0.55 });
+}
+
+function drawPond(g: Graphics, v: number, lake: boolean) {
+  const rx = lake ? 15 : 9;
+  const ry = lake ? 6 : 4;
+  g.ellipse(v % 2 === 0 ? -3 : 4, 1, rx, ry).fill({ color: 0x3da5c9, alpha: lake ? 0.8 : 0.62 }).stroke({
+    width: 1,
+    color: 0xcfe8f5,
+    alpha: 0.55,
+  });
 }
 
 // The Scout: a hockey exec in his 30s in a team-colored polo, holding a
@@ -214,11 +454,24 @@ function lighten(color: number, amt = 0.4): number {
   return (mix((color >> 16) & 0xff) << 16) | (mix((color >> 8) & 0xff) << 8) | mix(color & 0xff);
 }
 
+function darkenBy(color: number, amt = 0.2): number {
+  const mix = (ch: number) => Math.round(ch * (1 - amt));
+  return (mix((color >> 16) & 0xff) << 16) | (mix((color >> 8) & 0xff) << 8) | mix(color & 0xff);
+}
+
 function darken(color: number): number {
-  const r = ((color >> 16) & 0xff) * 0.8;
-  const g = ((color >> 8) & 0xff) * 0.8;
-  const b = (color & 0xff) * 0.8;
-  return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
+  return darkenBy(color, 0.2);
+}
+
+function mixColor(a: number, b: number, amt: number): number {
+  const ar = (a >> 16) & 0xff;
+  const ag = (a >> 8) & 0xff;
+  const ab = a & 0xff;
+  const br = (b >> 16) & 0xff;
+  const bg = (b >> 8) & 0xff;
+  const bb = b & 0xff;
+  const mix = (x: number, y: number) => Math.round(x + (y - x) * amt);
+  return (mix(ar, br) << 16) | (mix(ag, bg) << 8) | mix(ab, bb);
 }
 
 // ---- Component -----------------------------------------------------------
@@ -229,12 +482,14 @@ export function IsoWorldMap({
   state: GameState;
   dispatch: Dispatch<GameAction>;
 }) {
+  const activeClub = getActiveClub(state);
   const hostRef = useRef<HTMLDivElement | null>(null);
   const appRef = useRef<Application | null>(null);
   const layerRef = useRef<Container | null>(null);
   const readyRef = useRef(false);
   const clickRef = useRef<(gx: number, gy: number) => void>(() => {});
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
+  const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
 
   // Always-fresh click handler (captures latest state/selection).
   clickRef.current = (gx: number, gy: number) => {
@@ -242,14 +497,33 @@ export function IsoWorldMap({
     if (!w) return;
     if (!tileAt(w, gx, gy)) return;
     const key = tileKey(gx, gy);
+    const founder = w.founder;
+    const founderMoveable =
+      founder && w.founderSelected && !w.hqTile
+        ? moveableTilesFor(w, founder)
+        : new Set<string>();
+    if (founder && w.founderSelected && founderMoveable.has(key)) {
+      dispatch({ type: "MOVE_FOUNDING_UNIT", x: gx, y: gy });
+      setSelectedKey(key);
+      return;
+    }
+    if (founder && founder.x === gx && founder.y === gy) {
+      dispatch({ type: "SELECT_FOUNDING_UNIT" });
+      setSelectedKey(key);
+      return;
+    }
+
     const scout = w.scout;
     const moveable = w.scoutSelected ? moveableTilesFor(w, scout) : new Set<string>();
     if (scout && w.scoutSelected && moveable.has(key)) {
       dispatch({ type: "MOVE_SCOUT", x: gx, y: gy });
+      setSelectedKey(key);
       return;
     }
     if (scout && scout.x === gx && scout.y === gy) {
       dispatch({ type: "SELECT_SCOUT" });
+      setSelectedKey(key);
+      return;
     }
     setSelectedKey(key);
   };
@@ -345,7 +619,7 @@ export function IsoWorldMap({
         canvasEl.addEventListener("wheel", onWheel, { passive: false });
         (app as unknown as { _onWheel?: (e: WheelEvent) => void })._onWheel = onWheel;
 
-        drawScene(layer, state, selectedKey);
+        drawScene(layer, state, selectedKey, logoTexture);
       });
 
     return () => {
@@ -364,12 +638,31 @@ export function IsoWorldMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Redraw whenever the world or selection changes.
+  useEffect(() => {
+    let cancelled = false;
+    if (!activeClub) {
+      setLogoTexture(null);
+      return;
+    }
+    setLogoTexture(null);
+    Assets.load<Texture>(clubAsset(activeClub, "logo"))
+      .then((texture) => {
+        if (!cancelled) setLogoTexture(texture);
+      })
+      .catch(() => {
+        if (!cancelled) setLogoTexture(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [activeClub?.assetKey]);
+
+  // Redraw whenever the world, selection, or logo texture changes.
   useEffect(() => {
     if (readyRef.current && layerRef.current) {
-      drawScene(layerRef.current, state, selectedKey);
+      drawScene(layerRef.current, state, selectedKey, logoTexture);
     }
-  }, [state, selectedKey]);
+  }, [state, selectedKey, logoTexture]);
 
   return (
     <div className="panel iso-panel">
@@ -377,8 +670,8 @@ export function IsoWorldMap({
         <div>
           <h3 style={{ margin: 0 }}>Hockey World</h3>
           <div className="panel-sub" style={{ margin: 0 }}>
-            Drag to pan · scroll to zoom · click a tile. Your HQ, fog, and scout
-            all live on one map.
+            Drag to pan · scroll to zoom · click a tile. The founding expedition,
+            HQ, fog, and scout all live on this same generated world.
           </div>
         </div>
       </div>
@@ -399,6 +692,7 @@ function MapControls({
   selectedKey: string | null;
 }) {
   const scout = state.world?.scout;
+  const founder = state.world?.founder;
   const sel = selectedKey ? selectedKey.split(",").map(Number) : null;
   const regionId = sel ? regionIdAtTile(sel[0], sel[1]) : null;
   const region = regionId ? REGIONS_BY_ID[regionId] : null;
@@ -412,6 +706,20 @@ function MapControls({
 
   return (
     <div className="iso-controls">
+      {founder && !state.world?.hqTile && (
+        <div className="scout-bar">
+          <span>
+            🧭 <strong>Founding Group</strong> · {founder.movesRemaining}/{founder.movesPerTurn} moves
+          </span>
+          <button
+            className={`btn${state.world?.founderSelected ? " btn-primary" : ""}`}
+            onClick={() => dispatch({ type: "SELECT_FOUNDING_UNIT" })}
+          >
+            {state.world?.founderSelected ? "Selected — click a tile" : "Select Founding Group"}
+          </button>
+        </div>
+      )}
+
       {scout && (
         <div className="scout-bar">
           <span>
@@ -428,8 +736,8 @@ function MapControls({
 
       {!sel && (
         <div className="map-detail faint">
-          Click a tile to inspect it. Move your Scout into the fog to reveal land
-          and discover hockey regions.
+          Click a tile to inspect it. Moving a unit reveals the destination and
+          the surrounding sightline.
         </div>
       )}
 

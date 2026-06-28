@@ -94,17 +94,17 @@ export const pragueLions: ClubDef = {
   assetKey: "prague",
 };
 
-export const minneapolisNorth: ClubDef = {
-  id: "minneapolis-north",
-  name: "Minneapolis North",
+export const minnesotaNova: ClubDef = {
+  id: "minnesota-nova",
+  name: "Minnesota Nova",
   cityRegion: "Upper Midwest",
   leaderArchetype: "The State-of-Hockey Heir",
   philosophy: "Deep traditions and pipelines",
   ...SHARED_START,
   identityText:
-    "This is the State of Hockey. Minneapolis North inherits deep traditions and a pipeline that never freezes over — the challenge is living up to all of it.",
+    "This is the State of Hockey. Minnesota Nova inherits deep traditions and a pipeline that never freezes over — the challenge is turning all that pressure into a new star.",
   foundingFlavor: "Deep traditions and a pipeline that never freezes over.",
-  tagline: "Deep traditions and a pipeline that never freezes over.",
+  tagline: "Old hockey gravity, new northern light.",
   accent: "#6fae8f",
   assetKey: "minnesota", // folder is "minnesota", not the club id
 };
@@ -116,7 +116,7 @@ export const CLUB_LIST: ClubDef[] = [
   helsinkiIceCrown,
   saskatoonIronHerd,
   pragueLions,
-  minneapolisNorth,
+  minnesotaNova,
 ];
 
 export const CLUBS: Record<string, ClubDef> = Object.fromEntries(

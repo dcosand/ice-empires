@@ -241,12 +241,24 @@ export type EraRequirement = {
 // Persistent world map (founding tile map IS the in-game world)
 // ---------------------------------------------------------------------------
 
-export type WorldTerrain = "desert" | "ice" | "plains" | "water";
+export type WorldTerrain =
+  | "coastal"
+  | "desert"
+  | "high-desert"
+  | "ice"
+  | "mountain"
+  | "plains"
+  | "tropical"
+  | "water";
+
+export type WorldFeature = "lake" | "pond" | "river";
 
 export type WorldTile = {
   x: number;
   y: number;
   terrain: WorldTerrain;
+  variant: number; // 0-3 art variation within the terrain family
+  feature?: WorldFeature;
   valid: boolean; // can be entered / founded on (water is not)
 };
 

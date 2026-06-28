@@ -245,7 +245,7 @@ Other fictional clubs:
 - Stockholm Royals — elegant development machine
 - Saskatoon Freeze — prairie loyalty and physical hockey
 - Prague Lions — diplomacy and transfer savvy
-- Minneapolis North — talent-rich local powerhouse
+- Minnesota Nova — talent-rich local powerhouse
 - Helsinki Ice Crown — cold, tactical, proud rival
 
 ---
@@ -662,7 +662,7 @@ Example rivals:
 - Mikko Vaaranen — Helsinki Ice Crown. Cold, tactical, proud.
 - Rex Malloy — Saskatoon Iron Herd. Old-school, physical, suspicious.
 - Elena Novak — Prague Lions. Diplomatic, clever, opportunistic.
-- Carter Briggs — Minneapolis North. Confident, territorial, talent-rich.
+- Carter Briggs — Minnesota Nova. Confident, territorial, talent-rich.
 - Valentina Sokolov — Baltic Black Ice. Mysterious, patient, ruthless.
 
 Diplomacy options:

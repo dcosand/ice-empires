@@ -38,7 +38,7 @@ export function endMonth(state: GameState): GameState {
   // 2+. Systems — each contributes a readable world/club update.
   progressBuild(draft, push);
   progressResearch(draft, push);
-  resolveDiscovery(draft, push); // Local Hockey Search reveals regions on the map
+  resolveDiscovery(draft, push); // Local Hockey Search creates leads; units reveal map fog.
   progressConnection(draft, push); // Establish Local Connection -> influenced
   maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)

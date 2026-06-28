@@ -1,18 +1,12 @@
+import { useEffect, useState } from "react";
 import type { Dispatch, SyntheticEvent } from "react";
 import type { GameAction, GameState } from "../types/game";
 import { CLUBS, arizonaMonsoon, clubAsset } from "../data/clubs";
-import { moveableTilesFor, tileAt, tileKey } from "../engine/world";
+import { IsoWorldMap } from "./IsoWorldMap";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
 }
-
-const TERRAIN_GLYPH: Record<string, string> = {
-  desert: "🏜",
-  ice: "🧊",
-  plains: "🌾",
-  water: "🌊",
-};
 
 export function FoundingMap({
   state,
@@ -22,17 +16,19 @@ export function FoundingMap({
   dispatch: Dispatch<GameAction>;
 }) {
   const world = state.world;
+  const [showFoundingMoment, setShowFoundingMoment] = useState(false);
   const club =
     (state.selectedClubId && CLUBS[state.selectedClubId]) || arizonaMonsoon;
+  const founded = world?.hqTile ?? null;
+
+  useEffect(() => {
+    if (founded) setShowFoundingMoment(true);
+  }, [founded]);
 
   if (!world) return null;
 
-  const founded = world.hqTile;
   const founder = world.founder;
   const selected = world.founderSelected;
-  const moveable = moveableTilesFor(world, founder);
-  const isUnitTile = (x: number, y: number) =>
-    !!founder && founder.x === x && founder.y === y;
 
   return (
     <div className="founding-map-screen">
@@ -45,69 +41,15 @@ export function FoundingMap({
           <p className="muted" style={{ margin: 0 }}>
             {founded
               ? "Your home is on the map. This world carries into the season — same HQ, same fog."
-              : "Select the Founding Group, move across the ice to scout, then found your club on a tile you like."}
+              : `Select the Founding Group, move across this ${world.width}x${world.height} generated world, then found your club on a tile you like.`}
           </p>
         </div>
 
-        <div
-          className="fm-grid"
-          style={{
-            gridTemplateColumns: `repeat(${world.width}, var(--tile))`,
-          }}
-        >
-          {Array.from({ length: world.height }).map((_, y) =>
-            Array.from({ length: world.width }).map((__, x) => {
-              const revealed = world.revealed.includes(tileKey(x, y));
-              const tile = tileAt(world, x, y);
-              const isUnit = isUnitTile(x, y);
-              const isHQ = !!founded && founded.x === x && founded.y === y;
-              const canMoveHere = moveable.has(tileKey(x, y));
-              const classes = ["fm-tile"];
-              if (!revealed) classes.push("fog");
-              else classes.push(`terrain-${tile?.terrain}`);
-              if (canMoveHere) classes.push("moveable");
-              if (isUnit && selected) classes.push("selected");
-
-              return (
-                <button
-                  key={`${x},${y}`}
-                  className={classes.join(" ")}
-                  onClick={() => {
-                    if (founded) return;
-                    if (isUnit) {
-                      dispatch({ type: "SELECT_FOUNDING_UNIT" });
-                    } else if (canMoveHere && selected) {
-                      dispatch({ type: "MOVE_FOUNDING_UNIT", x, y });
-                    }
-                  }}
-                  title={
-                    !revealed
-                      ? "Unexplored"
-                      : `${tile?.terrain}${tile?.valid ? "" : " (impassable)"}`
-                  }
-                >
-                  {isHQ ? (
-                    <span className="fm-marker hq">🏒</span>
-                  ) : isUnit ? (
-                    <span className="fm-marker unit">🧭</span>
-                  ) : revealed ? (
-                    <span className="fm-terrain-glyph">
-                      {TERRAIN_GLYPH[tile?.terrain ?? "plains"]}
-                    </span>
-                  ) : (
-                    <span className="fm-fog-glyph">·</span>
-                  )}
-                  {isHQ && <span className="fm-tile-label">Club HQ</span>}
-                  {isUnit && <span className="fm-tile-label">Founding Group</span>}
-                </button>
-              );
-            }),
-          )}
-        </div>
+        <IsoWorldMap state={state} dispatch={dispatch} />
 
         <div className="fm-legend muted">
-          🧭 Founding Group &nbsp;·&nbsp; highlighted tiles are moves &nbsp;·&nbsp;
-          dark tiles are fog &nbsp;·&nbsp; 🌊 water is impassable
+          🧭 Founding Group &nbsp;·&nbsp; highlighted tiles are legal moves &nbsp;·&nbsp;
+          dark tiles are fog &nbsp;·&nbsp; water is impassable
         </div>
       </div>
 
@@ -205,6 +147,42 @@ export function FoundingMap({
           ← Start over
         </button>
       </aside>
+
+      {founded && showFoundingMoment && (
+        <div className="founding-moment" role="dialog" aria-modal="true" aria-label={`${club.name} founded`}>
+          <div className="founding-moment-scrim" />
+          <div className="founding-moment-card">
+            <div className="fmoment-rink-wrap">
+              <img
+                className="fmoment-rink"
+                src={clubAsset(club, "rink")}
+                alt={`${club.name} rink`}
+                onError={hideOnError}
+              />
+              <div className="fmoment-sweep" />
+            </div>
+            <div className="fmoment-body">
+              <div className="eyebrow">Club Founded</div>
+              <h2>{club.name}</h2>
+              <p>
+                The first home ice is claimed. The benches are bare, the lights
+                hum, and a hockey civilization has a place to begin.
+              </p>
+              <div className="fmoment-actions">
+                <button className="btn" onClick={() => setShowFoundingMoment(false)}>
+                  View HQ
+                </button>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => dispatch({ type: "BEGIN_SEASON" })}
+                >
+                  Enter Month 1
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
