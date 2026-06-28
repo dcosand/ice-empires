@@ -14,10 +14,9 @@ export const WORLD_WIDTH = 120;
 export const WORLD_HEIGHT = 75;
 export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
-const START = {
-  x: Math.floor(WORLD_WIDTH / 2),
-  y: Math.floor(WORLD_HEIGHT / 2),
-};
+// A club may only be founded on a landmass with at least this many connected
+// passable tiles — so the player never starts stranded on a tiny island.
+const MIN_START_LAND = 60;
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -94,37 +93,31 @@ export function createWorld(seed = Date.now()): WorldState {
     }
   }
 
-  // Keep the opening tile and its immediate choices playable: the founding unit
-  // must never spawn (or be able to step onto its first tiles) in the ocean or on
-  // an impassable mountain. Convert any such tile in the start neighborhood to
-  // plains so the founder always begins on passable terrain.
-  for (const key of revealKeys(START.x, START.y)) {
-    const [x, y] = key.split(",").map(Number);
-    const tile = tiles[y * WORLD_WIDTH + x];
-    if (
-      tile?.terrain === "water" ||
-      tile?.terrain === "mountain" ||
-      tile?.feature === "lake"
-    ) {
-      tiles[y * WORLD_WIDTH + x] = {
-        ...tile,
-        terrain: "plains",
-        feature: undefined,
-        elevation: generatedElevation(x, y, "plains", undefined, seed),
-        valid: true,
-      };
-    }
+  // Pick a start on a real, sizeable landmass (never a one-tile island), as
+  // close to the map centre as that allows. Guarantee the exact start tile is
+  // passable, non-mountain ground.
+  const start = chooseStart(tiles, WORLD_WIDTH, WORLD_HEIGHT);
+  const si = start.y * WORLD_WIDTH + start.x;
+  const st = tiles[si];
+  if (st.terrain === "water" || st.terrain === "mountain" || st.feature === "lake") {
+    tiles[si] = {
+      ...st,
+      terrain: "plains",
+      feature: undefined,
+      elevation: generatedElevation(start.x, start.y, "plains", undefined, seed),
+      valid: true,
+    };
   }
 
   return {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
     tiles,
-    revealed: revealKeys(START.x, START.y),
+    revealed: revealKeys(start.x, start.y),
     hqTile: null,
     founder: {
-      x: START.x,
-      y: START.y,
+      x: start.x,
+      y: start.y,
       movesPerTurn: FOUNDER_MOVES,
       movesRemaining: FOUNDER_MOVES,
     },
@@ -132,6 +125,78 @@ export function createWorld(seed = Date.now()): WorldState {
     scout: null,
     scoutSelected: false,
   };
+}
+
+// Flood-fill the passable (land) tiles into connected components, then choose a
+// start: the tile closest to the map centre that sits on a component with at
+// least MIN_START_LAND tiles, preferring non-mountain ground. Falls back to the
+// largest component if none clears the threshold (degenerate maps).
+function chooseStart(
+  tiles: WorldTile[],
+  w: number,
+  h: number,
+): { x: number; y: number } {
+  const comp = new Int32Array(w * h).fill(-1);
+  const sizes: number[] = [];
+  for (let i = 0; i < w * h; i++) {
+    if (comp[i] !== -1 || !tiles[i].valid) continue;
+    const id = sizes.length;
+    let n = 0;
+    const stack = [i];
+    comp[i] = id;
+    while (stack.length) {
+      const c = stack.pop()!;
+      n++;
+      const cx = c % w;
+      const cy = (c / w) | 0;
+      const neighbors = [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ];
+      for (const [nx, ny] of neighbors) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (comp[j] === -1 && tiles[j].valid) {
+          comp[j] = id;
+          stack.push(j);
+        }
+      }
+    }
+    sizes.push(n);
+  }
+
+  const cx0 = (w - 1) / 2;
+  const cy0 = (h - 1) / 2;
+  let best: { x: number; y: number } | null = null;
+  let bestScore = Infinity;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const id = comp[y * w + x];
+      if (id < 0 || sizes[id] < MIN_START_LAND) continue;
+      const t = tiles[y * w + x];
+      // Distance to centre, with a penalty so we avoid starting on mountains.
+      const score = Math.hypot(x - cx0, y - cy0) + (t.terrain === "mountain" ? 40 : 0);
+      if (score < bestScore) {
+        bestScore = score;
+        best = { x, y };
+      }
+    }
+  }
+  if (best) return best;
+
+  // Fallback: centre-most tile of the largest component.
+  let largest = 0;
+  for (let id = 1; id < sizes.length; id++) {
+    if (sizes[id] > sizes[largest]) largest = id;
+  }
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      if (comp[y * w + x] === largest) return { x, y };
+    }
+  }
+  return { x: Math.floor(w / 2), y: Math.floor(h / 2) };
 }
 
 // ---- Map generation tunables ---------------------------------------------
