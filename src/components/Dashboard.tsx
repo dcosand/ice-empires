@@ -21,6 +21,7 @@ import {
   productionItemName,
   startableProductionCount,
 } from "../engine/productionSystem";
+import { activeScout, allScouts } from "../engine/scoutSystem";
 
 type OverlayView =
   | "build"
@@ -206,8 +207,11 @@ function CommandRail({
   const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
   const discoveryReady = !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
-  const scout = state.world?.scout;
-  const scoutReady = !scout || scout.movesRemaining === 0;
+  const scouts = allScouts(state.world);
+  const selectedScout = activeScout(state.world);
+  const scoutMovesRemaining = scouts.reduce((sum, s) => sum + s.movesRemaining, 0);
+  const scoutMovesTotal = scouts.reduce((sum, s) => sum + s.movesPerTurn, 0);
+  const scoutReady = scouts.length === 0 || scoutMovesRemaining === 0;
 
   const researchTask = (
     <TaskButton
@@ -267,15 +271,16 @@ function CommandRail({
     );
   }
 
-  const canEndMonth = buildReady && researchReady && discoveryReady && scoutReady;
+  const canEndMonth = buildReady && researchReady && discoveryReady;
   const selectScout = () => {
-    if (!state.world?.scoutSelected) dispatch({ type: "SELECT_SCOUT" });
+    if (!selectedScout && scouts[0]?.id) {
+      dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });
+    }
   };
 
   const missing: string[] = [];
   if (!buildReady) missing.push("build");
   if (!researchReady) missing.push("research");
-  if (!scoutReady) missing.push("scout moves");
 
   return (
     <aside className="command-rail">
@@ -294,11 +299,11 @@ function CommandRail({
       />
       {researchTask}
       {discoveryTask}
-      {scout && (
+      {scouts.length > 0 && (
         <TaskButton
           done={scoutReady}
-          label={scoutReady ? "Scout moved" : "Move scout"}
-          detail={`${scout.movesRemaining}/${scout.movesPerTurn} moves`}
+          label={scoutReady ? "Scouts moved" : "Move scouts"}
+          detail={`${scoutMovesRemaining}/${scoutMovesTotal} moves remaining`}
           onClick={selectScout}
         />
       )}

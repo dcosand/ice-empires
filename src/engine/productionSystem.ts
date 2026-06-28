@@ -12,6 +12,7 @@ import { RESOURCE_LABELS } from "./resources";
 import { getMonthlyIncome } from "./selectors";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
+import { spawnProducedScout } from "./scoutSystem";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
 // slot. Operations production each month funds the item (see DECISIONS.md D2);
@@ -178,6 +179,9 @@ function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
     locationId: draft.world?.hqTile ? "hq" : undefined,
     createdMonth: draft.month,
   });
+  if (def.id === "pond-scout") {
+    spawnProducedScout(draft, instanceId, def.name);
+  }
   push("build", `${def.name} ready`, def.flavor);
   for (const unlock of def.unlocks ?? []) {
     if (unlock.type === "card") grantCard(draft, unlock.cardId, push);

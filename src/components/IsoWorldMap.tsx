@@ -28,7 +28,12 @@ import {
   tileAt,
   tileKey,
 } from "../engine/world";
-import { surveyableRegionId } from "../engine/scoutSystem";
+import {
+  activeScout,
+  allScouts,
+  investigablePondMarker,
+  surveyableRegionId,
+} from "../engine/scoutSystem";
 import {
   canEstablishConnection,
   CONNECTION_MONTHS,
@@ -103,13 +108,14 @@ function drawScene(
   const activeClub = getActiveClub(state);
   const accent = accentNumber(activeClub?.accent);
   const clubLabel = activeClub ? shortClubLabel(activeClub) : "";
-  const scout = world.scout;
+  const scouts = allScouts(world);
+  const selectedScout = activeScout(world);
   const founder = world.founder;
   const moveable =
     world.founderSelected && !world.hqTile
       ? moveableTilesFor(world, founder)
-      : world.scoutSelected
-        ? moveableTilesFor(world, scout)
+      : selectedScout
+        ? moveableTilesFor(world, selectedScout)
         : new Set<string>();
   const revealedSet = new Set(world.revealed);
 
@@ -205,6 +211,15 @@ function drawScene(
         layer.addChild(pin);
       }
 
+      const pond = world.pondMarkers.find(
+        (m) => !m.investigated && m.x === gx && m.y === gy,
+      );
+      if (revealed && pond) {
+        const mk = pondMarker(gx, gy, c);
+        mk.position.y -= rise;
+        layer.addChild(mk);
+      }
+
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
       if (isHQ) {
         const mk = hqMarker(gx, gy, c, accent, clubLabel, logoTexture);
@@ -218,17 +233,41 @@ function drawScene(
         layer.addChild(mk);
       }
 
-      if (scout && scout.x === gx && scout.y === gy) {
-        const mk = scoutMarker(gx, gy, c, world.scoutSelected, accent);
+      const scoutsHere = scouts.filter((s) => s.x === gx && s.y === gy);
+      for (let i = 0; i < scoutsHere.length; i++) {
+        const scout = scoutsHere[i];
+        const mk = scoutMarker(
+          gx,
+          gy,
+          c,
+          !!scout.id && scout.id === world.selectedScoutId,
+          accent,
+        );
+        mk.position.x += (i - (scoutsHere.length - 1) / 2) * 10;
         mk.position.y -= rise;
-        // When the Scout shares the HQ tile, draw him in front of the HQ pin so
+        // When a Scout shares the HQ tile, draw him in front of the HQ pin so
         // the player can see he's there and ready to be moved.
-        if (isHQ) mk.zIndex = gx + gy + 51;
+        if (isHQ) mk.zIndex = gx + gy + 51 + i;
         layer.addChild(mk);
-        registerScout(mk, mk.position.y);
+        if (scout.id === world.selectedScoutId || (!world.selectedScoutId && i === 0)) {
+          registerScout(mk, mk.position.y);
+        }
       }
     }
   }
+}
+
+function pondMarker(gx: number, gy: number, c: { x: number; y: number }) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 0.45;
+  const g = new Graphics();
+  g.ellipse(0, 1, 10, 4).fill({ color: 0x000000, alpha: 0.28 });
+  g.circle(0, -15, 7).fill(0xf0c65c).stroke({ width: 2, color: 0x132033 });
+  g.circle(-2, -17, 2).fill(0xffffff, 0.9);
+  g.poly([-3, -8, 3, -8, 0, -2]).fill(0xf0c65c);
+  m.addChild(g);
+  return m;
 }
 
 // The Leader: the club's chosen figure, shown as their actual leader.png portrait
@@ -1310,15 +1349,15 @@ export function IsoWorldMap({
       return;
     }
 
-    const scout = w.scout;
-    const moveable = w.scoutSelected ? moveableTilesFor(w, scout) : new Set<string>();
-    if (scout && w.scoutSelected && moveable.has(key)) {
-      dispatch({ type: "MOVE_SCOUT", x: gx, y: gy });
+    const scout = activeScout(w);
+    const moveable = scout ? moveableTilesFor(w, scout) : new Set<string>();
+    if (scout && moveable.has(key)) {
+      dispatch({ type: "MOVE_SCOUT", x: gx, y: gy, scoutId: scout.id });
       setSelectedKey(key);
       return;
     }
 
-    const scoutHere = !!scout && scout.x === gx && scout.y === gy;
+    const scoutsHere = allScouts(w).filter((s) => s.x === gx && s.y === gy);
     const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
 
     // Civ-style tile cycling: a unit standing on the tile takes selection
@@ -1326,8 +1365,23 @@ export function IsoWorldMap({
     // there rather than jumping straight to the Club HQ screen. Clicking again
     // (once the Scout is already selected) falls through to open HQ. Right-click
     // opens HQ directly without disturbing the unit (see endDrag).
-    if (scoutHere && !w.scoutSelected) {
-      dispatch({ type: "SELECT_SCOUT" });
+    if (scoutsHere.length > 0) {
+      const selectedIdx = scoutsHere.findIndex((s) => s.id === w.selectedScoutId);
+      const nextScout =
+        selectedIdx >= 0 && scoutsHere.length > 1
+          ? scoutsHere[(selectedIdx + 1) % scoutsHere.length]
+          : scoutsHere[0];
+      if (nextScout?.id && (scoutsHere.length > 1 || nextScout.id !== w.selectedScoutId)) {
+        dispatch({ type: "SELECT_SCOUT", scoutId: nextScout.id });
+        setSelectedKey(key);
+        return;
+      }
+    }
+
+    const scoutHere = scoutsHere[0] ?? null;
+
+    if (scoutHere && scoutHere.id !== w.selectedScoutId) {
+      dispatch({ type: "SELECT_SCOUT", scoutId: scoutHere.id });
       setSelectedKey(key);
       return;
     }
@@ -1339,7 +1393,7 @@ export function IsoWorldMap({
     }
 
     if (scoutHere) {
-      dispatch({ type: "SELECT_SCOUT" });
+      dispatch({ type: "SELECT_SCOUT", scoutId: scoutHere.id });
       setSelectedKey(key);
       return;
     }
@@ -1373,12 +1427,12 @@ export function IsoWorldMap({
       }
       return;
     }
-    const scout = w.scout;
-    if (scout && w.scoutSelected) {
+    const scout = activeScout(w);
+    if (scout) {
       const x = scout.x + dx;
       const y = scout.y + dy;
       if (moveableTilesFor(w, scout).has(tileKey(x, y))) {
-        dispatch({ type: "MOVE_SCOUT", x, y });
+        dispatch({ type: "MOVE_SCOUT", x, y, scoutId: scout.id });
         setSelectedKey(tileKey(x, y));
       }
     }
@@ -1622,23 +1676,25 @@ function UnitOverlay({
   if (!world) return null;
 
   const leaderSelected = world.founderSelected && !!world.founder && !world.hqTile;
-  const scoutSelected = world.scoutSelected && !!world.scout;
+  const selectedScout = activeScout(world);
+  const scoutSelected = !!selectedScout;
   if (!leaderSelected && !scoutSelected) return null;
 
   const isLeader = leaderSelected;
-  const unit = isLeader ? world.founder! : world.scout!;
+  const unit = isLeader ? world.founder! : selectedScout!;
   const club = getActiveClub(state);
-  const name = isLeader ? "Leader" : "Scout";
+  const name = isLeader ? "Leader" : unit.name ?? "Pond Scout";
   const role = isLeader ? "Founding Group" : "Exploration";
   const outOfMoves = unit.movesRemaining <= 0;
 
   // Scout field orders are tied to the tile the unit is standing on.
   const surveyId = !isLeader ? surveyableRegionId(state) : null;
+  const marker = !isLeader ? investigablePondMarker(state) : null;
   const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
   const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
   const connecting =
     !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
-  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
+  const hasOrder = isLeader ? !!club : !!surveyId || !!marker || canConnect;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -1684,6 +1740,16 @@ function UnitOverlay({
               Survey Region
             </button>
           )}
+          {marker && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() =>
+                dispatch({ type: "INVESTIGATE_POND_MARKER", markerId: marker.id })
+              }
+            >
+              Investigate Marker
+            </button>
+          )}
           {canConnect && scoutRegionId && (
             <button
               className="btn btn-gold btn-block"
@@ -1697,7 +1763,7 @@ function UnitOverlay({
           {!isLeader && (
             <button
               className="btn btn-block"
-              onClick={() => dispatch({ type: "SELECT_SCOUT" })}
+              onClick={() => dispatch({ type: "SELECT_SCOUT", scoutId: unit.id })}
             >
               Deselect
             </button>
@@ -1732,7 +1798,8 @@ function MapControls({
   dispatch: Dispatch<GameAction>;
   selectedKey: string | null;
 }) {
-  const scout = state.world?.scout;
+  const scouts = allScouts(state.world);
+  const selectedScout = activeScout(state.world);
   const founder = state.world?.founder;
   const sel = selectedKey ? selectedKey.split(",").map(Number) : null;
   const regionId = sel ? regionIdAtTile(sel[0], sel[1]) : null;
@@ -1740,6 +1807,11 @@ function MapControls({
   const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : null;
   const revealed = sel ? state.world?.revealed.includes(`${sel[0]},${sel[1]}`) : false;
 
+  const marker = sel
+    ? state.world?.pondMarkers.find(
+        (m) => !m.investigated && m.x === sel[0] && m.y === sel[1],
+      )
+    : null;
   const canSurvey = region ? surveyableRegionId(state) === region.id : false;
   const canConnect = region ? canEstablishConnection(state, region.id) : false;
   const connecting = region ? state.discovery.connection?.regionId === region.id : false;
@@ -1761,16 +1833,24 @@ function MapControls({
         </div>
       )}
 
-      {scout && (
+      {scouts.length > 0 && (
         <div className="scout-bar">
           <span>
-            🔍 <strong>Scout</strong> · {scout.movesRemaining}/{scout.movesPerTurn} moves
+            🔍 <strong>{selectedScout?.name ?? "Pond Scouts"}</strong> ·{" "}
+            {selectedScout
+              ? `${selectedScout.movesRemaining}/${selectedScout.movesPerTurn} moves`
+              : `${scouts.length} units`}
           </span>
           <button
-            className={`btn${state.world?.scoutSelected ? " btn-primary" : ""}`}
-            onClick={() => dispatch({ type: "SELECT_SCOUT" })}
+            className={`btn${selectedScout ? " btn-primary" : ""}`}
+            onClick={() =>
+              dispatch({
+                type: "SELECT_SCOUT",
+                scoutId: selectedScout?.id ?? scouts[0]?.id,
+              })
+            }
           >
-            {state.world?.scoutSelected ? "Selected — click a tile" : "Select Scout"}
+            {selectedScout ? "Selected — click a tile" : "Select Scout"}
           </button>
         </div>
       )}
@@ -1784,7 +1864,12 @@ function MapControls({
 
       {sel && !(region && revealed && rState !== "hidden") && (
         <div className="map-detail">
-          {revealed ? (
+          {revealed && marker ? (
+            <span className="muted">
+              Pond hockey marker — move a scout here and use{" "}
+              <strong>Investigate Marker</strong>.
+            </span>
+          ) : revealed ? (
             <span className="muted">Open terrain — nothing of hockey interest here yet.</span>
           ) : (
             <span className="faint">Unexplored — shrouded in fog.</span>

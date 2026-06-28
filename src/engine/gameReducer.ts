@@ -10,6 +10,7 @@ import {
   moveFounder,
 } from "./world";
 import {
+  investigatePondMarker,
   moveScout,
   recruitScout,
   selectScout,
@@ -100,10 +101,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return recruitScout(state);
 
     case "SELECT_SCOUT":
-      return selectScout(state);
+      return selectScout(state, action.scoutId);
 
     case "MOVE_SCOUT":
-      return moveScout(state, action.x, action.y);
+      return moveScout(state, action.x, action.y, action.scoutId);
+
+    case "INVESTIGATE_POND_MARKER":
+      return investigatePondMarker(state, action.markerId);
 
     case "SURVEY_REGION":
       return surveyRegion(state, action.regionId);

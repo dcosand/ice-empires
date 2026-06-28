@@ -361,10 +361,21 @@ export type WorldTile = {
 // A movable unit on the world (the Founding Group before founding, the Scout
 // after it unlocks).
 export type WorldUnit = {
+  id?: string;
+  unitDefId?: string;
+  name?: string;
   x: number;
   y: number;
   movesPerTurn: number;
   movesRemaining: number;
+};
+
+export type WorldPondMarker = {
+  id: string;
+  x: number;
+  y: number;
+  encounterId: string;
+  investigated: boolean;
 };
 
 export type WorldState = {
@@ -375,6 +386,9 @@ export type WorldState = {
   hqTile: { x: number; y: number } | null; // Club HQ tile, set at founding
   founder: WorldUnit | null; // Founding Group; null after founding
   founderSelected: boolean; // founding-phase selection
+  scouts: WorldUnit[]; // movable exploration units produced by HQ / founding
+  selectedScoutId: string | null;
+  pondMarkers: WorldPondMarker[]; // one-time "goodie hut" exploration markers
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
 };
@@ -421,8 +435,9 @@ export type GameAction =
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }
-  | { type: "SELECT_SCOUT" }
-  | { type: "MOVE_SCOUT"; x: number; y: number }
+  | { type: "SELECT_SCOUT"; scoutId?: string }
+  | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
+  | { type: "INVESTIGATE_POND_MARKER"; markerId: string }
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }

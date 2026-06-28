@@ -2,11 +2,13 @@ import type {
   GameState,
   WorldState,
   WorldFeature,
+  WorldPondMarker,
   WorldTerrain,
   WorldTile,
   WorldUnit,
 } from "../types/game";
 import { REGIONS } from "../data/regions";
+import { POND_ENCOUNTERS } from "../data/pondEncounters";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
@@ -17,6 +19,7 @@ export const SCOUT_MOVES = 3;
 // A club may only be founded on a landmass with at least this many connected
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
+const POND_MARKER_COUNT = 24;
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -122,9 +125,86 @@ export function createWorld(seed = Date.now()): WorldState {
       movesRemaining: FOUNDER_MOVES,
     },
     founderSelected: false,
+    scouts: [],
+    selectedScoutId: null,
+    pondMarkers: generatePondMarkers(tiles, start, seed),
     scout: null,
     scoutSelected: false,
   };
+}
+
+export function createScoutUnit(
+  id: string,
+  x: number,
+  y: number,
+  name = "Pond Scout",
+): WorldUnit {
+  return {
+    id,
+    unitDefId: "pond-scout",
+    name,
+    x,
+    y,
+    movesPerTurn: SCOUT_MOVES,
+    movesRemaining: SCOUT_MOVES,
+  };
+}
+
+function generatePondMarkers(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+): WorldPondMarker[] {
+  const markers: WorldPondMarker[] = [];
+  const occupied = new Set<string>();
+  const addMarker = (x: number, y: number, n: number) => {
+    const tile = tiles[y * WORLD_WIDTH + x];
+    const key = tileKey(x, y);
+    if (!tile?.valid || occupied.has(key)) return false;
+    const encounter = POND_ENCOUNTERS[n % POND_ENCOUNTERS.length];
+    markers.push({
+      id: `pond-marker-${x}-${y}`,
+      x,
+      y,
+      encounterId: encounter.id,
+      investigated: false,
+    });
+    occupied.add(key);
+    return true;
+  };
+
+  // Always seed one early marker in the opening sightline when possible.
+  for (const [dx, dy] of [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [-1, 0],
+    [0, -1],
+    [-1, -1],
+  ]) {
+    const x = start.x + dx;
+    const y = start.y + dy;
+    if (x >= 0 && y >= 0 && x < WORLD_WIDTH && y < WORLD_HEIGHT && addMarker(x, y, 0)) {
+      break;
+    }
+  }
+
+  const candidates = tiles
+    .filter((tile) => tile.valid && tile.terrain !== "mountain")
+    .map((tile) => ({
+      tile,
+      score: noise2d(tile.x, tile.y, seed + 12091),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { tile } of candidates) {
+    if (markers.length >= POND_MARKER_COUNT) break;
+    const farEnoughFromStart = Math.hypot(tile.x - start.x, tile.y - start.y) > 4;
+    if (!farEnoughFromStart) continue;
+    addMarker(tile.x, tile.y, markers.length);
+  }
+
+  return markers;
 }
 
 // Flood-fill the passable (land) tiles into connected components, then choose a
@@ -479,6 +559,7 @@ export function foundOnTile(state: GameState): GameState {
   const world = state.world;
   if (!world || world.hqTile || !world.founder) return state;
   const hq = { x: world.founder.x, y: world.founder.y };
+  const scout = createScoutUnit("pond-scout-1", hq.x, hq.y);
   return {
     ...state,
     world: {
@@ -486,12 +567,9 @@ export function foundOnTile(state: GameState): GameState {
       hqTile: hq,
       founder: null,
       founderSelected: false,
-      scout: {
-        x: hq.x,
-        y: hq.y,
-        movesPerTurn: SCOUT_MOVES,
-        movesRemaining: SCOUT_MOVES,
-      },
+      scouts: [scout],
+      selectedScoutId: null,
+      scout,
       scoutSelected: false,
       revealed: addReveal(world.revealed, hq.x, hq.y),
     },
