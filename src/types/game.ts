@@ -26,6 +26,14 @@ export type Phase =
 // Club
 // ---------------------------------------------------------------------------
 
+// Club brand palette (from the club brand sheets). `primary` is the deep base
+// color, `secondary` the bright team color, `light` an off-white for text.
+export type ClubPalette = {
+  primary: string;
+  secondary: string;
+  light: string;
+};
+
 export type ClubDef = {
   id: string;
   name: string;
@@ -41,6 +49,8 @@ export type ClubDef = {
   tagline: string;
   // Club-specific accent color (hex) for light theming.
   accent: string;
+  // Fuller brand palette for richer theming (header bars, etc.).
+  palette: ClubPalette;
   // Folder under /public/assets/clubs/<assetKey>/ (logo/leader/background.png).
   // Kept separate from `id` so folder names need not match club ids exactly.
   assetKey: string;
@@ -74,10 +84,72 @@ export type FacilityDef = {
   eraId: string;
 };
 
-// Builds are funded by Operations production each month (not paid upfront).
-// Mirrors ActiveResearch so Operations reads as production-toward-builds.
-export type ActiveBuild = {
-  facilityId: string;
+// ---------------------------------------------------------------------------
+// Organizational units (front-office / exploration roster, NOT map-combat units)
+// ---------------------------------------------------------------------------
+
+export type UnitCategory =
+  | "founding"
+  | "exploration"
+  | "scouting"
+  | "recruiting"
+  | "development"
+  | "analytics"
+  | "diplomacy";
+
+// Unit effects. Only `monthlyIncome` is wired into the economy this milestone
+// (see selectors.getMonthlyIncome). The rest are forward-looking hooks that the
+// UI surfaces as the unit's intended ability ("future assignment") and that the
+// next iteration will wire into discovery/encounters/team-attributes.
+export type UnitEffect =
+  | { type: "monthlyIncome"; resource: ResourceKey; amount: number }
+  | { type: "improveDiscovery" } // future: better region reports / reveal
+  | { type: "improveEncounters" } // future: better pond-hockey encounter odds
+  | { type: "teamAttribute"; attribute: string; amount: number }; // future
+
+export type UnitDef = {
+  id: string;
+  name: string;
+  category: UnitCategory;
+  eraId: string;
+  description: string;
+  cost: Partial<ResourceSet>;
+  buildMonths: number; // descriptive; real time derives from Operations/mo
+  requiredTechIds?: string[]; // ALL must be completed
+  requiredFacilityIds?: string[]; // ALL must be built
+  // Requirement met if ANY of these tech-or-facility ids is completed/built.
+  // Lets a unit be unlocked by "X OR Y" without a hard research gate.
+  requiredAnyOf?: string[];
+  effects?: UnitEffect[];
+  unlocks?: Unlock[];
+  flavor: string;
+  // One-line, player-facing summary of what this unit does / will do.
+  abilitySummary: string;
+};
+
+// An organizational unit the club owns. Lives in the roster at Club HQ; no map
+// movement yet (kept deliberately separate from the world Scout unit).
+export type OwnedUnit = {
+  id: string; // instance id
+  unitDefId: string;
+  name: string;
+  status: "available" | "assigned" | "recovering";
+  locationId?: string;
+  createdMonth: number;
+};
+
+// ---------------------------------------------------------------------------
+// Production (Club HQ builds one thing at a time: a facility OR a unit)
+// ---------------------------------------------------------------------------
+
+export type ProductionKind = "facility" | "unit";
+
+// Production is funded by Operations production each month (not paid upfront);
+// any non-Operations cost (Budget/Reputation) is charged upfront on start.
+// Mirrors ActiveResearch so Operations reads as production-toward-the-item.
+export type ActiveProduction = {
+  kind: ProductionKind;
+  itemId: string;
   operationsRemaining: number;
   progressOperations: number;
 };
@@ -186,6 +258,30 @@ export type CardDef = {
   role?: string;
   effects: CardEffect[];
   flavor: string;
+};
+
+// ---------------------------------------------------------------------------
+// Pond Hockey encounters ("goodie huts") — PLACEHOLDER for the next iteration.
+// ---------------------------------------------------------------------------
+// One-time early discoveries (wanderers, garage-rink legends, frozen-lake
+// weirdos) that the Scout / Pond Scout can stumble onto. Distinct from the
+// persistent, city-state-like Hockey Regions in /data/regions. Types + sample
+// data exist now so the encounter system can be wired in without a schema
+// change; nothing reads these yet.
+
+export type EncounterEffect =
+  | { type: "addCard"; cardId: string }
+  | { type: "addResource"; resource: ResourceKey; amount: number }
+  | { type: "teamAttribute"; attribute: string; amount: number }
+  | { type: "setback"; message: string }
+  | { type: "flavorOnly" };
+
+export type PondEncounter = {
+  id: string;
+  name: string;
+  kind: "wanderer" | "equipment" | "local-believer" | "mishap" | "rumor";
+  description: string;
+  possibleEffects: EncounterEffect[];
 };
 
 // ---------------------------------------------------------------------------
@@ -299,8 +395,9 @@ export type GameState = {
   club: ClubDef | null;
   resources: ResourceSet;
   facilities: string[]; // completed facility ids
+  units: OwnedUnit[]; // owned organizational units (HQ roster)
   completedResearch: string[];
-  activeBuild: ActiveBuild | null;
+  activeProduction: ActiveProduction | null; // one shared facility/unit slot
   activeResearch: ActiveResearch | null;
   discovery: DiscoveryState;
   cards: CardDef[];
@@ -322,7 +419,7 @@ export type GameAction =
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
   | { type: "BEGIN_SEASON" }
-  | { type: "SELECT_BUILD"; facilityId: string }
+  | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }

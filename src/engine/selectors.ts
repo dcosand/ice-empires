@@ -6,6 +6,7 @@ import type {
   ResourceSet,
 } from "../types/game";
 import { FACILITIES, FACILITIES_BY_ID } from "../data/facilities";
+import { UNITS_BY_ID } from "../data/units";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
 import { REGIONS } from "../data/regions";
 import { CARDS_BY_ID } from "../data/cards";
@@ -35,6 +36,16 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
     }
   }
 
+  // Owned organizational units with passive monthly-income effects.
+  for (const owned of state.units) {
+    const def = UNITS_BY_ID[owned.unitDefId];
+    for (const effect of def?.effects ?? []) {
+      if (effect.type === "monthlyIncome") {
+        income = addResources(income, { [effect.resource]: effect.amount });
+      }
+    }
+  }
+
   // Influenced regions each grant Reputation/month (Exploit phase).
   const influenced = Object.values(state.discovery.regionStates).filter(
     (s) => s === "influenced",
@@ -51,7 +62,10 @@ export function getAvailableFacilities(state: GameState): FacilityDef[] {
   return FACILITIES.filter(
     (f) =>
       !state.facilities.includes(f.id) &&
-      state.activeBuild?.facilityId !== f.id,
+      !(
+        state.activeProduction?.kind === "facility" &&
+        state.activeProduction.itemId === f.id
+      ),
   );
 }
 
@@ -123,14 +137,17 @@ export function allEraRequirementsMet(state: GameState): boolean {
   );
 }
 
-// Build progress as a 0..1 fraction for the active build (Operations produced).
-export function getActiveBuildProgress(state: GameState): number {
-  const build = state.activeBuild;
-  if (!build) return 0;
-  const def = FACILITIES_BY_ID[build.facilityId];
+// Production progress as a 0..1 fraction for the active item (Operations made).
+export function getActiveProductionProgress(state: GameState): number {
+  const prod = state.activeProduction;
+  if (!prod) return 0;
+  const def =
+    prod.kind === "facility"
+      ? FACILITIES_BY_ID[prod.itemId]
+      : UNITS_BY_ID[prod.itemId];
   const cost = def?.cost.operations ?? 0;
   if (cost === 0) return 0;
-  return build.progressOperations / cost;
+  return prod.progressOperations / cost;
 }
 
 export function getActiveResearchProgress(state: GameState): number {

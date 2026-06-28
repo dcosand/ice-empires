@@ -24,7 +24,7 @@ export function ThisMonthPanel({
   const researchOptions = getAvailableResearch(state).length;
 
   // "Ready" = an active project OR nothing left to choose.
-  const buildReady = !!state.activeBuild || buildOptions === 0;
+  const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
   const discoveryReady = !!focus;
   const canEndMonth = buildReady && researchReady && discoveryReady;
@@ -32,7 +32,7 @@ export function ThisMonthPanel({
   const steps = [
     {
       key: "build",
-      label: state.activeBuild
+      label: state.activeProduction
         ? "Build project selected"
         : buildOptions === 0
           ? "All builds complete"

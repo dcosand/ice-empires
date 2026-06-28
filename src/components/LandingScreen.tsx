@@ -34,11 +34,6 @@ export function LandingScreen({
         >
           Start New Dynasty
         </button>
-        <div className="cta-subtext">Opening Scenario: First 12 Months</div>
-        <div className="faint" style={{ marginTop: 6, fontSize: 12 }}>
-          The full campaign spans many years and eras. This scenario covers your
-          founding year.
-        </div>
       </div>
     </div>
   );
