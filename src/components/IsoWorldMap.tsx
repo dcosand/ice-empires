@@ -1,6 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { Dispatch } from "react";
-import { Application, Assets, Container, Graphics, Sprite, Text, Texture } from "pixi.js";
+import {
+  Application,
+  Assets,
+  CanvasSource,
+  Container,
+  Graphics,
+  Sprite,
+  Text,
+  Texture,
+} from "pixi.js";
 import type {
   GameAction,
   GameState,
@@ -44,7 +53,7 @@ const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number 
   mountain: { top: 0x7d8c8d, side: 0x59696d, detail: 0xd7e5e7 },
   plains: { top: 0x6f9350, side: 0x52703b, detail: 0x9dbb70 },
   tropical: { top: 0x3f9862, side: 0x2d7048, detail: 0x88c96d },
-  water: { top: 0x1d4f78, side: 0x123750, detail: 0x4f93bd },
+  water: { top: 0x153f5e, side: 0x0d2942, detail: 0x356f95 },
 };
 const FOG = { top: 0x111c28, side: 0x0a1119, detail: 0x1c2b3d };
 
@@ -119,13 +128,17 @@ function drawScene(
       gSide.zIndex = gx + gy;
       // The top edge is lifted by a uniform `rise`; the base stays at a constant
       // depth so every revealed tile shares one flat ground plane and presents an
-      // even slab edge.
-      gSide
-        .poly([-TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, -TILE_W / 2, BASE_THICK])
-        .fill(pal.side);
-      gSide
-        .poly([TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, TILE_W / 2, BASE_THICK])
-        .fill(darken(pal.side));
+      // even slab edge. Each face gets a solid base color then a shared vertical
+      // shade overlay for ambient-occluded depth.
+      // Three flat tones down each cliff face (lit band, base, shadow base) for
+      // grounded depth without a gradient.
+      const leftFace = [-TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, -TILE_W / 2, BASE_THICK];
+      const rightFace = [TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, TILE_W / 2, BASE_THICK];
+      gSide.poly(leftFace).fill(pal.side);
+      gSide.poly(rightFace).fill(darken(pal.side));
+      // A darker flat band along the bottom of both faces reads as ground contact.
+      gSide.poly([-TILE_W / 2, BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK, -TILE_W / 2, BASE_THICK]).fill(darkenBy(pal.side, 0.35));
+      gSide.poly([TILE_W / 2, BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK, TILE_W / 2, BASE_THICK]).fill(darkenBy(pal.side, 0.45));
       // A rim highlight along the slab's top edge keeps the ground plane crisp.
       if (revealed) {
         gSide
@@ -138,8 +151,11 @@ function drawScene(
       const gTop = new Graphics();
       gTop.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
       gTop.zIndex = gx + gy + 0.05;
-      gTop.poly(diamond()).fill(topColor).stroke({ width: 1, color: 0x0a1018, alpha: 0.3 });
-      if (revealed) drawGroundTexture(gTop, tile, pal);
+      // Solid base color; the ground texture adds flat multi-tone color patches.
+      gTop.poly(diamond()).fill(topColor);
+      if (revealed) drawGroundTexture(gTop, tile, pal, topColor);
+      // Soft seam (was a hard dark grid line, which read as a board game).
+      gTop.poly(diamond()).stroke({ width: 1, color: 0x0c1722, alpha: 0.12 });
       if (moveable.has(key)) drawMoveHint(gTop);
       if (selectedKey === key) {
         gTop.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
@@ -154,8 +170,22 @@ function drawScene(
         const feat = new Graphics();
         feat.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
         feat.zIndex = gx + gy + 0.1;
-        if (drawStandingFeatures(feat, tile, pal)) layer.addChild(feat);
+        if (drawStandingFeatures(feat, tile)) layer.addChild(feat);
         else feat.destroy();
+
+        // Raster landforms (mountains, mesas, desert hills) as billboard sprites.
+        const lf = landformSprite(tile);
+        if (lf) {
+          lf.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise + 8);
+          lf.zIndex = gx + gy + 0.12;
+          layer.addChild(lf);
+        }
+        const veg = vegetationSprite(tile);
+        if (veg) {
+          veg.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise + 8);
+          veg.zIndex = gx + gy + 0.14;
+          layer.addChild(veg);
+        }
       }
 
       // ---- markers on top of the tile ----
@@ -321,6 +351,8 @@ function tileRise(_tile: WorldTile): number {
 
 function variantTopColor(tile: WorldTile, base: number): number {
   const v = tile.variant ?? 0;
+  // Open ocean stays a single uniform deep blue — no per-tile variation.
+  if (tile.terrain === "water") return base;
   if (tile.feature === "river" || tile.feature === "pond") return mixColor(base, 0x7dd3fc, 0.1);
   if (tile.feature === "lake") return mixColor(base, 0x2f6f9e, 0.38);
   const amt = [-0.08, 0.04, 0.1, -0.03][v] ?? 0;
@@ -357,13 +389,34 @@ function tileLook(tile: WorldTile): TileLook {
   };
 }
 
+// Flat patches of nearby tone, kept inside the diamond, so a tile carries 4-5
+// colors instead of one flat fill. Deterministic per tile via `v`.
+function dapple(g: Graphics, base: number, v: number) {
+  const patches: [number, number, number, number, number][] = [
+    // x, y, rx, ry, toneAmt (+lighten / -darken) — sized to stay inside the diamond
+    [-8, -2, 13, 5, 0.1],
+    [8, 4, 11, 4, -0.11],
+    [2, -6, 9, 3.5, 0.06],
+    [-6, 6, 9, 3, -0.07],
+    [13, -2, 6, 2.5, 0.04],
+  ];
+  patches.forEach((p, i) => {
+    if ((i + v) % 3 === 2) return; // vary which patches appear per tile
+    const col = p[4] >= 0 ? lighten(base, p[4]) : darkenBy(base, -p[4]);
+    g.ellipse(p[0], p[1], p[2], p[3]).fill({ color: col, alpha: 0.5 });
+  });
+}
+
 // ---- Flat ground cover (painted onto the tile's top diamond) --------------
 function drawGroundTexture(
   g: Graphics,
   tile: WorldTile,
   pal: { top: number; side: number; detail: number },
+  topColor: number,
 ) {
   const { v } = tileLook(tile);
+  // Multi-tone dapple on solid land (not open water, not bare rock).
+  if (tile.terrain !== "water" && tile.terrain !== "mountain") dapple(g, topColor, v);
   switch (tile.terrain) {
     case "water":
       groundWater(g, v, pal.detail);
@@ -408,9 +461,10 @@ function groundGrass(g: Graphics, v: number, dark: number, light: number) {
 }
 
 function groundWater(g: Graphics, v: number, color: number) {
-  const y = -5 + v;
-  g.poly([-18, y, -7, y - 4, 5, y - 1, 17, y - 5]).stroke({ width: 2, color, alpha: 0.55 });
-  g.poly([-12, y + 8, 0, y + 4, 12, y + 7]).stroke({ width: 2, color, alpha: 0.42 });
+  // Waves only on a minority of tiles so most of the ocean stays calm and flat.
+  if (v !== 0) return;
+  g.poly([-16, -3, -5, -6, 6, -3, 16, -6]).stroke({ width: 1.5, color, alpha: 0.4 });
+  g.poly([-10, 6, 2, 3, 13, 6]).stroke({ width: 1.3, color, alpha: 0.3 });
 }
 
 function groundIce(g: Graphics, v: number, color: number) {
@@ -443,11 +497,7 @@ function groundRock(g: Graphics, v: number, color: number) {
 
 // ---- Standing features (rise off the tile, z-ordered for real depth) -------
 // Returns true if anything was drawn (so empty tiles can skip the object).
-function drawStandingFeatures(
-  g: Graphics,
-  tile: WorldTile,
-  pal: { top: number; side: number; detail: number },
-): boolean {
+function drawStandingFeatures(g: Graphics, tile: WorldTile): boolean {
   const look = tileLook(tile);
   if (look.mirror) g.scale.x = -1;
 
@@ -455,22 +505,19 @@ function drawStandingFeatures(
     case "water":
       return false; // open ocean — nothing stands on it (waves are ground cover)
     case "mountain":
-      mountainPeaks(g, look, pal);
-      return true;
     case "high-desert":
-      return mesaField(g, look, pal);
+      return false; // drawn as raster landform sprites (see landformSprite)
     case "desert":
       return desertFeatures(g, look);
     case "ice":
       return iceFeatures(g, look);
     case "tropical":
-      tropicalGrove(g, look);
-      return true;
+      return false; // raster palms/groves are drawn as sprites.
     case "coastal":
       return coastalFeatures(g, look);
     case "plains":
     default:
-      return plainsFeatures(g, look, tile);
+      return plainsFeatures(g, look);
   }
 }
 
@@ -479,134 +526,11 @@ function shadow(g: Graphics, x: number, base: number, w: number) {
   g.ellipse(x, base, w, w * 0.32).fill({ color: 0x000000, alpha: 0.18 });
 }
 
-// Conifer: stacked triangle tiers on a short trunk. snow caps the top tier.
-function pine(
-  g: Graphics,
-  x: number,
-  base: number,
-  h: number,
-  w: number,
-  leaf: number,
-  leafDark: number,
-  snow = false,
-) {
-  shadow(g, x, base, w * 0.5);
-  const trunkH = h * 0.2;
-  g.rect(x - h * 0.045, base - trunkH, h * 0.09, trunkH + 1).fill(0x6b4a2f);
-  let ty = base - trunkH;
-  const tiers = 3;
-  for (let i = 0; i < tiers; i++) {
-    const tw = w * (1 - i * 0.22);
-    const th = (h - trunkH) * 0.46;
-    g.poly([x - tw / 2, ty, x + tw / 2, ty, x, ty - th]).fill(i === 0 ? leafDark : leaf);
-    g.poly([x, ty, x + tw / 2, ty, x, ty - th]).fill({ color: leafDark, alpha: 0.4 });
-    if (i === tiers - 1 && snow) {
-      g.poly([x - tw * 0.22, ty - th * 0.45, x + tw * 0.22, ty - th * 0.45, x, ty - th]).fill(0xf2f7fb);
-    }
-    ty -= th * 0.62;
-  }
-}
-
-// Round-canopy broadleaf tree, built from overlapping blobs.
-function broadleaf(
-  g: Graphics,
-  x: number,
-  base: number,
-  h: number,
-  w: number,
-  leaf: number,
-  leafDark: number,
-) {
-  shadow(g, x, base, w * 0.55);
-  const trunkH = h * 0.38;
-  g.rect(x - h * 0.045, base - trunkH, h * 0.09, trunkH + 1).fill(0x6b4a2f);
-  const cy = base - h * 0.6;
-  g.circle(x - w * 0.24, cy + 3, w * 0.34).fill(leafDark);
-  g.circle(x + w * 0.26, cy + 2, w * 0.32).fill(leafDark);
-  g.circle(x, cy - w * 0.18, w * 0.38).fill(leaf);
-  g.circle(x - w * 0.12, cy - w * 0.04, w * 0.3).fill(lighten(leaf, 0.12));
-}
-
-// Palm: a leaning tapered trunk with drooping fronds and two coconuts.
-function palm(g: Graphics, x: number, base: number, h: number) {
-  const frond = 0x4fae5c;
-  const frondDark = 0x2f7a3f;
-  shadow(g, x, base, 6);
-  const tx = x + h * 0.16;
-  const ty = base - h;
-  g.poly([x - 1.6, base, x + 1.6, base, tx + 1.6, ty, tx - 1.6, ty]).fill(0x8a6a43);
-  g.poly([x + 0.3, base, x + 1.6, base, tx + 1.6, ty, tx + 0.3, ty]).fill({ color: 0x5e4628, alpha: 0.5 });
-  const angles = [-2.5, -1.7, -0.6, 0.6, 1.5];
-  angles.forEach((a, i) => {
-    const ex = tx + Math.cos(a) * 16;
-    const ey = ty + Math.sin(a) * 14 - 2;
-    const mx = (tx + ex) / 2 - Math.sin(a) * 4;
-    const my = (ty + ey) / 2 + Math.cos(a) * 4;
-    g.poly([tx, ty - 1, mx, my, ex, ey]).fill(i === 0 || i === angles.length - 1 ? frondDark : frond);
-  });
-  g.circle(tx - 2, ty + 2, 1.6).fill(0x7a5a2c);
-  g.circle(tx + 2, ty + 3, 1.6).fill(0x7a5a2c);
-}
-
 // Rounded boulder with a lit top-left face and shadowed right face.
 function rock(g: Graphics, x: number, base: number, s: number, lit: number, shade: number) {
   shadow(g, x, base, s * 1.1);
   g.poly([x - s, base, x - s * 0.6, base - s * 0.9, x + s * 0.2, base - s, x + s, base - s * 0.3, x + s * 0.7, base]).fill(shade);
   g.poly([x - s, base, x - s * 0.6, base - s * 0.9, x + s * 0.2, base - s, x - s * 0.1, base]).fill(lit);
-}
-
-// A sine-arc dome used for landform mounds (grassy hills). Flat-bottomed so it
-// reads as ground swelling up off the level slab.
-function dome(g: Graphics, x: number, base: number, h: number, w: number, color: number) {
-  const pts: number[] = [];
-  const steps = 10;
-  for (let i = 0; i <= steps; i++) {
-    const t = i / steps;
-    pts.push(x - w / 2 + t * w, base - Math.sin(t * Math.PI) * h);
-  }
-  pts.push(x + w / 2, base, x - w / 2, base);
-  g.poly(pts).fill(color);
-}
-
-// Grassy hill: a mound rising off the flat ground, crowned with trees/rock.
-// This is how "hills" gain their height now that the base ground is uniform.
-function hill(g: Graphics, x: number, base: number, h: number, w: number, look: TileLook) {
-  const lit = 0x6fa14f;
-  const shade = 0x4a6f37;
-  const leaf = 0x4f9a4a;
-  const leafDark = 0x356b35;
-  shadow(g, x, base, w * 0.5);
-  dome(g, x, base, h, w, shade);
-  dome(g, x - w * 0.12, base, h * 0.86, w * 0.74, lit);
-  // a crown of trees / boulder on top of the rise
-  const crown = base - h * 0.78;
-  broadleaf(g, x - w * 0.16, crown + 4, 15, 12, leaf, leafDark);
-  if (look.v % 2 === 0) broadleaf(g, x + w * 0.18, crown + 6, 13, 10, leaf, leafDark);
-  else rock(g, x + w * 0.2, crown + 6, 4, 0x9aa0a6, 0x6c7176);
-}
-
-// A single rocky peak with two shaded faces and a snow cap.
-function peak(g: Graphics, x: number, base: number, h: number, w: number, lit: number, shade: number) {
-  shadow(g, x, base, w * 0.5);
-  const apexY = base - h;
-  g.poly([x, apexY, x + w / 2, base, x - w * 0.1, base]).fill(shade);
-  g.poly([x, apexY, x - w / 2, base, x - w * 0.1, base]).fill(lit);
-  const capH = h * 0.34;
-  const capW = w * 0.34;
-  g.poly([x, apexY, x - capW / 2, apexY + capH, x - capW * 0.1, apexY + capH * 0.7, x + capW * 0.18, apexY + capH, x + capW / 2, apexY + capH * 0.8]).fill(0xf2f7fb);
-  g.poly([x, apexY, x + capW / 2, apexY + capH * 0.8, x + capW * 0.18, apexY + capH]).fill({ color: 0xcdddea, alpha: 0.7 });
-}
-
-// Flat-topped mesa / butte (high desert), reddish with strata lines.
-function mesa(g: Graphics, x: number, base: number, h: number, w: number, lit: number, shade: number) {
-  shadow(g, x, base, w * 0.55);
-  const topY = base - h;
-  const topW = w * 0.82;
-  g.poly([x - w / 2, base, x - topW / 2, topY, x + topW / 2, topY, x + w / 2, base]).fill(shade);
-  g.poly([x - w / 2, base, x - topW / 2, topY, x - topW * 0.05, topY, x - w * 0.05, base]).fill(lit);
-  g.poly([x - topW / 2, topY, x + topW / 2, topY, x + topW / 2 - 3, topY - 3, x - topW / 2 + 3, topY - 3]).fill(lighten(lit, 0.12));
-  g.poly([x - w * 0.42, base - h * 0.5, x + w * 0.42, base - h * 0.5]).stroke({ width: 1, color: darkenBy(shade, 0.2), alpha: 0.5 });
-  g.poly([x - w * 0.38, base - h * 0.78, x + w * 0.3, base - h * 0.78]).stroke({ width: 1, color: darkenBy(shade, 0.2), alpha: 0.4 });
 }
 
 function cactus(g: Graphics, x: number, base: number, h: number) {
@@ -628,23 +552,501 @@ function shard(g: Graphics, x: number, base: number, h: number, w: number) {
   g.poly([x, base - h, x - w * 0.18, base - h * 0.5, x - w / 2, base]).fill(0xe7f6fc);
 }
 
-// --- per-terrain compositions ---
-function mountainPeaks(g: Graphics, look: TileLook, pal: { top: number; side: number; detail: number }) {
-  const lit = lighten(pal.top, 0.06);
-  const shade = darkenBy(pal.side, 0.12);
-  const big = 38 + look.v * 2.5;
-  peak(g, -14 + look.jx * 0.25, 4, big * 0.6, 22, lit, shade);
-  if (look.v >= 2) peak(g, 15 + look.jx * 0.25, 5, big * 0.72, 24, lit, shade);
-  peak(g, 1 + look.jx * 0.25, 7, big, 34, lit, shade);
+// ===========================================================================
+// Procedural raster landforms and foliage
+// ---------------------------------------------------------------------------
+// Painted once to an offscreen Canvas2D — which gives real soft gradients, blur
+// shadows, organic curved silhouettes and grain that flat vector polygons can't
+// — then cached as a high-DPI Pixi texture and placed as a billboard Sprite.
+// This is the "richer art" path; ground marks remain vector, standing organic
+// features move here as the visual style matures.
+// ===========================================================================
+type Ctx = CanvasRenderingContext2D;
+const landformCache = new Map<string, Texture>();
+
+function landformTexture(
+  key: string,
+  w: number,
+  h: number,
+  paint: (ctx: Ctx, w: number, h: number) => void,
+): Texture {
+  const hit = landformCache.get(key);
+  if (hit) return hit;
+  const dpr = Math.min(window.devicePixelRatio || 1, 2);
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(w * dpr);
+  canvas.height = Math.ceil(h * dpr);
+  const ctx = canvas.getContext("2d")!;
+  ctx.scale(dpr, dpr);
+  paint(ctx, w, h);
+  // resolution = dpr so the texture reports logical (w,h) and a Sprite renders
+  // at the intended size while staying crisp on retina.
+  const tex = new Texture({ source: new CanvasSource({ resource: canvas, resolution: dpr }) });
+  landformCache.set(key, tex);
+  return tex;
 }
 
-function mesaField(g: Graphics, look: TileLook, pal: { top: number; side: number; detail: number }): boolean {
-  const lit = lighten(pal.top, 0.08);
-  const shade = darkenBy(pal.side, 0.05);
-  mesa(g, look.jx * 0.4, 7, 20 + look.v * 3, 30, lit, shade);
-  if (look.v >= 3) mesa(g, -17 + look.jx * 0.3, 6, 12, 18, lit, shade);
-  if (look.v === 1) cactus(g, 15, 8, 12);
-  return true;
+// Scatter faint dark/light specks for rock/soil grain (deterministic).
+function grain(ctx: Ctx, x0: number, y0: number, w: number, h: number, count: number) {
+  for (let i = 0; i < count; i++) {
+    const r = ((i * 2654435761) >>> 0) / 4294967295;
+    const r2 = ((i * 40503 + 12345) >>> 0) / 4294967295;
+    const r3 = ((i * 2246822519) >>> 0) / 4294967295;
+    const px = x0 + r * w;
+    const py = y0 + r2 * h;
+    ctx.fillStyle = r3 > 0.5 ? "rgba(255,255,255,0.06)" : "rgba(0,0,0,0.08)";
+    ctx.fillRect(px, py, 1, 1);
+  }
+}
+
+function softBaseShadow(ctx: Ctx, w: number, h: number) {
+  const g = ctx.createRadialGradient(w / 2, h - 5, 2, w / 2, h - 5, w * 0.4);
+  g.addColorStop(0, "rgba(0,0,0,0.2)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, h - 16, w, 16);
+}
+
+// One organic, curved peak with rock gradient, directional shadow and optional
+// soft snow cap. cx/baseY in canvas space; peakH up, peakW wide.
+function paintPeak(
+  ctx: Ctx,
+  cx: number,
+  baseY: number,
+  peakH: number,
+  peakW: number,
+  lean: number,
+  snow: boolean,
+) {
+  const apexX = cx + lean;
+  const apexY = baseY - peakH;
+  const left = cx - peakW / 2;
+  const right = cx + peakW / 2;
+
+  ctx.beginPath();
+  ctx.moveTo(left, baseY);
+  ctx.quadraticCurveTo(cx - peakW * 0.22, baseY - peakH * 0.55, apexX - peakW * 0.05, apexY + peakH * 0.05);
+  ctx.lineTo(apexX, apexY);
+  ctx.quadraticCurveTo(cx + peakW * 0.24, baseY - peakH * 0.5, right, baseY);
+  ctx.closePath();
+
+  const rock = ctx.createLinearGradient(0, apexY, 0, baseY);
+  rock.addColorStop(0, "#828b8f");
+  rock.addColorStop(0.5, "#69726f");
+  rock.addColorStop(1, "#525a57");
+  ctx.fillStyle = rock;
+  ctx.fill();
+
+  // Directional shadow on the right (SE) flank.
+  ctx.save();
+  ctx.clip();
+  const sh = ctx.createLinearGradient(apexX, 0, right, 0);
+  sh.addColorStop(0, "rgba(20,26,30,0)");
+  sh.addColorStop(1, "rgba(20,26,30,0.26)");
+  ctx.fillStyle = sh;
+  ctx.fillRect(left, apexY, peakW, peakH);
+  grain(ctx, left, apexY, peakW, peakH, Math.round(peakW * 1.2));
+  // A couple of soft crevasse striations.
+  ctx.strokeStyle = "rgba(0,0,0,0.16)";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(apexX - peakW * 0.02, apexY + peakH * 0.12);
+  ctx.quadraticCurveTo(cx, baseY - peakH * 0.4, cx + peakW * 0.16, baseY - peakH * 0.05);
+  ctx.stroke();
+  ctx.restore();
+
+  if (snow) {
+    const sy = apexY + peakH * 0.2;
+    ctx.beginPath();
+    ctx.moveTo(apexX - peakW * 0.14, sy);
+    ctx.quadraticCurveTo(apexX - peakW * 0.05, sy - peakH * 0.09, apexX - peakW * 0.01, sy - peakH * 0.02);
+    ctx.quadraticCurveTo(apexX + peakW * 0.03, sy - peakH * 0.1, apexX + peakW * 0.08, sy - peakH * 0.03);
+    ctx.quadraticCurveTo(apexX + peakW * 0.12, sy + peakH * 0.03, apexX + peakW * 0.14, sy + peakH * 0.01);
+    ctx.lineTo(apexX, apexY);
+    ctx.closePath();
+    const snowG = ctx.createLinearGradient(0, apexY, 0, sy);
+    snowG.addColorStop(0, "#eef2f6");
+    snowG.addColorStop(1, "#c8d4e0");
+    ctx.fillStyle = snowG;
+    ctx.fill();
+  }
+}
+
+// A rounded, curved mound (foothill / desert hill) with a smooth light→dark
+// vertical gradient — no hard facets.
+function paintMound(ctx: Ctx, cx: number, baseY: number, hgt: number, wid: number, top: string, bottom: string, dark: string) {
+  ctx.beginPath();
+  ctx.moveTo(cx - wid / 2, baseY);
+  ctx.bezierCurveTo(cx - wid * 0.42, baseY - hgt * 1.05, cx + wid * 0.12, baseY - hgt * 1.08, cx + wid * 0.22, baseY - hgt * 0.78);
+  ctx.bezierCurveTo(cx + wid * 0.3, baseY - hgt * 0.55, cx + wid * 0.5, baseY - hgt * 0.18, cx + wid / 2, baseY);
+  ctx.closePath();
+  const g = ctx.createLinearGradient(0, baseY - hgt, 0, baseY);
+  g.addColorStop(0, top);
+  g.addColorStop(0.6, bottom);
+  g.addColorStop(1, dark);
+  ctx.fillStyle = g;
+  ctx.fill();
+  ctx.save();
+  ctx.clip();
+  grain(ctx, cx - wid / 2, baseY - hgt, wid, hgt, Math.round(wid));
+  ctx.restore();
+}
+
+function paintMountain(ctx: Ctx, w: number, h: number, tier: string, variant: number) {
+  softBaseShadow(ctx, w, h);
+  const base = h - 4;
+  const cx = w / 2;
+  const lean = (variant - 1) * 2;
+  if (tier === "foothill") {
+    paintMound(ctx, cx + 7, base, h * 0.36, w * 0.6, "#77866a", "#647354", "#4d5942");
+    paintMound(ctx, cx - 6, base, h * 0.48, w * 0.62, "#828c78", "#6a7958", "#505d44");
+  } else if (tier === "mid") {
+    paintMound(ctx, cx - 10, base, h * 0.34, w * 0.44, "#7b8580", "#626b67", "#505753");
+    paintPeak(ctx, cx + 4 + lean, base, h * 0.62, w * 0.52, lean, variant === 2);
+  } else {
+    // high peak — a back ridge plus a dominant (sometimes snow-capped) summit
+    paintPeak(ctx, cx - w * 0.2, base, h * 0.48, w * 0.4, -2, false);
+    if (variant >= 1) paintPeak(ctx, cx + w * 0.22, base, h * 0.52, w * 0.42, 2, false);
+    paintPeak(ctx, cx + lean, base, h * 0.72, w * 0.5, lean, true);
+  }
+}
+
+function paintMesa(ctx: Ctx, w: number, h: number, variant: number) {
+  softBaseShadow(ctx, w, h);
+  const base = h - 4;
+  const cx = w / 2;
+  const towers =
+    variant === 0
+      ? [
+          { x: -13, bw: 15, tw: 8, ht: 26 },
+          { x: 3, bw: 27, tw: 21, ht: 23 },
+          { x: 18, bw: 11, tw: 6, ht: 18 },
+        ]
+      : variant === 1
+        ? [
+            { x: -18, bw: 11, tw: 6, ht: 27 },
+            { x: -2, bw: 18, tw: 10, ht: 31 },
+            { x: 15, bw: 13, tw: 7, ht: 21 },
+          ]
+        : [
+            { x: -16, bw: 24, tw: 18, ht: 22 },
+            { x: 6, bw: 10, tw: 5, ht: 30 },
+            { x: 19, bw: 15, tw: 8, ht: 24 },
+          ];
+
+  for (const [i, t] of towers.entries()) {
+    paintMesaTower(ctx, cx + t.x, base - (i === 0 ? 1 : 0), t.bw, t.tw, t.ht, variant + i);
+  }
+}
+
+function paintMesaTower(ctx: Ctx, cx: number, base: number, baseW: number, topW: number, height: number, variant: number) {
+  const topY = base - height;
+  const halfB = baseW / 2;
+  const halfT = topW / 2;
+  // Body with smooth light-to-dark vertical shading and slightly uneven sides.
+  ctx.beginPath();
+  ctx.moveTo(cx - halfB, base);
+  ctx.quadraticCurveTo(cx - halfB * 0.78, base - height * 0.52, cx - halfT, topY);
+  ctx.quadraticCurveTo(cx, topY - 2.5, cx + halfT, topY);
+  ctx.quadraticCurveTo(cx + halfB * 0.72, base - height * 0.48, cx + halfB, base);
+  ctx.closePath();
+  const body = ctx.createLinearGradient(0, topY, 0, base);
+  body.addColorStop(0, variant % 2 === 0 ? "#c99a66" : "#bd8759");
+  body.addColorStop(0.55, "#9a6541");
+  body.addColorStop(1, "#70442b");
+  ctx.fillStyle = body;
+  ctx.fill();
+
+  ctx.save();
+  ctx.clip();
+  const sh = ctx.createLinearGradient(cx, 0, cx + halfB, 0);
+  sh.addColorStop(0, "rgba(40,22,10,0)");
+  sh.addColorStop(1, "rgba(40,22,10,0.28)");
+  ctx.fillStyle = sh;
+  ctx.fillRect(cx - halfB, topY, baseW, height);
+  ctx.strokeStyle = "rgba(70,40,20,0.12)";
+  ctx.lineWidth = 1;
+  for (let i = 1; i <= 2; i++) {
+    const yy = topY + (height * (i + 1)) / 4;
+    ctx.beginPath();
+    ctx.moveTo(cx - halfB * 0.82, yy);
+    ctx.quadraticCurveTo(cx, yy + ((variant + i) % 2 === 0 ? -1.2 : 1.2), cx + halfB * 0.8, yy);
+    ctx.stroke();
+  }
+  grain(ctx, cx - halfB, topY, baseW, height, Math.round(baseW * 1.8));
+  ctx.restore();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - halfT, topY);
+  ctx.quadraticCurveTo(cx, topY - 2.5, cx + halfT, topY);
+  ctx.quadraticCurveTo(cx, topY + 2, cx - halfT, topY);
+  ctx.fillStyle = variant % 2 === 0 ? "#d4aa75" : "#c99664";
+  ctx.fill();
+}
+
+function paintDesertHill(ctx: Ctx, w: number, h: number, variant: number) {
+  softBaseShadow(ctx, w, h);
+  const base = h - 4;
+  const cx = w / 2;
+  const shift = (variant - 1) * 4;
+  paintMound(ctx, cx + 7 + shift, base, h * (0.38 + variant * 0.035), w * 0.54, "#d3b275", "#b89050", "#8f6b3a");
+  paintMound(ctx, cx - 8 + shift * 0.5, base, h * (0.46 + variant * 0.035), w * 0.58, "#dcc183", "#be9956", "#98733f");
+}
+
+// Map a mountain tile to a tier + variant. Elevation (narrow high band) plus a
+// per-tile roll give a gradual foothill→peak buildup across a range.
+function mountainTier(tile: WorldTile): { tier: string; variant: number } {
+  const e = tile.elevation ?? 0.95;
+  const roll = tileRand(tile.x, tile.y, 9);
+  const hf = Math.min(1, Math.max(0, (e - 1.0) / 0.12)) * 0.6 + roll * 0.4;
+  const variant = Math.floor(tileRand(tile.x, tile.y, 12) * 3);
+  const tier = hf < 0.46 ? "foothill" : hf < 0.82 ? "mid" : "peak";
+  return { tier, variant };
+}
+
+const MTN_SIZE: Record<string, [number, number]> = {
+  foothill: [76, 38],
+  mid: [90, 56],
+  peak: [108, 72],
+};
+
+// Build the billboard Sprite for a raster landform tile (or null for others).
+function landformSprite(tile: WorldTile): Sprite | null {
+  const look = tileLook(tile);
+  if (tile.terrain === "mountain") {
+    const { tier, variant } = mountainTier(tile);
+    const [w, h] = MTN_SIZE[tier];
+    const tex = landformTexture(`mtn-${tier}-${variant}`, w, h, (c) => paintMountain(c, w, h, tier, variant));
+    const sp = new Sprite(tex);
+    sp.anchor.set(0.5, 1);
+    sp.alpha = 0.96;
+    if (look.mirror) sp.scale.x = -1;
+    return sp;
+  }
+  if (tile.terrain === "high-desert") {
+    // Mesas are rare landmarks; desert hills are intermittent so high-desert
+    // doesn't become a repeating field of rounded bubbles.
+    const isMesa = tileRand(tile.x, tile.y, 11) < 0.09;
+    const hasHill = tileRand(tile.x, tile.y, 18) < 0.34;
+    if (!isMesa && !hasHill) return null;
+    const variant = look.v % 3;
+    const sp = isMesa
+      ? new Sprite(landformTexture(`mesa-spires-${variant}`, 66, 46, (c) => paintMesa(c, 66, 46, variant)))
+      : new Sprite(landformTexture(`dhill-${variant}`, 62, 30, (c) => paintDesertHill(c, 62, 30, variant)));
+    sp.anchor.set(0.5, 1);
+    sp.alpha = isMesa ? 0.94 : 0.86;
+    if (look.mirror) sp.scale.x = -1;
+    return sp;
+  }
+  return null;
+}
+
+function treeShadow(ctx: Ctx, x: number, base: number, w: number) {
+  const g = ctx.createRadialGradient(x, base, 1, x, base, w * 0.58);
+  g.addColorStop(0, "rgba(0,0,0,0.2)");
+  g.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.fillStyle = g;
+  ctx.fillRect(x - w * 0.65, base - 5, w * 1.3, 10);
+}
+
+function drawBroadleafTree(ctx: Ctx, x: number, base: number, w: number, h: number, variant: number) {
+  treeShadow(ctx, x, base, w);
+  const treeH = h;
+  const trunkH = treeH * 0.35;
+  const canopyR = w * 0.2;
+  const canopyY = base - treeH * 0.62;
+  const trunk = ctx.createLinearGradient(x - 1.8, base - trunkH, x + 1.8, base);
+  trunk.addColorStop(0, "#7b5a36");
+  trunk.addColorStop(1, "#4d3722");
+  ctx.fillStyle = trunk;
+  ctx.beginPath();
+  ctx.moveTo(x - w * 0.055, base);
+  ctx.lineTo(x - w * 0.038, base - trunkH);
+  ctx.lineTo(x + w * 0.052, base - trunkH);
+  ctx.lineTo(x + w * 0.065, base);
+  ctx.closePath();
+  ctx.fill();
+
+  const canopy = ctx.createRadialGradient(x - w * 0.13, canopyY - h * 0.1, 2, x, canopyY, canopyR * 2.15);
+  canopy.addColorStop(0, "#8da466");
+  canopy.addColorStop(0.58, "#607d4c");
+  canopy.addColorStop(1, "#3d5e37");
+  ctx.fillStyle = canopy;
+  const blobs = [
+    [-0.2, -0.06, 0.9],
+    [0.06, -0.18, 1.0],
+    [0.26, 0.04, 0.82],
+    [0.02, 0.18, 1.05],
+    [-0.34, 0.13, 0.72],
+  ];
+  for (const [dx, dy, r] of blobs) {
+    ctx.beginPath();
+    ctx.arc(x + dx * w, canopyY + dy * h + (variant % 2), canopyR * r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.fillStyle = "rgba(195,210,130,0.13)";
+  ctx.beginPath();
+  ctx.arc(x - w * 0.16, canopyY - h * 0.19, canopyR * 0.44, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function paintBroadleafGrove(ctx: Ctx, w: number, h: number, variant: number) {
+  const base = h - 4;
+  drawBroadleafTree(ctx, w * 0.38, base - 3, 17, 23, variant);
+  if (variant !== 0) drawBroadleafTree(ctx, w * 0.62, base - 2, 16, 21, variant + 1);
+  drawBroadleafTree(ctx, w * 0.52, base, 20, 26, variant + 2);
+  grain(ctx, w * 0.16, h * 0.18, w * 0.66, h * 0.68, 20);
+}
+
+function drawPineTree(ctx: Ctx, x: number, base: number, w: number, h: number, variant: number, snow: boolean) {
+  treeShadow(ctx, x, base, w);
+  ctx.fillStyle = "#5c4129";
+  const trunkH = h * 0.28;
+  ctx.fillRect(x - w * 0.055, base - trunkH, w * 0.11, trunkH);
+  const tiers = 4;
+  for (let i = 0; i < tiers; i++) {
+    const ty = base - h * 0.13 - i * h * 0.16;
+    const tw = w * (0.62 - i * 0.08) + variant * 0.6;
+    const th = h * 0.25;
+    const grad = ctx.createLinearGradient(x - tw / 2, ty - th, x + tw / 2, ty);
+    grad.addColorStop(0, snow ? "#63816e" : "#4f7659");
+    grad.addColorStop(1, snow ? "#2e4f3d" : "#203f2f");
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(x - tw / 2, ty);
+    ctx.lineTo(x, ty - th);
+    ctx.lineTo(x + tw / 2, ty);
+    ctx.closePath();
+    ctx.fill();
+    if (snow && i >= 2) {
+      ctx.fillStyle = "rgba(238,246,250,0.82)";
+      ctx.beginPath();
+      ctx.moveTo(x - tw * 0.18, ty - th * 0.52);
+      ctx.lineTo(x, ty - th);
+      ctx.lineTo(x + tw * 0.18, ty - th * 0.52);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+}
+
+function paintPineGrove(ctx: Ctx, w: number, h: number, variant: number, snow: boolean) {
+  const base = h - 4;
+  drawPineTree(ctx, w * 0.34, base - 2, 18, 30, variant, snow);
+  drawPineTree(ctx, w * 0.58, base - 1, 16, 27, variant + 1, snow);
+  if (variant !== 1) drawPineTree(ctx, w * 0.48, base, 20, 34, variant + 2, snow);
+  grain(ctx, w * 0.24, h * 0.18, w * 0.56, h * 0.64, 18);
+}
+
+function drawPalmTree(ctx: Ctx, x: number, base: number, w: number, h: number, variant: number) {
+  treeShadow(ctx, x, base, w * 0.7);
+  const lean = (variant % 3) - 1;
+  const palmH = h * (0.58 + (variant % 2) * 0.04);
+  const topX = x + w * (0.09 + lean * 0.035);
+  const topY = base - palmH;
+
+  ctx.strokeStyle = "#8a6840";
+  ctx.lineWidth = 2.8;
+  ctx.lineCap = "round";
+  ctx.beginPath();
+  ctx.moveTo(x, base);
+  ctx.quadraticCurveTo(x - 1.6 + lean, base - palmH * 0.52, topX, topY);
+  ctx.stroke();
+
+  ctx.strokeStyle = "rgba(58,39,22,0.48)";
+  ctx.lineWidth = 1.1;
+  for (let i = 1; i <= 3; i++) {
+    const yy = base - (palmH * i) / 4;
+    ctx.beginPath();
+    ctx.moveTo(x - 1.5 + lean * 0.2, yy);
+    ctx.lineTo(x + 1.6 + lean * 0.4, yy - 1);
+    ctx.stroke();
+  }
+
+  ctx.strokeStyle = "#4f3a23";
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(x + 0.9, base - 1);
+  ctx.quadraticCurveTo(x - 0.1 + lean * 0.5, base - palmH * 0.5, topX + 0.8, topY);
+  ctx.stroke();
+
+  const fronds = [
+    { a: -2.95, len: 0.5, curl: 5 },
+    { a: -2.38, len: 0.55, curl: 3 },
+    { a: -1.68, len: 0.48, curl: -1 },
+    { a: -0.78, len: 0.52, curl: -1 },
+    { a: -0.14, len: 0.55, curl: 3 },
+    { a: 0.48, len: 0.46, curl: 5 },
+  ];
+  for (let i = 0; i < fronds.length; i++) {
+    const { a, len, curl } = fronds[i];
+    const reach = w * len;
+    const ex = topX + Math.cos(a) * reach;
+    const ey = topY + Math.sin(a) * h * 0.28 + curl;
+    const mx = (topX + ex) / 2;
+    const my = (topY + ey) / 2 + curl * 0.35;
+    const blade = ctx.createLinearGradient(topX, topY, ex, ey);
+    blade.addColorStop(0, "#77bd65");
+    blade.addColorStop(0.52, "#4f9350");
+    blade.addColorStop(1, "#2f6d3f");
+    ctx.fillStyle = blade;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.quadraticCurveTo(mx - Math.sin(a) * 2.6, my - Math.cos(a) * 2.1, ex, ey);
+    ctx.quadraticCurveTo(mx + Math.sin(a) * 2.1, my + Math.cos(a) * 1.7, topX, topY);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(39,88,46,0.32)";
+    ctx.lineWidth = 0.8;
+    ctx.beginPath();
+    ctx.moveTo(topX, topY);
+    ctx.quadraticCurveTo(mx, my, ex, ey);
+    ctx.stroke();
+  }
+
+  ctx.fillStyle = "#6b4b25";
+  ctx.beginPath();
+  ctx.arc(topX - 1.5, topY + 2.5, 1.3, 0, Math.PI * 2);
+  ctx.arc(topX + 1.8, topY + 3, 1.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+function paintPalmGrove(ctx: Ctx, w: number, h: number, variant: number) {
+  const base = h - 4;
+  drawPalmTree(ctx, w * 0.39, base - 1, 30, 34, variant);
+  drawPalmTree(ctx, w * 0.6, base, 24, 29, variant + 1);
+  if (variant === 2) drawPalmTree(ctx, w * 0.5, base + 1, 20, 25, variant + 2);
+}
+
+function vegetationSprite(tile: WorldTile): Sprite | null {
+  const look = tileLook(tile);
+  const roll = tileRand(tile.x, tile.y, 23);
+  let sp: Sprite | null = null;
+
+  if (tile.terrain === "tropical" && roll < 0.22) {
+    const v = look.v % 3;
+    sp = new Sprite(landformTexture(`palm-grove-${v}`, 48, 38, (c) => paintPalmGrove(c, 48, 38, v)));
+    sp.alpha = 0.94;
+  } else if (tile.terrain === "coastal" && roll < 0.03 && tile.feature !== "river") {
+    const v = look.v % 3;
+    sp = new Sprite(landformTexture(`shore-palm-${v}`, 42, 34, (c) => paintPalmGrove(c, 42, 34, v)));
+    sp.alpha = 0.9;
+  } else if (tile.terrain === "ice" && roll < 0.1) {
+    const v = look.v % 3;
+    sp = new Sprite(landformTexture(`pine-snow-grove-${v}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, true)));
+    sp.alpha = 0.9;
+  } else if (tile.terrain === "plains" && roll < 0.15) {
+    const v = look.v % 3;
+    const pineMix = tile.elevation && tile.elevation > 0.54 && roll < 0.08;
+    sp = pineMix
+      ? new Sprite(landformTexture(`pine-grove-${v}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, false)))
+      : new Sprite(landformTexture(`broadleaf-grove-${v}`, 44, 34, (c) => paintBroadleafGrove(c, 44, 34, v)));
+    sp.alpha = 0.9;
+  }
+
+  if (!sp) return null;
+  sp.anchor.set(0.5, 1);
+  if (look.mirror) sp.scale.x = -1;
+  return sp;
 }
 
 function desertFeatures(g: Graphics, look: TileLook): boolean {
@@ -671,26 +1073,12 @@ function iceFeatures(g: Graphics, look: TileLook): boolean {
       shard(g, -6 + look.jx * 0.3, 7, 14, 12);
       shard(g, 7, 6, 9, 8);
       return true;
-    case 3:
-      pine(g, look.jx, 7, 20, 13, 0x4f7a5c, 0x32563f, true);
-      return true;
     case 4:
       shard(g, 9, 7, 11, 9);
-      pine(g, -8 + look.jx * 0.3, 7, 17, 11, 0x4f7a5c, 0x32563f, true);
       return true;
     default:
       return false; // smooth snowfield
   }
-}
-
-function tropicalGrove(g: Graphics, look: TileLook) {
-  if (look.v >= 3) {
-    palm(g, -9 + look.jx * 0.3, 8, 24);
-    palm(g, 8, 7, 20);
-  } else {
-    palm(g, look.jx * 0.5, 8, 26);
-  }
-  broadleaf(g, 12, 8, 12, 11, 0x4fae5c, 0x2f7a3f);
 }
 
 function coastalFeatures(g: Graphics, look: TileLook): boolean {
@@ -698,28 +1086,11 @@ function coastalFeatures(g: Graphics, look: TileLook): boolean {
     rock(g, look.jx, 6, 4.5, 0xb7b0a2, 0x827b6d);
     return true;
   }
-  if (look.v === 3) {
-    palm(g, look.jx * 0.5, 7, 18);
-    return true;
-  }
   return false; // open beach
 }
 
-function plainsFeatures(g: Graphics, look: TileLook, tile: WorldTile): boolean {
-  const leaf = 0x4f9a4a;
-  const leafDark = 0x356b35;
-  // Highland grassland (from the elevation field) rises as an actual hill mound
-  // off the flat ground; lowland grassland stays flat with trees/rocks. The
-  // elevation field now only *selects* where hills appear, never the ground height.
-  const hilly = (tile.elevation ?? 0) > 0.52;
-  if (hilly) {
-    hill(g, look.jx * 0.4, 9, 17 + look.v * 1.5, 34, look);
-    return true;
-  }
+function plainsFeatures(g: Graphics, look: TileLook): boolean {
   switch (look.v) {
-    case 3:
-      broadleaf(g, look.jx, 8, 20, 16, leaf, leafDark);
-      return true;
     case 4:
       rock(g, look.jx, 7, 5, 0x9aa0a6, 0x6c7176);
       return true;
@@ -1070,12 +1441,23 @@ export function IsoWorldMap({
         const layer = new Container();
         layer.sortableChildren = true;
         app.stage.addChild(layer);
-        // Center on the host's real laid-out size (app.screen can lag the CSS
-        // height on first mount), so the map sits centered in the canvas.
-        layer.position.set(
-          (host.clientWidth || app.screen.width) / 2,
-          (host.clientHeight || app.screen.height) / 2 - 60,
-        );
+        // Center the view on the player's unit/HQ (the start tile is chosen
+        // dynamically and is usually off the map centre). Uses the host's real
+        // laid-out size since app.screen can lag the CSS height on first mount.
+        const vw = host.clientWidth || app.screen.width;
+        const vh = host.clientHeight || app.screen.height;
+        let focusX = 0;
+        let focusY = 0;
+        const w0 = state.world;
+        if (w0) {
+          const cen = centroid(w0);
+          const focus = w0.hqTile ?? w0.founder;
+          if (focus) {
+            focusX = isoX(focus.x, focus.y) - cen.x;
+            focusY = isoY(focus.x, focus.y) - cen.y;
+          }
+        }
+        layer.position.set(vw / 2 - focusX, vh / 2 - focusY - 60);
         layerRef.current = layer;
         appRef.current = app;
         readyRef.current = true;
