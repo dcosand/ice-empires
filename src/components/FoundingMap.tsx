@@ -1,7 +1,7 @@
 import type { Dispatch, SyntheticEvent } from "react";
 import type { GameAction, GameState } from "../types/game";
 import { CLUBS, arizonaMonsoon, clubAsset } from "../data/clubs";
-import { moveableTiles, tileAt, tileKey } from "../engine/foundingMap";
+import { moveableTilesFor, tileAt, tileKey } from "../engine/world";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
@@ -21,16 +21,18 @@ export function FoundingMap({
   state: GameState;
   dispatch: Dispatch<GameAction>;
 }) {
-  const fm = state.foundingMap;
+  const world = state.world;
   const club =
     (state.selectedClubId && CLUBS[state.selectedClubId]) || arizonaMonsoon;
 
-  if (!fm) return null;
+  if (!world) return null;
 
-  const founded = fm.founded;
-  const moveable = moveableTiles(fm);
-  const onHomeTile = (x: number, y: number) =>
-    fm.unit.x === x && fm.unit.y === y;
+  const founded = world.hqTile;
+  const founder = world.founder;
+  const selected = world.founderSelected;
+  const moveable = moveableTilesFor(world, founder);
+  const isUnitTile = (x: number, y: number) =>
+    !!founder && founder.x === x && founder.y === y;
 
   return (
     <div className="founding-map-screen">
@@ -42,7 +44,7 @@ export function FoundingMap({
           </h1>
           <p className="muted" style={{ margin: 0 }}>
             {founded
-              ? "Your home is on the map. Begin the season when you're ready."
+              ? "Your home is on the map. This world carries into the season — same HQ, same fog."
               : "Select the Founding Group, move across the ice to scout, then found your club on a tile you like."}
           </p>
         </div>
@@ -50,21 +52,21 @@ export function FoundingMap({
         <div
           className="fm-grid"
           style={{
-            gridTemplateColumns: `repeat(${fm.width}, var(--tile))`,
+            gridTemplateColumns: `repeat(${world.width}, var(--tile))`,
           }}
         >
-          {Array.from({ length: fm.height }).map((_, y) =>
-            Array.from({ length: fm.width }).map((__, x) => {
-              const revealed = fm.revealed.includes(tileKey(x, y));
-              const tile = tileAt(fm, x, y);
-              const isUnit = !founded && onHomeTile(x, y);
-              const isHQ = founded && founded.x === x && founded.y === y;
+          {Array.from({ length: world.height }).map((_, y) =>
+            Array.from({ length: world.width }).map((__, x) => {
+              const revealed = world.revealed.includes(tileKey(x, y));
+              const tile = tileAt(world, x, y);
+              const isUnit = isUnitTile(x, y);
+              const isHQ = !!founded && founded.x === x && founded.y === y;
               const canMoveHere = moveable.has(tileKey(x, y));
               const classes = ["fm-tile"];
               if (!revealed) classes.push("fog");
               else classes.push(`terrain-${tile?.terrain}`);
               if (canMoveHere) classes.push("moveable");
-              if (isUnit && fm.selected) classes.push("selected");
+              if (isUnit && selected) classes.push("selected");
 
               return (
                 <button
@@ -74,7 +76,7 @@ export function FoundingMap({
                     if (founded) return;
                     if (isUnit) {
                       dispatch({ type: "SELECT_FOUNDING_UNIT" });
-                    } else if (canMoveHere && fm.selected) {
+                    } else if (canMoveHere && selected) {
                       dispatch({ type: "MOVE_FOUNDING_UNIT", x, y });
                     }
                   }}
@@ -128,7 +130,7 @@ export function FoundingMap({
           {club.identityText}
         </p>
 
-        {!founded && (
+        {!founded && founder && (
           <>
             <div className="fm-step">
               <strong>1.</strong> Click the 🧭 Founding Group to select it.
@@ -143,12 +145,12 @@ export function FoundingMap({
             <div className="fm-moves">
               Moves remaining:{" "}
               <strong>
-                {fm.movesRemaining} / {fm.movesPerTurn}
+                {founder.movesRemaining} / {founder.movesPerTurn}
               </strong>
-              {!fm.selected && (
+              {!selected && (
                 <span className="faint"> · select the Founding Group first</span>
               )}
-              {fm.selected && fm.movesRemaining === 0 && (
+              {selected && founder.movesRemaining === 0 && (
                 <span className="faint"> · end the founding turn for more</span>
               )}
             </div>
@@ -156,7 +158,7 @@ export function FoundingMap({
             <button
               className="btn btn-block"
               style={{ marginBottom: 10 }}
-              disabled={fm.movesRemaining === fm.movesPerTurn}
+              disabled={founder.movesRemaining === founder.movesPerTurn}
               onClick={() => dispatch({ type: "END_FOUNDING_TURN" })}
             >
               End Founding Turn (refill moves)
@@ -164,12 +166,12 @@ export function FoundingMap({
 
             <button
               className="btn btn-gold btn-lg btn-block"
-              disabled={!fm.selected}
+              disabled={!selected}
               onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
             >
               Found {club.name}
             </button>
-            {!fm.selected && (
+            {!selected && (
               <div className="faint" style={{ marginTop: 8, fontSize: 12 }}>
                 Select the Founding Group first.
               </div>
@@ -182,9 +184,8 @@ export function FoundingMap({
             <div className="era-banner" style={{ marginBottom: 14 }}>
               <h3>Club HQ established</h3>
               <div className="muted">
-                The Founding Group becomes your <strong>Club Leadership</strong>.
-                {" "}
-                {club.name} enters the Pond Hockey Era.
+                The Founding Group becomes your <strong>Club Leadership</strong>{" "}
+                and stays at Club HQ. {club.name} enters the Pond Hockey Era.
               </div>
             </div>
             <button

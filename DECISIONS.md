@@ -65,4 +65,32 @@ folder (logo/leader/background `.png`). This decouples folder names from club id
 ## D11 — Rival AI & multiplayer deferred
 No rival GM AI and no human multiplayer (hotseat/async) in this prototype. They
 need a dedicated design pass (opponent turns, diplomacy/contact, networking).
-See the TODO in `engine/gameReducer.ts`. No backend/auth/networking.
+Rivals exist only as lightweight RUMORS (see D15). See the TODO in
+`engine/gameReducer.ts`. No backend/auth/networking.
+
+## D12 — One persistent world (4X spine)
+The founding tile map IS the in-game world (`engine/world.ts`, `state.world`).
+The HQ tile, revealed fog, and region discoveries all persist from founding into
+Month 1+. The old percentage-positioned region-node map was removed; regions now
+sit on fixed tiles (`region.tile`) and render as overlays on the one tile grid.
+Still hand-authored (9×6), no procedural generation.
+
+## D13 — Region/tile states
+hidden → rumored → discovered → surveyed → influenced, with `contested` tracked
+separately as a rival-interest flag. Rendering order on a tile: terrain, then
+fog, then hockey-region/resource overlay. Detailed text lives in the side panel.
+
+## D14 — Scout unit + region influence
+The Scout unlocks once Scouting Reports is researched AND ≥1 facility exists. It
+has 3 movement points/month, moves to adjacent valid land/ice tiles (revealing
+fog), and can Survey a discovered region it stands on (→ surveyed, surfacing a
+resource/prospect/staff/relationship hint). "Establish Local Connection" on a
+surveyed region takes 2 months → `influenced`, granting +1 Reputation/month. One
+connection effort at a time. Local Hockey Search remains the early non-unit
+discovery action.
+
+## D15 — Rival pressure as rumors only
+From Month 6, once ≥2 regions are discovered, a discovered/surveyed/influenced
+region may be flagged `contested` with a log line naming a rival club (e.g.
+"A Helsinki Ice Crown scout was seen near Finnish Goalie Lakes."). No rival
+units, pathfinding, trade, diplomacy, or leader screens — pressure/tension only.

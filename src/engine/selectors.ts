@@ -35,6 +35,14 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
     }
   }
 
+  // Influenced regions each grant Reputation/month (Exploit phase).
+  const influenced = Object.values(state.discovery.regionStates).filter(
+    (s) => s === "influenced",
+  ).length;
+  if (influenced > 0) {
+    income = addResources(income, { reputation: influenced });
+  }
+
   return income;
 }
 
@@ -59,7 +67,9 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
 
 export function getDiscoveredRegionIds(state: GameState): string[] {
   return Object.entries(state.discovery.regionStates)
-    .filter(([, s]) => s === "discovered" || s === "surveyed")
+    .filter(
+      ([, s]) => s === "discovered" || s === "surveyed" || s === "influenced",
+    )
     .map(([id]) => id);
 }
 

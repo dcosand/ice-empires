@@ -5,6 +5,9 @@ import { RESOURCE_LABELS } from "./resources";
 import { progressBuild } from "./buildSystem";
 import { progressResearch } from "./researchSystem";
 import { resolveDiscovery } from "./discoverySystem";
+import { progressConnection } from "./regionDevelopment";
+import { maybeRivalRumor } from "./rivalSystem";
+import { refreshScoutMoves } from "./scoutSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress } from "./eraSystem";
 import { makeLog } from "./log";
@@ -32,10 +35,13 @@ export function endMonth(state: GameState): GameState {
     incomeSummary(income),
   );
 
-  // 2-6. Systems.
+  // 2+. Systems — each contributes a readable world/club update.
   progressBuild(draft, push);
   progressResearch(draft, push);
-  resolveDiscovery(draft, push);
+  resolveDiscovery(draft, push); // Local Hockey Search reveals regions on the map
+  progressConnection(draft, push); // Establish Local Connection -> influenced
+  maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
+  refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);
 

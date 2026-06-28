@@ -11,7 +11,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["nontraditional", "warm-market", "unusual"],
     scoutReport: "The ice is expensive, but the believers are intense.",
     unusual: true,
-    map: { x: 39, y: 60 },
+    tile: { x: 3, y: 4 },
   },
   {
     id: "frozen-suburb",
@@ -23,7 +23,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["traditional", "grassroots"],
     scoutReport: "Every third garage has a net with no mesh.",
     unusual: false,
-    map: { x: 22, y: 38 },
+    tile: { x: 2, y: 2 },
   },
   {
     id: "maritime-grit-coast",
@@ -35,7 +35,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["traditional", "physical"],
     scoutReport: "The wind teaches board battles.",
     unusual: false,
-    map: { x: 60, y: 27 },
+    tile: { x: 6, y: 1 },
   },
   {
     id: "finnish-goalie-lakes",
@@ -47,7 +47,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["pipeline", "goalies", "unusual"],
     scoutReport: "Quiet kids who never let in soft ones.",
     unusual: true,
-    map: { x: 80, y: 20 },
+    tile: { x: 7, y: 0 },
   },
   {
     id: "prairie-rink-belt",
@@ -59,7 +59,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["traditional", "density"],
     scoutReport: "Every town has a rink and a grudge.",
     unusual: false,
-    map: { x: 46, y: 36 },
+    tile: { x: 5, y: 4 },
   },
   {
     id: "whl-frontier",
@@ -71,7 +71,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["pipeline", "physical"],
     scoutReport: "Long bus rides, heavy hits, and rumors of a power forward.",
     unusual: false,
-    map: { x: 17, y: 66 },
+    tile: { x: 1, y: 5 },
   },
   {
     id: "ncaa-campus-cluster",
@@ -83,7 +83,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["pipeline", "education"],
     scoutReport: "Some kids are choosing textbooks and one-timers.",
     unusual: false,
-    map: { x: 56, y: 58 },
+    tile: { x: 5, y: 5 },
   },
   {
     id: "ontario-prospect-basin",
@@ -96,7 +96,7 @@ export const REGIONS: RegionDef[] = [
     scoutReport:
       "There are too many players. That is both the problem and the opportunity.",
     unusual: false,
-    map: { x: 71, y: 50 },
+    tile: { x: 1, y: 1 },
   },
   {
     id: "baltic-mystery-ice",
@@ -109,7 +109,7 @@ export const REGIONS: RegionDef[] = [
     scoutReport:
       "The reports are inconsistent. That is usually where the fun begins.",
     unusual: true,
-    map: { x: 86, y: 38 },
+    tile: { x: 7, y: 2 },
   },
   {
     id: "swedish-development-coast",
@@ -121,7 +121,7 @@ export const REGIONS: RegionDef[] = [
     tags: ["pipeline", "modern"],
     scoutReport: "Everyone skates beautifully and says nothing dramatic.",
     unusual: false,
-    map: { x: 88, y: 64 },
+    tile: { x: 7, y: 4 },
   },
 ];
 

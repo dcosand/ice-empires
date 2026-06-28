@@ -47,7 +47,7 @@ export function Dashboard({
       <div className="strategy-grid">
         {/* Map-first: the world dominates the center/left */}
         <div className="map-col">
-          <WorldMap state={state} />
+          <WorldMap state={state} dispatch={dispatch} />
           <DiscoveryPanel state={state} dispatch={dispatch} />
         </div>
 

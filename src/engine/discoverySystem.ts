@@ -9,6 +9,17 @@ import type { PushLog } from "./turnContext";
 import { nextRandom } from "./rng";
 import { grantRandomCard } from "./cardSystem";
 import { hasUnlock } from "./researchSystem";
+import { addReveal } from "./world";
+
+// Reveal a region's tile (and its surroundings) on the persistent world map.
+function revealRegionTile(draft: GameState, region: RegionDef): void {
+  if (!draft.world) return;
+  draft.world.revealed = addReveal(
+    draft.world.revealed,
+    region.tile.x,
+    region.tile.y,
+  );
+}
 
 export function selectDiscoveryPriority(
   state: GameState,
@@ -31,6 +42,7 @@ function hiddenRegions(draft: GameState, unusualOnly = false): RegionDef[] {
 // Reveal a region as "discovered", apply yields + Arizona nontraditional bonus.
 function revealRegion(draft: GameState, region: RegionDef, push: PushLog): void {
   draft.discovery.regionStates[region.id] = "discovered";
+  revealRegionTile(draft, region);
   draft.resources = addResources(draft.resources, region.potentialYields);
 
   push(
@@ -151,6 +163,7 @@ function revealClue(draft: GameState, push: PushLog): void {
   }
   const region = stillHidden[0];
   draft.discovery.regionStates[region.id] = "rumored";
+  revealRegionTile(draft, region);
   push(
     "discovery",
     "A rumor takes shape",

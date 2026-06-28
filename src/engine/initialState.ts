@@ -15,7 +15,7 @@ export function createInitialState(): GameState {
     eraId: PUND_HOCKEY_ERA_ID,
     nextEraUnlocked: false,
     selectedClubId: null,
-    foundingMap: null,
+    world: null,
     club: null,
     resources: { ...EMPTY_RESOURCES },
     facilities: [],
@@ -25,6 +25,8 @@ export function createInitialState(): GameState {
     discovery: {
       activePriorityId: DEFAULT_DISCOVERY_PRIORITY,
       regionStates: {},
+      contested: [],
+      connection: null,
     },
     cards: [],
     eventLog: [],

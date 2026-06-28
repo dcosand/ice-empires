@@ -1473,3 +1473,84 @@ button {
 .cc-portrait {
   height: 320px;
 }
+
+/* =========================================================================
+   v7 — unified world map (play phase): scout, regions, influence, contested
+   ========================================================================= */
+.worldmap-grid {
+  --tile: 58px;
+  margin-bottom: 12px;
+}
+@media (max-width: 1100px) {
+  .worldmap-grid {
+    --tile: 46px;
+  }
+}
+
+/* region + unit overlays sit on top of the terrain tile */
+.fm-tile .tile-region {
+  position: absolute;
+  top: 1px;
+  right: 3px;
+  font-size: 13px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+}
+.fm-tile .tile-contested {
+  position: absolute;
+  bottom: 1px;
+  right: 3px;
+  font-size: 12px;
+  line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.9));
+}
+.fm-tile .tile-hq,
+.fm-tile .tile-scout {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.85));
+}
+.fm-tile .tile-hq {
+  font-size: 26px;
+}
+.fm-tile .tile-scout {
+  font-size: 22px;
+}
+.fm-tile.scout-selected {
+  border-color: var(--accent);
+  box-shadow: inset 0 0 0 2px var(--accent), 0 0 12px rgba(56, 189, 248, 0.5);
+}
+
+/* scout status / recruit bar */
+.scout-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2);
+  padding: 8px 12px;
+  margin-bottom: 12px;
+  font-size: 13px;
+}
+.scout-bar.locked {
+  justify-content: flex-start;
+  color: var(--text-faint);
+}
+
+/* region detail actions */
+.detail-actions {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.influenced-note {
+  color: var(--gold);
+  font-size: 13px;
+}

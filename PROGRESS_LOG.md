@@ -1,5 +1,25 @@
 # Ice Empires — Progress Log
 
+## 2026-06-27 — 4X spine pass
+Unifies the founding map and the in-game map into one persistent world and adds
+the Explore→Expand→Exploit→Compete spine. Engine validated with a headless
+end-to-end simulation (founding → discovery → scout → survey → influence → rival
+rumor) — all core assertions pass.
+- **Persistent world** (`engine/world.ts`, `state.world`): founding tile map is
+  now the Month 1+ world. HQ tile, fog, and discoveries persist. Regions moved
+  onto fixed tiles (`region.tile`); the old node map was removed. New `WorldMap`
+  renders one interactive tile grid with HQ, scout, and region/contested overlays.
+- **Region states**: hidden/rumored/discovered/surveyed/influenced + contested;
+  detail in the side panel, overlays on tiles.
+- **Scout unit** (`engine/scoutSystem.ts`): unlocks after Scouting Reports + a
+  facility; 3 MP/month; moves + reveals fog; Surveys discovered regions (hints).
+- **Establish Local Connection** (`engine/regionDevelopment.ts`): 2-month effort
+  on a surveyed region → influenced (+1 Reputation/month).
+- **Rival rumors** (`engine/rivalSystem.ts`): from Month 6, marks known regions
+  contested with rival-club log lines. No rival AI/units/diplomacy.
+- Monthly resolver now runs connection progress, rival rumors, and scout refresh;
+  every month yields a meaningful world update. Decisions D12–D15 recorded.
+
 ## 2026-06-27 — v4: turn discipline, founding movement, club assets
 - **Founding movement points**: Founding Group gets 2 moves/turn; each move to an
   adjacent valid land tile costs 1; water impassable; only valid moves highlight.

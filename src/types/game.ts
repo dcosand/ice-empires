@@ -108,11 +108,14 @@ export type ActiveResearch = {
 // Regions (discovery)
 // ---------------------------------------------------------------------------
 
+// Region/tile lifecycle. `contested` is tracked separately (a rival-interest
+// flag that can overlay discovered/surveyed/influenced regions).
 export type DiscoveryStateValue =
   | "hidden"
   | "rumored"
   | "discovered"
-  | "surveyed";
+  | "surveyed"
+  | "influenced";
 
 export type RegionDef = {
   id: string;
@@ -124,9 +127,8 @@ export type RegionDef = {
   tags: string[];
   scoutReport: string;
   unusual: boolean;
-  // Fixed position on the stylized world map, as percentages (0-100) of the
-  // map area. Not a real tile grid — just a hand-placed layout.
-  map: { x: number; y: number };
+  // The tile this region sits on in the persistent world grid.
+  tile: { x: number; y: number };
 };
 
 // Early-game "Local Hockey Search" options. Deliberately informal — the club
@@ -146,10 +148,20 @@ export type DiscoveryPriorityDef = {
   flavor: string;
 };
 
+// An in-progress "Establish Local Connection" toward a surveyed region.
+export type RegionConnection = {
+  regionId: string;
+  monthsRemaining: number;
+};
+
 export type DiscoveryState = {
   activePriorityId: DiscoveryPriorityId;
   // region id -> current discovery state (regions absent are "hidden")
   regionStates: Record<string, DiscoveryStateValue>;
+  // region ids flagged with rival interest
+  contested: string[];
+  // the single active local-connection effort, if any
+  connection: RegionConnection | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -226,28 +238,37 @@ export type EraRequirement = {
 };
 
 // ---------------------------------------------------------------------------
-// Founding map (pre-club tile layer)
+// Persistent world map (founding tile map IS the in-game world)
 // ---------------------------------------------------------------------------
 
-export type FoundingTerrain = "desert" | "ice" | "plains" | "water";
+export type WorldTerrain = "desert" | "ice" | "plains" | "water";
 
-export type FoundingTile = {
+export type WorldTile = {
   x: number;
   y: number;
-  terrain: FoundingTerrain;
+  terrain: WorldTerrain;
   valid: boolean; // can be entered / founded on (water is not)
 };
 
-export type FoundingMapState = {
+// A movable unit on the world (the Founding Group before founding, the Scout
+// after it unlocks).
+export type WorldUnit = {
+  x: number;
+  y: number;
+  movesPerTurn: number;
+  movesRemaining: number;
+};
+
+export type WorldState = {
   width: number;
   height: number;
-  tiles: FoundingTile[]; // flat, length width*height
-  unit: { x: number; y: number }; // Founding Group position
-  selected: boolean;
-  revealed: string[]; // "x,y" keys revealed from the fog
-  movesPerTurn: number; // movement points granted each founding turn
-  movesRemaining: number; // movement points left this founding turn
-  founded: { x: number; y: number } | null; // HQ tile once founded
+  tiles: WorldTile[]; // flat, length width*height
+  revealed: string[]; // "x,y" keys revealed from the fog (persists into play)
+  hqTile: { x: number; y: number } | null; // Club HQ tile, set at founding
+  founder: WorldUnit | null; // Founding Group; null after founding
+  founderSelected: boolean; // founding-phase selection
+  scout: WorldUnit | null; // null until the Scout is recruited
+  scoutSelected: boolean; // play-phase scout selection
 };
 
 // ---------------------------------------------------------------------------
@@ -261,7 +282,7 @@ export type GameState = {
   eraId: string;
   nextEraUnlocked: boolean;
   selectedClubId: string | null;
-  foundingMap: FoundingMapState | null;
+  world: WorldState | null;
   club: ClubDef | null;
   resources: ResourceSet;
   facilities: string[]; // completed facility ids
@@ -290,5 +311,10 @@ export type GameAction =
   | { type: "SELECT_BUILD"; facilityId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
+  | { type: "RECRUIT_SCOUT" }
+  | { type: "SELECT_SCOUT" }
+  | { type: "MOVE_SCOUT"; x: number; y: number }
+  | { type: "SURVEY_REGION"; regionId: string }
+  | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }
   | { type: "RESTART" };
