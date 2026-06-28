@@ -848,6 +848,7 @@ export function IsoWorldMap({
     () => null,
   );
   const keyMoveRef = useRef<(dx: number, dy: number) => void>(() => {});
+  const rightClickRef = useRef<(gx: number, gy: number) => void>(() => {});
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
@@ -920,20 +921,43 @@ export function IsoWorldMap({
       return;
     }
 
-    // Clicking the HQ tile opens the Club HQ screen (unless the scout is being
-    // moved onto it, handled above).
-    if (w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy) {
+    const scoutHere = !!scout && scout.x === gx && scout.y === gy;
+    const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
+
+    // Civ-style tile cycling: a unit standing on the tile takes selection
+    // priority, so clicking the founding-club tile picks up the Scout that lives
+    // there rather than jumping straight to the Club HQ screen. Clicking again
+    // (once the Scout is already selected) falls through to open HQ. Right-click
+    // opens HQ directly without disturbing the unit (see endDrag).
+    if (scoutHere && !w.scoutSelected) {
+      dispatch({ type: "SELECT_SCOUT" });
+      setSelectedKey(key);
+      return;
+    }
+
+    if (hqHere) {
       setSelectedKey(key);
       onOpenHQ?.();
       return;
     }
 
-    if (scout && scout.x === gx && scout.y === gy) {
+    if (scoutHere) {
       dispatch({ type: "SELECT_SCOUT" });
       setSelectedKey(key);
       return;
     }
     setSelectedKey(key);
+  };
+
+  // Right-click on the founding-club tile opens the Club HQ screen directly,
+  // even when a unit is parked there — the deliberate "I really want HQ" gesture.
+  rightClickRef.current = (gx: number, gy: number) => {
+    const w = state.world;
+    if (!w || !w.hqTile) return;
+    if (w.hqTile.x === gx && w.hqTile.y === gy) {
+      setSelectedKey(tileKey(gx, gy));
+      onOpenHQ?.();
+    }
   };
 
   // Always-fresh keyboard mover. (dx, dy) is a grid step; the selected unit
@@ -1048,15 +1072,22 @@ export function IsoWorldMap({
           last.x = e.global.x;
           last.y = e.global.y;
         });
-        const endDrag = (e: { global: { x: number; y: number } }) => {
+        const endDrag = (e: { global: { x: number; y: number }; button?: number }) => {
           if (down && !moved) {
             const lp = layer.toLocal({ x: e.global.x, y: e.global.y });
             const hit = pickRef.current(lp.x, lp.y);
-            if (hit) clickRef.current(hit.gx, hit.gy);
+            if (hit) {
+              // button 2 == right-click: open HQ directly; anything else selects.
+              if (e.button === 2) rightClickRef.current(hit.gx, hit.gy);
+              else clickRef.current(hit.gx, hit.gy);
+            }
           }
           down = false;
         };
         app.stage.on("pointerup", endDrag);
+        // Don't let the browser context menu pop on right-click — we use the
+        // right button to open HQ.
+        canvasEl.addEventListener("contextmenu", (e) => e.preventDefault());
         app.stage.on("pointerupoutside", () => {
           down = false;
         });

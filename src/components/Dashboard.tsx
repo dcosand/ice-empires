@@ -7,7 +7,6 @@ import { FACILITIES_BY_ID } from "../data/facilities";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
-import { ResourceBar } from "./ResourceBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
 import { ClubHQScreen } from "./ClubHQScreen";
@@ -71,10 +70,6 @@ export function Dashboard({
           are waiting.
         </div>
       )}
-
-      <div className="map-hud">
-        <ResourceBar state={state} />
-      </div>
 
       <div className="map-stage">
         <IsoWorldMap

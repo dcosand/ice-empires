@@ -94,11 +94,18 @@ export function createWorld(seed = Date.now()): WorldState {
     }
   }
 
-  // Keep the opening tile and its immediate choices playable.
+  // Keep the opening tile and its immediate choices playable: the founding unit
+  // must never spawn (or be able to step onto its first tiles) in the ocean or on
+  // an impassable mountain. Convert any such tile in the start neighborhood to
+  // plains so the founder always begins on passable terrain.
   for (const key of revealKeys(START.x, START.y)) {
     const [x, y] = key.split(",").map(Number);
     const tile = tiles[y * WORLD_WIDTH + x];
-    if (tile?.terrain === "water" || tile?.feature === "lake") {
+    if (
+      tile?.terrain === "water" ||
+      tile?.terrain === "mountain" ||
+      tile?.feature === "lake"
+    ) {
       tiles[y * WORLD_WIDTH + x] = {
         ...tile,
         terrain: "plains",
