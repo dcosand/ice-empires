@@ -11,6 +11,7 @@ import type {
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import type { ClubDef } from "../types/game";
+import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
 import {
   moveableTilesFor,
@@ -1216,8 +1217,125 @@ export function IsoWorldMap({
           </div>
         </div>
       </div>
-      <div ref={hostRef} className="iso-canvas" />
+      <div className="iso-stage">
+        <div ref={hostRef} className="iso-canvas" />
+        <UnitOverlay state={state} dispatch={dispatch} />
+      </div>
       <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
+    </div>
+  );
+}
+
+// ---- Selected-unit overlay (floats over the lower-right of the map) -------
+// Civ-style: when a unit is active, its portrait, movement, and contextual
+// orders sit on the map itself rather than only in a panel beneath it.
+function UnitOverlay({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const world = state.world;
+  if (!world) return null;
+
+  const leaderSelected = world.founderSelected && !!world.founder && !world.hqTile;
+  const scoutSelected = world.scoutSelected && !!world.scout;
+  if (!leaderSelected && !scoutSelected) return null;
+
+  const isLeader = leaderSelected;
+  const unit = isLeader ? world.founder! : world.scout!;
+  const club = getActiveClub(state);
+  const name = isLeader ? "Leader" : "Scout";
+  const role = isLeader ? "Founding Group" : "Exploration";
+  const outOfMoves = unit.movesRemaining <= 0;
+
+  // Scout field orders are tied to the tile the unit is standing on.
+  const surveyId = !isLeader ? surveyableRegionId(state) : null;
+  const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
+  const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
+  const connecting =
+    !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
+  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
+
+  return (
+    <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
+      <div className={`unit-portrait ${isLeader ? "is-leader" : "is-scout"}`}>
+        {isLeader && club ? (
+          <img
+            src={clubAsset(club, "leader")}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <ItemArt kind="unit" id="pond-scout" />
+        )}
+      </div>
+      <div className="unit-body">
+        <div className="unit-head">
+          <span className="unit-name">{name}</span>
+          <span className="unit-role">{role}</span>
+        </div>
+        <div className={`unit-moves${outOfMoves ? " spent" : ""}`}>
+          <span className="um-pip" aria-hidden="true" />
+          <strong>
+            {unit.movesRemaining}/{unit.movesPerTurn}
+          </strong>
+          <span className="um-label">Moves</span>
+        </div>
+        <div className="unit-orders">
+          {isLeader && club && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
+            >
+              Found {shortClubLabel(club)} Here
+            </button>
+          )}
+          {surveyId && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
+            >
+              Survey Region
+            </button>
+          )}
+          {canConnect && scoutRegionId && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "ESTABLISH_CONNECTION", regionId: scoutRegionId })
+              }
+            >
+              Establish Connection ({CONNECTION_MONTHS} mo)
+            </button>
+          )}
+          {!isLeader && (
+            <button
+              className="btn btn-block"
+              onClick={() => dispatch({ type: "SELECT_SCOUT" })}
+            >
+              Deselect
+            </button>
+          )}
+        </div>
+        {connecting ? (
+          <div className="unit-hint muted">
+            Building local ties — {state.discovery.connection?.monthsRemaining} mo to
+            go.
+          </div>
+        ) : (
+          !hasOrder && (
+            <div className="unit-hint faint">
+              {outOfMoves
+                ? "Out of moves this month."
+                : "Click a highlighted tile or use the arrow keys to move."}
+            </div>
+          )
+        )}
+      </div>
     </div>
   );
 }
@@ -1306,23 +1424,18 @@ function MapControls({
           </div>
           <div className="detail-actions">
             {canSurvey && (
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() => dispatch({ type: "SURVEY_REGION", regionId: region.id })}
-              >
-                Survey Region (Scout is here)
-              </button>
+              <div className="faint">
+                Scout is here — use <strong>Survey Region</strong> on the unit
+                panel.
+              </div>
             )}
             {rState === "discovered" && !canSurvey && (
               <div className="faint">Move your Scout onto this tile to survey it.</div>
             )}
-            {canConnect && (
-              <button
-                className="btn btn-gold btn-block"
-                onClick={() => dispatch({ type: "ESTABLISH_CONNECTION", regionId: region.id })}
-              >
-                Establish Local Connection ({CONNECTION_MONTHS} mo)
-              </button>
+            {rState === "surveyed" && !canConnect && !connecting && (
+              <div className="faint">
+                Surveyed — establish a local connection from the Scout's panel.
+              </div>
             )}
             {connecting && (
               <div className="muted">

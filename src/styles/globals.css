@@ -1678,6 +1678,127 @@ button {
   margin-top: 12px;
 }
 
+/* ---------- Selected-unit overlay (floats over the map) ---------- */
+.iso-stage {
+  position: relative;
+}
+.unit-overlay {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  z-index: 8;
+  display: flex;
+  gap: 12px;
+  width: min(330px, calc(100% - 32px));
+  padding: 12px;
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  background: rgba(10, 17, 26, 0.92);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+  animation: unit-overlay-in 0.14s ease-out;
+}
+@keyframes unit-overlay-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+.unit-portrait {
+  position: relative;
+  flex: 0 0 auto;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 50% 15%, #16314a 0%, #0a1622 100%);
+  border: 2.5px solid var(--accent);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.4) inset;
+}
+.unit-portrait.is-leader {
+  border-color: var(--gold);
+}
+.unit-portrait img,
+.unit-portrait .item-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.unit-portrait.is-leader img {
+  object-position: 50% 18%;
+}
+.unit-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.unit-head {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.unit-name {
+  font-size: 15px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--club-light, var(--text));
+}
+.unit-role {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.unit-moves {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--text);
+}
+.unit-moves .um-pip {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--good);
+  box-shadow: 0 0 6px var(--good);
+}
+.unit-moves.spent .um-pip {
+  background: var(--bad);
+  box-shadow: none;
+}
+.unit-moves .um-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-dim);
+}
+.unit-orders {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+.unit-orders .btn {
+  padding: 7px 10px;
+  font-size: 13px;
+}
+.unit-hint {
+  font-size: 12px;
+  line-height: 1.35;
+}
+@media (max-width: 760px) {
+  .unit-overlay {
+    right: 10px;
+    left: 10px;
+    bottom: 10px;
+    width: auto;
+  }
+}
+
 /* =========================================================================
    v9 — map-first command layout
    ========================================================================= */
