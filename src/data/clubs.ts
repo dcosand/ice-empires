@@ -31,6 +31,7 @@ export const arizonaMonsoon: ClubDef = {
     "Grow hockey where it was never supposed to exist — and earn Reputation for the unusual regions you uncover.",
   tagline: "Grow hockey where it was never supposed to exist.",
   accent: "#f2c14e",
+  palette: { primary: "#0b1f33", secondary: "#00a7b5", light: "#eaf4f7" },
   assetKey: "arizona",
 };
 
@@ -46,6 +47,7 @@ export const halifaxPrivateers: ClubDef = {
   foundingFlavor: "Toughness, board battles, and weather that does the coaching.",
   tagline: "Toughness, board battles, and weather that does the coaching.",
   accent: "#5fb0d0",
+  palette: { primary: "#16324f", secondary: "#4fa8a8", light: "#e8eef2" },
   assetKey: "halifax",
 };
 
@@ -61,6 +63,7 @@ export const helsinkiIceCrown: ClubDef = {
   foundingFlavor: "A nation of quiet, unbeatable netminders.",
   tagline: "A nation of quiet, unbeatable netminders.",
   accent: "#7dd3fc",
+  palette: { primary: "#11243b", secondary: "#7dc9e8", light: "#f2f7fa" },
   assetKey: "helsinki",
 };
 
@@ -76,6 +79,7 @@ export const saskatoonIronHerd: ClubDef = {
   foundingFlavor: "Every town a rink, every rink a feeder system.",
   tagline: "Every town a rink, every rink a feeder system.",
   accent: "#d8a24a",
+  palette: { primary: "#2b3138", secondary: "#c8a65a", light: "#e9f1f4" },
   assetKey: "saskatoon",
 };
 
@@ -91,6 +95,7 @@ export const pragueLions: ClubDef = {
   foundingFlavor: "Beautiful skating, patient systems, dangerous depth.",
   tagline: "Beautiful skating, patient systems, dangerous depth.",
   accent: "#e0556b",
+  palette: { primary: "#7c2434", secondary: "#c9a24d", light: "#e7e1d6" },
   assetKey: "prague",
 };
 
@@ -106,6 +111,7 @@ export const minnesotaNova: ClubDef = {
   foundingFlavor: "Deep traditions and a pipeline that never freezes over.",
   tagline: "Old hockey gravity, new northern light.",
   accent: "#6fae8f",
+  palette: { primary: "#1f4b4a", secondary: "#4c7fa6", light: "#eef4f6" },
   assetKey: "minnesota", // folder is "minnesota", not the club id
 };
 

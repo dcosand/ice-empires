@@ -10,7 +10,7 @@ import { TopBar } from "./TopBar";
 import { ResourceBar } from "./ResourceBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
-import { ClubHQPanel } from "./ClubHQPanel";
+import { ClubHQScreen } from "./ClubHQScreen";
 import { ProductionPanel } from "./ProductionPanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
@@ -50,7 +50,11 @@ export function Dashboard({
 
   return (
     <div className="dashboard dashboard-map-mode">
-      <TopBar state={state} dispatch={dispatch} />
+      <TopBar
+        state={state}
+        dispatch={dispatch}
+        onOpenHQ={() => setOverlay("club")}
+      />
 
       {state.nextEraUnlocked && (
         <div className="era-banner">
@@ -73,22 +77,33 @@ export function Dashboard({
       </div>
 
       <div className="map-stage">
-        <IsoWorldMap state={state} dispatch={dispatch} />
+        <IsoWorldMap
+          state={state}
+          dispatch={dispatch}
+          onOpenHQ={() => setOverlay("club")}
+        />
         <CommandRail state={state} dispatch={dispatch} open={setOverlay} />
       </div>
 
       <InfoDock state={state} open={setOverlay} />
 
-      {overlay && (
+      {overlay && overlay !== "club" && (
         <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
           {overlay === "build" && <ProductionPanel state={state} dispatch={dispatch} />}
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
-          {overlay === "club" && <ClubHQPanel state={state} />}
           {overlay === "cards" && <CardsPanel state={state} />}
           {overlay === "era" && <EraProgressPanel state={state} />}
           {overlay === "log" && <EventLog state={state} />}
         </TaskOverlay>
+      )}
+
+      {overlay === "club" && (
+        <ClubHQScreen
+          state={state}
+          dispatch={dispatch}
+          onClose={() => setOverlay(null)}
+        />
       )}
 
       {completion && (

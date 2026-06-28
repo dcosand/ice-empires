@@ -532,9 +532,11 @@ function mixColor(a: number, b: number, amt: number): number {
 export function IsoWorldMap({
   state,
   dispatch,
+  onOpenHQ,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
+  onOpenHQ?: () => void;
 }) {
   const activeClub = getActiveClub(state);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -574,6 +576,15 @@ export function IsoWorldMap({
       setSelectedKey(key);
       return;
     }
+
+    // Clicking the HQ tile opens the Club HQ screen (unless the scout is being
+    // moved onto it, handled above).
+    if (w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy) {
+      setSelectedKey(key);
+      onOpenHQ?.();
+      return;
+    }
+
     if (scout && scout.x === gx && scout.y === gy) {
       dispatch({ type: "SELECT_SCOUT" });
       setSelectedKey(key);

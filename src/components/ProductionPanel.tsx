@@ -15,7 +15,7 @@ import { getMonthlyIncome } from "../engine/selectors";
 import { ProgressBar } from "./ProgressBar";
 import { ItemArt } from "./ItemArt";
 
-type Tab = "facilities" | "units" | "locked";
+type Tab = "facilities" | "units";
 
 const RESOURCE_SHORT: Record<ResourceKey, string> = {
   budget: "Budget",
@@ -43,16 +43,16 @@ export function ProductionPanel({
   const active = state.activeProduction;
 
   const facilityItems = opts.facilities;
-  const unitItems = opts.units.filter((o) => o.status !== "locked");
-  const lockedItems = [...opts.facilities, ...opts.units].filter(
-    (o) => o.status === "locked",
+  // Show locked units disabled, in place, sorted after the available ones —
+  // no separate "locked" view.
+  const unitItems = [...opts.units].sort(
+    (a, b) => (a.status === "locked" ? 1 : 0) - (b.status === "locked" ? 1 : 0),
   );
 
   const monthsFor = (cost: number) =>
     opsPerMonth > 0 ? Math.max(1, Math.ceil(cost / opsPerMonth)) : Infinity;
 
-  const list =
-    tab === "facilities" ? facilityItems : tab === "units" ? unitItems : lockedItems;
+  const list = tab === "facilities" ? facilityItems : unitItems;
 
   return (
     <div className="panel production-panel">
@@ -83,7 +83,6 @@ export function ProductionPanel({
       <div className="prod-tabs">
         <TabButton label={`Facilities (${facilityItems.length})`} on={tab === "facilities"} onClick={() => setTab("facilities")} />
         <TabButton label={`Units (${unitItems.length})`} on={tab === "units"} onClick={() => setTab("units")} />
-        <TabButton label={`Locked (${lockedItems.length})`} on={tab === "locked"} onClick={() => setTab("locked")} />
       </div>
 
       <div className="prod-list">
@@ -98,13 +97,7 @@ export function ProductionPanel({
             }
           />
         ))}
-        {list.length === 0 && (
-          <div className="faint">
-            {tab === "locked"
-              ? "Nothing locked — every project is within reach."
-              : "Nothing here yet."}
-          </div>
-        )}
+        {list.length === 0 && <div className="faint">Nothing here yet.</div>}
       </div>
     </div>
   );

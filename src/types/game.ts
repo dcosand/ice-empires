@@ -26,6 +26,14 @@ export type Phase =
 // Club
 // ---------------------------------------------------------------------------
 
+// Club brand palette (from the club brand sheets). `primary` is the deep base
+// color, `secondary` the bright team color, `light` an off-white for text.
+export type ClubPalette = {
+  primary: string;
+  secondary: string;
+  light: string;
+};
+
 export type ClubDef = {
   id: string;
   name: string;
@@ -41,6 +49,8 @@ export type ClubDef = {
   tagline: string;
   // Club-specific accent color (hex) for light theming.
   accent: string;
+  // Fuller brand palette for richer theming (header bars, etc.).
+  palette: ClubPalette;
   // Folder under /public/assets/clubs/<assetKey>/ (logo/leader/background.png).
   // Kept separate from `id` so folder names need not match club ids exactly.
   assetKey: string;
