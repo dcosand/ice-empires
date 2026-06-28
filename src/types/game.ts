@@ -306,6 +306,7 @@ export type GameState = {
   cards: CardDef[];
   eventLog: EventLogEntry[];
   rngSeed: number;
+  devRevealAll: boolean; // dev tool: render every tile regardless of fog of war
 };
 
 // ---------------------------------------------------------------------------
@@ -330,4 +331,9 @@ export type GameAction =
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }
-  | { type: "RESTART" };
+  | { type: "RESTART" }
+  // ---- dev tools (not part of normal play) ----
+  | { type: "DEV_RESET_TURN1" }
+  | { type: "DEV_TOGGLE_FACILITY"; facilityId: string }
+  | { type: "DEV_TOGGLE_RESEARCH"; techId: string }
+  | { type: "DEV_SET_REVEAL_ALL"; value: boolean };

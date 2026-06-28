@@ -7,6 +7,7 @@ import { FoundingScreen } from "./components/FoundingScreen";
 import { FoundingMap } from "./components/FoundingMap";
 import { Dashboard } from "./components/Dashboard";
 import { BackgroundMusic } from "./components/BackgroundMusic";
+import { DevPanel } from "./components/DevPanel";
 
 export function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
@@ -16,6 +17,8 @@ export function App() {
       {/* Mounted once so music persists across every screen. */}
       <BackgroundMusic />
       {renderScreen()}
+      {/* Dev tools — hidden until toggled with ⌘⇧. */}
+      <DevPanel state={state} dispatch={dispatch} />
     </>
   );
 

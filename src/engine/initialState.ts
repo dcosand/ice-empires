@@ -31,6 +31,7 @@ export function createInitialState(): GameState {
     cards: [],
     eventLog: [],
     rngSeed: 0,
+    devRevealAll: false,
   };
 }
 

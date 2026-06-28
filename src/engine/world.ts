@@ -127,34 +127,93 @@ export function createWorld(seed = Date.now()): WorldState {
   };
 }
 
-function generatedTerrain(x: number, y: number, seed: number): WorldTerrain {
-  const nx = x / (WORLD_WIDTH - 1);
-  const ny = y / (WORLD_HEIGHT - 1);
-  const continental = octaveNoise(x, y, seed);
-  const moisture = octaveNoise(x + 700, y - 300, seed ^ 0x9e3779b9);
-  const ridge = octaveNoise(x - 500, y + 900, seed + 2718);
-  const cold =
-    ny * 0.62 +
-    noise2d(Math.floor(x / 10), Math.floor(y / 10), seed + 77) * 0.38;
-  const elevation = continental * 0.72 + ridge * 0.28;
-  const edgeWater =
-    nx < 0.03 || nx > 0.97 || ny < 0.03 || ny > 0.97 ? 0.16 : 0;
+// ---- Map generation tunables ---------------------------------------------
+// Raise SEA_LEVEL for more ocean / smaller continents; lower it for more land.
+const SEA_LEVEL = 0.34; // continent field below this is open water
+const COAST_BAND = 0.06; // band just above sea level rendered as coast
+const EDGE_FALLOFF = 0.7; // how hard the map rim is pushed underwater (continents)
+const MOUNTAIN_RIDGE = 0.84; // ridged-noise level that becomes mountains
+const MOUNTAIN_INLAND = 0.5; // mountains only where the land field is this high
 
-  if (continental + edgeWater < 0.34) return "water";
-  if (continental + edgeWater < 0.42) return "coastal";
-  if (elevation > 0.73) return "mountain";
-  if (cold > 0.72 || (cold > 0.58 && moisture > 0.58)) return "ice";
-  if (cold < 0.32 && moisture > 0.62) return "tropical";
-  if (moisture < 0.28 && ny > 0.18) return "desert";
-  if (moisture < 0.42 && ny > 0.18) return "high-desert";
+// Low-frequency landmass field with a radial edge falloff. The big /34 octave
+// gathers land into a few broad masses (continents) rather than speckle, and the
+// distance-from-centre term sinks the map rim so continents sit in open ocean.
+// (Technique: Red Blob Games' island/elevation-minus-gradient shaping.)
+function continentField(x: number, y: number, seed: number): number {
+  const base =
+    smoothNoise(x / 34, y / 34, seed) * 0.6 +
+    smoothNoise(x / 16, y / 16, seed + 101) * 0.28 +
+    smoothNoise(x / 7, y / 7, seed + 211) * 0.12;
+  const dx = (x / (WORLD_WIDTH - 1)) * 2 - 1;
+  const dy = (y / (WORLD_HEIGHT - 1)) * 2 - 1;
+  const d = Math.min(1, Math.hypot(dx, dy) / Math.SQRT2); // 0 centre .. 1 corner
+  // Cubic falloff: interior barely touched, rim driven firmly underwater.
+  return base - Math.pow(d, 3) * EDGE_FALLOFF;
+}
+
+// Domain-warped, finer-grained moisture field (0 dry .. 1 wet). Warping the
+// sample point with a second noise breaks the straight, blocky biome bands that
+// plain thresholded noise produces, so wet/dry regions interlock organically.
+function moistureField(x: number, y: number, seed: number): number {
+  const wx = x + (smoothNoise(x / 20, y / 20, seed + 700) - 0.5) * 18;
+  const wy = y + (smoothNoise(x / 20, y / 20, seed + 900) - 0.5) * 18;
+  return (
+    smoothNoise(wx / 12, wy / 12, seed ^ 0x9e3779b9) * 0.7 +
+    smoothNoise(wx / 5, wy / 5, seed + 33) * 0.3
+  );
+}
+
+// Latitude-driven temperature (0 cold .. 1 hot): warm at the equator (mid map),
+// cold toward both poles, with noise so the bands aren't perfectly straight.
+function temperatureField(x: number, y: number, seed: number): number {
+  const ny = y / (WORLD_HEIGHT - 1);
+  const lat = Math.abs(ny - 0.5) * 2; // 0 equator .. 1 pole
+  const t =
+    1 - lat * 0.85 + (smoothNoise(x / 16, y / 16, seed + 77) - 0.5) * 0.32;
+  return Math.max(0, Math.min(1, t));
+}
+
+// Ridged noise (0..1, peaks along lines) so mountains form ranges, not blobs.
+function ridgeField(x: number, y: number, seed: number): number {
+  const n =
+    smoothNoise(x / 14, y / 14, seed + 2718) * 0.6 +
+    smoothNoise(x / 6, y / 6, seed + 2719) * 0.4;
+  return 1 - Math.abs(2 * n - 1);
+}
+
+// Whittaker-style biome lookup from temperature × moisture. A small matrix keeps
+// neighbours sensible (no tropical abutting ice) and is easy to tune.
+function biome(temp: number, moist: number): WorldTerrain {
+  if (temp < 0.25) return "ice"; // polar
+  if (temp > 0.7) {
+    // hot
+    if (moist > 0.55) return "tropical";
+    if (moist < 0.3) return "desert";
+    return "plains";
+  }
+  // temperate
+  if (moist < 0.25) return "desert";
+  if (moist < 0.45) return "high-desert";
   return "plains";
 }
 
-// A continuous height field, 0 (sea level) .. ~1.1 (high peaks). Built from the
-// same continental/ridge noise as the terrain so highlands cluster naturally,
-// plus a per-tile jitter so neighbours of the same terrain still rise and dip.
-// This is what gives the map its "z space": rolling plains, sunken basins,
-// towering, varied mountains.
+function generatedTerrain(x: number, y: number, seed: number): WorldTerrain {
+  const land = continentField(x, y, seed);
+  if (land < SEA_LEVEL) return "water";
+  if (land < SEA_LEVEL + COAST_BAND) return "coastal";
+
+  // Inland mountain ranges where ridged noise peaks on high ground.
+  if (ridgeField(x, y, seed) > MOUNTAIN_RIDGE && land > MOUNTAIN_INLAND) {
+    return "mountain";
+  }
+
+  return biome(temperatureField(x, y, seed), moistureField(x, y, seed));
+}
+
+// A continuous height field, 0 (sea level) .. ~1.1 (high peaks). Drives where
+// hills appear (elevated plains) and where standing water pools (basins). The
+// flat-slab renderer no longer raises the ground by this, but it still seeds the
+// terrain-feature logic, so it tracks the same continent/ridge fields.
 function generatedElevation(
   x: number,
   y: number,
@@ -162,10 +221,9 @@ function generatedElevation(
   feature: WorldFeature | undefined,
   seed: number,
 ): number {
-  const continental = octaveNoise(x, y, seed);
-  const ridge = octaveNoise(x - 500, y + 900, seed + 2718);
-  const base = continental * 0.72 + ridge * 0.28; // ~0..1
-  const jitter = (noise2d(x, y, seed + 5501) - 0.5) * 0.22;
+  const land = Math.max(0, continentField(x, y, seed)); // ~0..0.6
+  const ridge = ridgeField(x, y, seed);
+  const jitter = (noise2d(x, y, seed + 5501) - 0.5) * 0.18;
 
   let e: number;
   switch (terrain) {
@@ -173,27 +231,26 @@ function generatedElevation(
       e = 0;
       break;
     case "coastal":
-      e = 0.05 + base * 0.07;
+      e = 0.05 + land * 0.1;
       break;
     case "mountain":
-      // Tall and the most varied: sharp ridge noise drives real peaks.
-      e = 0.6 + ridge * 0.42 + Math.max(0, jitter);
+      e = 0.6 + ridge * 0.45 + Math.max(0, jitter);
       break;
     case "high-desert":
-      e = 0.36 + base * 0.32 + jitter; // elevated plateaus
+      e = 0.36 + land * 0.55 + jitter; // elevated plateaus
       break;
     case "ice":
-      e = 0.24 + base * 0.3 + jitter;
+      e = 0.24 + land * 0.5 + jitter;
       break;
     case "desert":
-      e = 0.14 + base * 0.22 + jitter;
+      e = 0.14 + land * 0.4 + jitter;
       break;
     case "tropical":
-      e = 0.1 + base * 0.22 + jitter;
+      e = 0.1 + land * 0.4 + jitter;
       break;
     case "plains":
     default:
-      e = 0.13 + base * 0.34 + jitter; // gentle rolling hills
+      e = 0.13 + land * 0.6 + jitter; // higher land reads as hills
       break;
   }
 
@@ -241,14 +298,6 @@ function isRiverTile(
     if (Math.abs(y - curveY) < 0.52) return true;
   }
   return false;
-}
-
-function octaveNoise(x: number, y: number, seed: number): number {
-  return (
-    smoothNoise(x / 18, y / 18, seed) * 0.55 +
-    smoothNoise(x / 8, y / 8, seed + 101) * 0.3 +
-    smoothNoise(x / 4, y / 4, seed + 211) * 0.15
-  );
 }
 
 function smoothNoise(x: number, y: number, seed: number): number {

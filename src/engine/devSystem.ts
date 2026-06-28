@@ -1,0 +1,52 @@
+import type { GameState } from "../types/game";
+import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
+
+// Dev tools — reachable only from the in-app dev panel, never from normal play.
+// They mutate state directly (bypassing costs / prerequisites) so a developer
+// can jump the game into any configuration for testing.
+
+// Reset the calendar to month 1 while keeping the founded club + generated world.
+// Clears all progress (facilities, research, active jobs, discovery) and reseeds
+// the club's starting resources, so it's a clean "turn 1" of the same game.
+export function devResetTurn1(state: GameState): GameState {
+  if (!state.club) return state;
+  return {
+    ...state,
+    month: 1,
+    resources: { ...state.club.startingResources },
+    facilities: [],
+    completedResearch: [],
+    activeBuild: null,
+    activeResearch: null,
+    discovery: {
+      activePriorityId: DEFAULT_DISCOVERY_PRIORITY,
+      regionStates: {},
+      contested: [],
+      connection: null,
+    },
+  };
+}
+
+export function devToggleFacility(state: GameState, facilityId: string): GameState {
+  const done = state.facilities.includes(facilityId);
+  return {
+    ...state,
+    facilities: done
+      ? state.facilities.filter((id) => id !== facilityId)
+      : [...state.facilities, facilityId],
+  };
+}
+
+export function devToggleResearch(state: GameState, techId: string): GameState {
+  const done = state.completedResearch.includes(techId);
+  return {
+    ...state,
+    completedResearch: done
+      ? state.completedResearch.filter((id) => id !== techId)
+      : [...state.completedResearch, techId],
+  };
+}
+
+export function devSetRevealAll(state: GameState, value: boolean): GameState {
+  return { ...state, devRevealAll: value };
+}

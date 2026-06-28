@@ -17,6 +17,12 @@ import {
 } from "./scoutSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
+import {
+  devResetTurn1,
+  devSetRevealAll,
+  devToggleFacility,
+  devToggleResearch,
+} from "./devSystem";
 
 // TODO (future design pass): Rival GMs / Rival AI and any human multiplayer
 // (hotseat or async) are intentionally NOT implemented. Rivals currently exist
@@ -93,6 +99,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "RESTART":
       return createInitialState();
+
+    case "DEV_RESET_TURN1":
+      return devResetTurn1(state);
+
+    case "DEV_TOGGLE_FACILITY":
+      return devToggleFacility(state, action.facilityId);
+
+    case "DEV_TOGGLE_RESEARCH":
+      return devToggleResearch(state, action.techId);
+
+    case "DEV_SET_REVEAL_ALL":
+      return devSetRevealAll(state, action.value);
 
     default:
       return state;
