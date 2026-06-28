@@ -1,6 +1,7 @@
 # Ice Empires — Data Model & Systems
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Suggested data/system architecture for coding agents.
 
 ---
@@ -46,7 +47,10 @@ type GameState = {
   activeBuild: ActiveBuild | null;
   activeResearch: ActiveResearch | null;
   discovery: DiscoveryState;
-  cards: GameCard[];
+  profiles: GameProfile[];
+  teamAttributes: TeamAttributes;
+  regionInfluence: RegionInfluenceState;
+  affiliates: AffiliateClub[];
   eventLog: GameEventLogEntry[];
   unlocks: UnlockState;
   victoryProgress: VictoryProgress;
@@ -165,62 +169,94 @@ Decision to make: should Hockey Knowledge be stored/spent or science-per-turn pr
 
 ---
 
-## 6. Region model
+## 6. Hockey region model
+
+Hockey Regions are neutral city-state-like ecosystems.
+
+They are not rival clubs. They are discoverable, scoutable, influenceable, contestable, and capable of producing players, staff, resources, and pipeline opportunities.
 
 ```ts
-type Region = {
+type HockeyRegion = {
   id: string;
   name: string;
   terrain: TerrainType;
-  discoveryState: "hidden" | "rumored" | "discovered" | "surveyed";
+  discoveryState: "hidden" | "terrain-discovered" | "region-identified" | "scouted" | "influenced" | "networked";
   hockeyResource?: HockeyResource;
   scoutingDifficulty: number;
+  scoutingCoverageByClub: Record<string, number>; // 0-100
+  recruitmentInfluenceByClub: Record<string, number>; // 0-100
   potentialYields: Partial<ResourceSet>;
+  playerOutputs: PlayerOutputProfile[];
+  staffOutputs?: StaffOutputProfile[];
+  outpostSlots?: RegionOutpostSlot[];
   tags: string[];
   scoutReport: string;
   unusual?: boolean;
   eventTableId?: string;
+};
+
+type PlayerOutputProfile = {
+  role: "forward" | "defense" | "goalie" | "depth" | "specialist";
+  ageRange: [number, number];
+  rarity: "common" | "uncommon" | "rare" | "legendary";
+  traitHints: string[];
 };
 ```
 
 Example:
 
 ```ts
-const desertExpansionZone = {
-  id: "desert-expansion-zone",
-  name: "Desert Expansion Zone",
-  terrain: "dryland",
+const frozenSuburb: HockeyRegion = {
+  id: "frozen-suburb",
+  name: "Frozen Suburb",
+  terrain: "urban-winter",
   discoveryState: "hidden",
   hockeyResource: {
-    id: "untapped-fanbase",
-    name: "Untapped Fanbase",
+    id: "local-rink-culture",
+    name: "Local Rink Culture",
     effect: { reputation: 1 },
   },
   scoutingDifficulty: 2,
+  scoutingCoverageByClub: {},
+  recruitmentInfluenceByClub: {},
   potentialYields: { reputation: 1 },
-  tags: ["nontraditional", "warm-market", "unusual"],
-  scoutReport: "The ice is expensive, but the believers are intense.",
-  unusual: true,
+  playerOutputs: [
+    { role: "forward", ageRange: [18, 23], rarity: "common", traitHints: ["local", "high-motor"] },
+    { role: "defense", ageRange: [18, 24], rarity: "uncommon", traitHints: ["responsible", "physical"] },
+    { role: "goalie", ageRange: [18, 25], rarity: "rare", traitHints: ["late-bloomer"] },
+  ],
+  staffOutputs: [{ role: "local-coach", rarity: "common" }],
+  tags: ["suburban", "rink-density", "reliable"],
+  scoutReport: "Every third garage has a net with no mesh.",
 };
 ```
 
----
+## 7. People/profile model
 
-## 7. Card model
+Avoid collectible-card language in product/design docs and UI copy.
+
+Use:
+
+- StaffProfile
+- ProspectProfile
+- PlayerProfile
+- RegionReport
+- ScoutReport
+- Dossier
 
 ```ts
-type GameCard = StaffCard | ProspectCard | PlayerCard | RegionBonusCard;
+type GameProfile = StaffProfile | ProspectProfile | PlayerProfile | RegionReport | YouthCohort;
 
-type StaffCard = {
+type StaffProfile = {
   type: "staff";
   id: string;
   name: string;
   role: string;
-  effects: CardEffect[];
+  effects: ProfileEffect[];
   flavor: string;
 };
 
-type ProspectCard = {
+type ProspectProfile = {
   type: "prospect";
   id: string;
   name: string;
@@ -229,16 +265,105 @@ type ProspectCard = {
   currentAbility: number | "unknown";
   potentialRange: [number, number];
   scoutingConfidence: number;
+  recruitmentStatus: "unknown" | "interested" | "committed" | "rival-leaning" | "signed";
   developmentRisk: "low" | "medium" | "high" | "unknown";
   traits: string[];
   regionId?: string;
+  rivalInterest?: string[];
+  flavor: string;
+};
+
+type PlayerProfile = ProspectProfile & {
+  type: "player";
+  rosterStatus: "main-roster" | "depth" | "affiliate" | "rights-held" | "injured";
+  teamAttributeContributions: Partial<TeamAttributes>;
+};
+
+type YouthCohort = {
+  type: "youth-cohort";
+  id: string;
+  regionId?: string;
+  ageRange: [number, number];
+  size: number;
+  developmentFocus?: keyof TeamAttributes;
+  maturityTurnsRemaining: number;
   flavor: string;
 };
 ```
 
----
+### Player aging rule
 
-## 8. Event model
+Because 1 turn = 1 month, individual teenagers can take years to become playable.
+
+Early eras should focus on adult amateurs and 18–23-year-old local players. Younger talent should be represented as Youth Cohorts until Scouting Network / Draft/Rights systems are unlocked.
+
+## 8. Team attributes, recruitment, and affiliates
+
+### TeamAttributes
+
+```ts
+type TeamAttributes = {
+  skating: number;
+  puckSkill: number;
+  scoring: number;
+  defense: number;
+  goaltending: number;
+  physicality: number;
+  tactics: number;
+  chemistry: number;
+  morale: number;
+  powerPlay?: number;
+  penaltyKill?: number;
+  transitionGame?: number;
+  possession?: number;
+  discipline?: number;
+  depth?: number;
+  injuryResilience?: number;
+};
+```
+
+Team strength is derived from Team Attributes, not stored as one generic visible currency.
+
+### ScoutingCoverage and RecruitmentInfluence
+
+```ts
+type RegionInfluenceState = {
+  byRegionId: Record<string, {
+    scoutingCoverageByClub: Record<string, number>;
+    recruitmentInfluenceByClub: Record<string, number>;
+    controllingPipelineClubId?: string;
+    contestedByClubIds: string[];
+  }>;
+};
+```
+
+Scouting Coverage reveals what is there. Recruitment Influence converts the region into a pipeline.
+
+### Affiliates
+
+```ts
+type AffiliateClub = {
+  id: string;
+  name: string;
+  regionId?: string;
+  level: "informal" | "junior" | "minor" | "farm" | "global";
+  developmentSlots: number;
+  activePlayerIds: string[];
+  monthlyEffects: Partial<TeamAttributes & ResourceSet>;
+  unlockedByTechId?: string;
+};
+```
+
+Affiliate progression:
+
+- Club Formation: informal youth clinic / local development nights.
+- Regional League: partner club or shared practice relationship.
+- Scouting Network: junior/minor affiliate level 1.
+- Draft/Rights: formal prospect assignment.
+- Professionalization: full farm system.
+- Dynasty: global affiliate network.
+
+## 9. Event model
 
 ```ts
 type GameEvent = {
@@ -277,7 +402,7 @@ Effect examples:
 
 ---
 
-## 9. Reducer actions
+## 10. Reducer actions
 
 ```ts
 type GameAction =
@@ -286,13 +411,15 @@ type GameAction =
   | { type: "SELECT_BUILD"; facilityId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: string }
+  | { type: "ASSIGN_UNIT_TO_REGION"; unitId: string; regionId: string }
+  | { type: "ESTABLISH_RECRUITMENT_INFLUENCE"; regionId: string }
   | { type: "END_MONTH" }
   | { type: "DISMISS_MODAL" };
 ```
 
 ---
 
-## 10. End-month resolver
+## 11. End-month resolver
 
 ```ts
 function endMonth(state: GameState): GameState {
@@ -307,6 +434,9 @@ function endMonth(state: GameState): GameState {
   progressBuild(next);
   progressResearch(next);
   resolveDiscovery(next);
+  updateScoutingCoverage(next);
+  updateRecruitmentInfluence(next);
+  updateTeamAttributes(next);
   triggerMonthlyEvent(next);
   checkEraProgress(next);
 
@@ -322,7 +452,7 @@ Important:
 
 ---
 
-## 11. Build system
+## 12. Build system
 
 Flow:
 
@@ -337,7 +467,7 @@ Recommendation: pay cost upfront in first prototype.
 
 ---
 
-## 12. Research system
+## 13. Research system
 
 Flow:
 
@@ -350,7 +480,7 @@ Decide whether Hockey Knowledge is stored or science-per-turn and record in `DEC
 
 ---
 
-## 13. Discovery system
+## 14. Discovery system
 
 First 12 Months uses region cards.
 
@@ -375,7 +505,7 @@ Arizona Monsoon bonus:
 
 ---
 
-## 14. Era system
+## 15. Era system
 
 Club Formation Era requirements:
 
@@ -395,7 +525,7 @@ Do not implement full Club Formation Era yet.
 
 ---
 
-## 15. Selectors
+## 16. Selectors
 
 Useful derived selectors:
 
@@ -403,6 +533,11 @@ Useful derived selectors:
 - `getAvailableFacilities(state)`
 - `getAvailableResearch(state)`
 - `getDiscoveredRegions(state)`
+- `getHockeyRegionReports(state)`
+- `getScoutingCoverage(state, regionId)`
+- `getRecruitmentInfluence(state, regionId, clubId)`
+- `getTeamAttributes(state)`
+- `getAffiliateSlots(state)`
 - `getEraProgress(state)`
 - `getActiveBuildProgress(state)`
 - `getActiveResearchProgress(state)`
@@ -410,14 +545,26 @@ Useful derived selectors:
 
 ---
 
-## 16. Decisions to record
+## 17. Decisions to record
 
 Create `DECISIONS.md` and record:
 
 - Is Hockey Knowledge stored or science-per-turn?
 - Are build costs paid upfront?
 - Are discovery results random or deterministic?
-- Are cards unique?
+- Are profiles unique?
 - Does Month 12 end automatically or continue?
 - What counts as “recruited”?
 - How do facility effects stack?
+
+
+## 18. v0.2 implementation guardrails
+
+For the First 12 Months prototype, it is acceptable to simplify:
+
+- Region reports can be displayed as UI panels without true map movement.
+- Recruitment Influence can be a placeholder value or future-facing field.
+- Team Attributes can start with only Skating, Puck Skill, Goaltending, Chemistry, and Morale.
+- Affiliates should exist in the model but should not be playable until later eras.
+
+Do not introduce collectible-card mechanics.

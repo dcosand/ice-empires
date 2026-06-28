@@ -1,6 +1,7 @@
 # Ice Empires — Visual & Art Direction
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Guide look/feel while preventing visual polish from distracting from gameplay validation.
 
 ---
@@ -53,7 +54,7 @@ Use:
 - Old barns
 - New development centers
 - Map pins
-- Prospect cards
+- Prospect dossiers
 - Rival GM portraits
 
 Avoid:
@@ -67,7 +68,7 @@ Avoid:
 
 Use:
 
-- Cards
+- Dossier/report panels
 - Panels
 - Icons
 - Progress bars
@@ -241,11 +242,11 @@ Visual archetypes:
 
 ---
 
-## 8. Card art direction
+## 8. Dossier/report art direction
 
-### Prospect cards
+### Prospect dossiers
 
-Feel like scouting reports with card-game clarity.
+Feel like scouting reports with board-game clarity, not collectible sports cards.
 
 Include:
 
@@ -257,7 +258,7 @@ Include:
 - Traits
 - Flavor report
 
-### Staff cards
+### Staff profiles
 
 Include:
 
@@ -266,7 +267,7 @@ Include:
 - Monthly effect
 - Personality/flavor
 
-### Region cards
+### Region reports
 
 Include:
 
@@ -302,7 +303,7 @@ Avoid:
 Early:
 
 - Resource ticks
-- Card reveals
+- Dossier/report reveals
 - Month transition
 - Fog reveal
 - Rival GM popup entrance
@@ -354,10 +355,35 @@ Create a Civ-style rival GM portrait for a fictional hockey strategy game. The c
 
 1. Dashboard readability
 2. Arizona Monsoon identity
-3. Region/prospect card style
+3. Region/prospect dossier style
 4. Month transition/event polish
 5. Map terrain/fog style
 6. Rival GM leader-screen style
 7. Full art system
 
 Do not start with #7.
+
+
+## 14. v0.2 visual clarification
+
+Avoid collectible-card and pack-opening visual language.
+
+Good:
+
+- Scouting folders
+- Front-office boards
+- Dossiers
+- Clipboard reports
+- Region intel panels
+- Player profile sheets
+- Map pins
+- Staff files
+
+Avoid:
+
+- Ultimate Team-style cards
+- Foil/rarity visual treatment
+- Pack-opening suspense
+- Mobile card-battler composition
+
+The UI can still use rectangular panels for readability, but the fantasy should be “front office / scouting desk,” not “sports card collection.”

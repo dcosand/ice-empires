@@ -1,6 +1,7 @@
 # Ice Empires — Lovable Recovery Prompts
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Focused prompts to improve the first Lovable prototype without dumping the whole bible again.
 
 ---
@@ -165,7 +166,7 @@ When Arizona Monsoon HC is founded, show:
 - Facilities built
 - Current build project
 - Current research project
-- Staff/prospect cards
+- Staff/prospect profiles/reports
 - Era progress
 
 Add build project selection:
@@ -213,8 +214,8 @@ This view should show:
 - Build project panel
 - Research project panel
 - Discovery priority panel
-- Hidden/discovered region cards
-- Staff/prospect/player cards
+- Hidden/discovered hockey region reports
+- Staff/prospect/player profiles/reports
 - Event log
 - Era progress toward Club Formation Era
 - End Month button
@@ -224,8 +225,8 @@ The goal is to test whether the monthly decision loop is fun before investing in
 Acceptance criteria:
 - Player can complete 12 months.
 - Build/research/discovery all progress.
-- At least 4 region cards can be revealed.
-- At least 3 cards/events can appear.
+- At least 4 hockey region reports can be revealed.
+- At least 3 profiles/reports/events can appear.
 - Club Formation Era can unlock.
 
 Non-goals:
@@ -258,7 +259,7 @@ Improve:
 - Top bar readability
 - Club HQ panel
 - Event log
-- Cards
+- Profiles/reports
 - End Turn button
 - Arizona Monsoon identity
 
@@ -271,8 +272,43 @@ Do not:
 
 ---
 
-## 8. Recommendation
+## 8. Recovery Prompt 6 — Hockey regions as city-state ecosystems
 
-Use Lovable for visual direction, dashboards, cards, layout, and rival GM screen concepts.
+```text
+Revise the Ice Empires prototype so discovered regions feel like neutral hockey ecosystems, similar to Civ city-states, rather than simple terrain labels.
+
+A region such as Frozen Suburb should not be a rival club and should not be an individual player. It should be a player-producing hockey ecosystem.
+
+For each discovered hockey region, show:
+- Region name
+- Terrain / biome
+- Hockey resource
+- Scouting difficulty
+- Scouting Coverage
+- Recruitment Influence placeholder
+- Possible player outputs
+- Possible staff opportunities
+- Whether the region is uncontested or rival-contested
+- Short scout report
+
+Avoid collectible-card styling. Make these feel like scouting reports, map intel, or front-office dossiers.
+
+Acceptance criteria:
+- Regions feel more important than generic tiles.
+- Region details explain why the player would scout or recruit there.
+- Scouting Coverage and Recruitment Influence are visually distinct.
+- No full rival AI is required.
+- No full recruitment pipeline system is required yet.
+
+Non-goals:
+- Do not implement draft.
+- Do not implement minor affiliates yet.
+- Do not implement full region AI.
+- Do not add pack-opening/card collection mechanics.
+```
+
+## 9. Recommendation
+
+Use Lovable for visual direction, dashboards, profiles/reports, layout, and rival GM screen concepts.
 
 Use a coding agent for game logic, data model, turn resolution, and the First 12 Months prototype.

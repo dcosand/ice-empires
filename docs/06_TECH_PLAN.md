@@ -1,6 +1,7 @@
 # Ice Empires — Technical Plan
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Guide technical decisions for a first-time game builder using coding agents, with awareness of an Intel iMac on macOS Sonoma and possible later Steam/game-engine ambitions.
 
 ---
@@ -169,7 +170,8 @@ ice-empires/
       BuildPanel.tsx
       ResearchPanel.tsx
       DiscoveryPanel.tsx
-      CardsPanel.tsx
+      RegionReportPanel.tsx
+      ProfilesPanel.tsx
       EventLog.tsx
       EraProgressPanel.tsx
     data/
@@ -178,7 +180,11 @@ ice-empires/
       research.ts
       regions.ts
       events.ts
-      cards.ts
+      people.ts
+      playerProfiles.ts
+      teamAttributes.ts
+      regionInfluence.ts
+      affiliates.ts
       eras.ts
     engine/
       initialState.ts
@@ -215,8 +221,8 @@ Game content should live as data:
 
 - Facilities
 - Research techs
-- Regions
-- Cards
+- Hockey regions
+- Profiles/reports
 - Events
 - Eras
 
@@ -319,6 +325,7 @@ README.md
 GAME_BIBLE.md
 FIRST_12_MONTHS_PRD.md
 TECH_PLAN.md
+DATA_MODEL_AND_SYSTEMS.md
 TASKS.md
 PROGRESS_LOG.md
 DECISIONS.md
@@ -338,3 +345,26 @@ DECISIONS.md
 - Vite official guide: https://vite.dev/guide/
 
 Always re-check engine requirements before committing to a long-term engine path.
+
+
+## 15. v0.2 technical implications
+
+The data model should support the refined design without forcing the First 12 Months prototype to implement every system.
+
+Add or reserve structures for:
+
+- `HockeyRegion`
+- `ScoutingCoverage`
+- `RecruitmentInfluence`
+- `PlayerProfile`
+- `StaffProfile`
+- `YouthCohort`
+- `TeamAttributes`
+- `AffiliateClub`
+- `RegionOutpost`
+
+Do not build the full systems yet unless specifically prompted.
+
+Near-term implementation rule:
+
+> The First 12 Months prototype can display simplified region reports and player profiles, but the naming/data model should not imply collectible-card gameplay.

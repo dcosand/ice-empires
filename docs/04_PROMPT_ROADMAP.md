@@ -1,6 +1,7 @@
 # Ice Empires — Prompt Roadmap
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Use this as the prompt ladder for Lovable or coding agents. One prompt, one job.
 
 ---
@@ -112,7 +113,7 @@ Acceptance criteria:
 
 - Basic Skating, Organized Practice, Scouting Reports, Youth Development can complete.
 
-### Step 5 — Discovery/region cards
+### Step 5 — Discovery/region profiles/reports
 
 Goal: test exploration before map engine.
 
@@ -129,20 +130,24 @@ Non-goals:
 - No terrain rendering
 - No Catan roll
 
-### Step 6 — Staff/prospect/player cards
+### Step 6 — Staff/prospect/player profiles
 
-Goal: add hockey dopamine.
+Goal: add hockey dopamine without collectible-card vibes.
 
 Scope:
 
-- Card model
-- Card panel
-- Cards unlocked by events/build/research/discovery
-- Simple effects
+- Staff profiles
+- Prospect profiles
+- Player profiles
+- Scout reports
+- Profiles unlocked by events/build/research/discovery
+- Simple effects on resources, discovery, recruitment, or team attributes
 
 Non-goals:
 
-- No roster management
+- No pack opening
+- No collectible-card economy
+- No roster micromanagement
 - No contracts
 - No advanced development
 
@@ -178,7 +183,27 @@ Non-goals:
 - No logo rabbit hole
 - No gameplay rewrites
 
-### Step 9 — Scouting Map Prototype
+### Step 9 — Hockey Region / City-State Prototype
+
+Goal: make discovered regions feel like neutral player-producing ecosystems.
+
+Scope:
+
+- Hockey regions on the map
+- Region detail panel
+- Scouting Coverage value
+- Recruitment Influence value placeholder
+- Region outputs: player types, staff opportunities, resources
+- Region states: unknown, discovered, scouted, influenced, contested
+
+Non-goals:
+
+- No full rival AI
+- No full affiliate system
+- No draft
+- No deep player database
+
+### Step 10 — Scouting Map Prototype
 
 Goal: test map/movement/fog.
 
@@ -197,7 +222,7 @@ Non-goals:
 - No combat
 - No full diplomacy
 
-### Step 10 — Rival GM first contact
+### Step 11 — Rival GM first contact
 
 Goal: test Civ leader-screen fantasy.
 
@@ -214,7 +239,7 @@ Non-goals:
 - No full diplomacy engine
 - No trade UI
 
-### Step 11 — First mini-game
+### Step 12 — First mini-game
 
 Goal: first hockey competition.
 
@@ -249,7 +274,7 @@ Read the attached GAME_BIBLE.md, FIRST_12_MONTHS_PRD.md, TECH_PLAN.md, and DATA_
 Revise the current Ice Empires prototype. Focus only on [one thing]. Preserve [existing good pieces]. Remove/de-emphasize [bad mechanic]. Do not implement [future systems]. Acceptance criteria: [specific list].
 ```
 
-Lovable is good for visual sketches, dashboard concepts, card styling, and layout. It is weaker at ambiguous giant game-system prompts.
+Lovable is good for visual sketches, dashboard concepts, dossier/report styling, and layout. It is weaker at ambiguous giant game-system prompts.
 
 ---
 
@@ -265,13 +290,13 @@ Antidote: timebox visual passes and use `05_VISUAL_ART_DIRECTION.md`.
 
 Symptom: player stats/contracts/lines appear too early.
 
-Antidote: keep players as cards/events until needed.
+Antidote: keep players as profiles/reports/events until needed.
 
 ### Map engine rabbit hole
 
 Symptom: procedural hexes/pathfinding/fog take over.
 
-Antidote: validate with region cards first.
+Antidote: validate with region profiles/reports first.
 
 ### Multiplayer rabbit hole
 

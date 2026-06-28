@@ -1,6 +1,7 @@
 # Ice Empires — Coding Agent Brief
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Give this to a coding agent with `01_GAME_BIBLE.md`, `03_FIRST_12_MONTHS_PRD.md`, `06_TECH_PLAN.md`, and `07_DATA_MODEL_AND_SYSTEMS.md`.
 
 ---
@@ -39,7 +40,7 @@ Treat the bible as context. Treat the PRD as the build target.
 
 **Ice Empires** is a turn-based 4X hockey civilization strategy game.
 
-The player starts with a tiny fictional hockey club in an unknown hockey world. They explore regions, build scouting/development infrastructure, research hockey knowledge, recruit staff and players, meet rival GMs, form leagues, compete in tournaments, unlock drafts, and eventually build a dynasty.
+The player starts with a tiny fictional hockey club in an unknown hockey world. They explore regions, build scouting/development infrastructure, research hockey knowledge, recruit staff and players, establish pipelines and affiliates, meet rival GMs, form leagues, compete in tournaments, unlock drafts, and eventually build a dynasty.
 
 Default club: **Arizona Monsoon HC**  
 Starting era: **Pond Hockey Era**  
@@ -58,13 +59,23 @@ Build a playable opening-year prototype where the player can:
 5. Choose build projects.
 6. Choose research projects.
 7. Choose scouting/exploration priorities.
-8. Discover nearby hockey regions.
-9. Reveal first staff/prospect/player cards.
+8. Discover nearby hockey regions as neutral player-producing ecosystems.
+9. Reveal first staff/prospect/player profiles/reports.
 10. Unlock or approach the Club Formation Era.
 11. See a readable event log.
 12. Feel the beginning of a deeper hockey civilization game.
 
 ---
+
+## v0.2 design clarifications for agents
+
+- Treat Hockey Regions as neutral city-state-like ecosystems. They are not rival clubs, but they can be contested by rival clubs.
+- Avoid collectible-card mechanics. Use profiles, dossiers, reports, and front-office records.
+- Players are not primary movable map units. Map units are Founding Group, Scouts, Recruiters, Regional Scouts, Development Envoys, etc.
+- Separate Scouting Coverage from Recruitment Influence.
+- Recruitment Influence behaves somewhat like Civ VI religious pressure: the club can establish pull in a region through units, facilities, reputation, and outposts.
+- Team strength is composed of Team Attributes such as Skating, Scoring, Defense, Goaltending, Special Teams, Chemistry, Morale, and Tactics.
+- Minor affiliates are a midgame system, not part of the First 12 Months build.
 
 ## 5. Critical scope rules
 
@@ -82,6 +93,7 @@ Do not build:
 - Real NHL teams/players/logos
 - Full rival GM diplomacy
 - Catan dice mechanic as core loop
+- Collectible-card / pack-opening sports gameplay
 
 The first build is a **turn rhythm prototype**, not the whole game.
 
@@ -201,9 +213,9 @@ Player can select and complete build/research projects.
 
 Hidden region cards reveal over months through selected priorities.
 
-### Milestone 6 — Cards/events
+### Milestone 6 — Profiles/events
 
-Staff/prospect/player cards appear through events/unlocks.
+Staff/prospect/player profiles and scouting reports appear through events/unlocks.
 
 ### Milestone 7 — Era progress
 
@@ -221,7 +233,7 @@ The first prototype is acceptable if:
 - At least 4 regions can be discovered.
 - At least 3 facilities exist and can be built.
 - At least 4 research techs exist and can complete.
-- At least 3 staff/prospect/player cards can appear.
+- At least 3 staff/prospect/player profiles/reports can appear.
 - Era progress is visible.
 - No real NHL/licensed content is used.
 - The player wants Month 13.

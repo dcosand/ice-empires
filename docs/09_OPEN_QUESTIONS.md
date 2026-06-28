@@ -1,6 +1,7 @@
 # Ice Empires — Open Questions
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Purpose:** Preserve unresolved design questions for future one-question-at-a-time interviews.
 
 ---
@@ -77,7 +78,7 @@ Civ-like answer: B. Prototype can use either if documented.
 
 ### Q8. Should Talent be numeric?
 
-Current recommendation: not in First 12 Months. Use cards/events first.
+Current recommendation: not in First 12 Months. Use profiles/reports/cohorts/events first.
 
 ### Q9. Should Reputation be spendable or threshold-based?
 
@@ -99,7 +100,7 @@ C. After Youth Development
 D. Club Formation Era  
 E. Draft Era
 
-Current recommendation: introduce cards early; roster management later.
+Current recommendation: introduce player profiles/reports early; roster management later.
 
 ### Q11. What should scouting hide?
 
@@ -267,3 +268,158 @@ Need future visual exploration:
 ## 10. Next interview question
 
 > For First 12 Months, when you click End Month, what result would make you smile most: a facility completing, a region being discovered, a prospect appearing, or a funny rival GM hint?
+
+
+---
+
+## 11. v0.2 additions — Hockey regions
+
+### Q27. How many hockey regions should be active in a standard game?
+
+A. 20–40  
+B. 50–80  
+C. 100+  
+D. Scenario dependent
+
+Current leaning: scenario dependent; First 12 Months can use 8–12 reports.
+
+### Q28. What does a hockey region produce?
+
+Possible outputs:
+
+- Player profiles
+- Staff profiles
+- Reputation
+- Hockey Knowledge
+- Budget/sponsor events
+- Recruitment pipeline
+- Development partnership
+- Minor affiliate access
+- League/tournament invitations
+
+### Q29. How city-state-like should hockey regions be?
+
+A. Mostly passive yield regions  
+B. Active neutral ecosystems with quests/events  
+C. Almost mini-clubs without GMs  
+D. Different by region type
+
+Current leaning: B, but simple early.
+
+---
+
+## 12. v0.2 additions — Recruitment and scouting
+
+### Q30. How should Scouting Coverage increase?
+
+A. Scout unit action  
+B. Monthly passive from outposts  
+C. Research/facilities  
+D. Events  
+E. All of the above
+
+Current leaning: all, with unit actions most visible.
+
+### Q31. How should Recruitment Influence behave?
+
+A. Like Civ VI religious pressure  
+B. Like loyalty/culture pressure  
+C. Like trade route value  
+D. Simple percentage odds
+
+Current leaning: Civ VI religious pressure as the mental model.
+
+### Q32. Can rivals contest your recruitment pipeline?
+
+Likely yes.
+
+Possible forms:
+
+- Rival scout appears in region
+- Rival influence lowers commitment odds
+- Rival GM snipes prospect
+- Tournament/rival result shifts region preference
+- Scouting treaty or rivalry changes region access
+
+---
+
+## 13. v0.2 additions — Player aging and development
+
+### Q33. When should named teenagers appear?
+
+A. Never  
+B. Draft/Rights Era only  
+C. Scouting Network Era as 16–18-year-olds  
+D. Club Formation as rare special events
+
+Current recommendation: youth cohorts early; individual 16–18-year-old prospects later.
+
+### Q34. How much aging realism is enough?
+
+A. Simple age number only  
+B. Age bands and development windows  
+C. Full aging curves  
+D. Full EHM-style simulation
+
+Current recommendation: B for a long time.
+
+---
+
+## 14. v0.2 additions — Affiliates/minors
+
+### Q35. When does the first minor affiliate unlock?
+
+A. Regional League Era  
+B. Scouting Network Era  
+C. Draft/Rights Era  
+D. Professionalization Era
+
+Current recommendation: informal partnerships earlier; formal minor affiliate around Scouting Network or Draft/Rights.
+
+### Q36. What do affiliates do?
+
+Possible benefits:
+
+- Development slots
+- Prospect assignment
+- Injury replacement/call-ups
+- Regional influence
+- Team attribute growth
+- Scouting Coverage
+- Recruitment Influence
+
+---
+
+## 15. v0.2 additions — Team attributes
+
+### Q37. Which team attributes appear first?
+
+Likely early:
+
+- Skating
+- Puck Skill
+- Goaltending
+- Chemistry
+- Morale
+
+Later:
+
+- Scoring
+- Defense
+- Physicality
+- Tactics
+- Power Play
+- Penalty Kill
+- Transition
+- Possession
+- Discipline
+- Depth
+
+### Q38. Should Team Attributes be visible numbers?
+
+A. Exact numbers  
+B. Letter grades  
+C. Ranges until scouted/tested  
+D. Mostly hidden under reports
+
+Current leaning: readable grades/ranges early, exact internal values later if needed.

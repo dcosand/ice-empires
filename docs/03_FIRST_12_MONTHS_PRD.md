@@ -1,6 +1,7 @@
 # Ice Empires: First 12 Months — Prototype PRD
 
 **Date:** 2026-06-27  
+**Version:** 0.2  
 **Status:** First focused prototype target  
 **Default club:** Arizona Monsoon HC
 
@@ -12,7 +13,7 @@ Build a playable web prototype that tests the opening-year flow of Ice Empires.
 
 Question to answer:
 
-> Is it fun to start with a tiny hockey club, make monthly decisions, generate resources, build facilities, research hockey knowledge, discover regions, reveal staff/prospect/player cards, and progress toward becoming a real club?
+> Is it fun to start with a tiny hockey club, make monthly decisions, generate resources, build facilities, research hockey knowledge, discover regions, reveal staff/prospect/player profiles and scouting reports, and progress toward becoming a real club?
 
 This is a **game-flow prototype**, not a map prototype and not a full hockey simulation.
 
@@ -47,9 +48,9 @@ Included:
 - Build project selection/progress
 - Research project selection/progress
 - Scouting/exploration priority
-- Hidden/discovered region cards
+- Hidden/discovered region profiles/reports
 - Event log
-- Staff/prospect/player cards
+- Staff/prospect/player profiles/reports
 - Era progress
 - Club Formation Era unlock message
 
@@ -66,8 +67,24 @@ Excluded:
 - Full rival GM system
 - Real licensed hockey data
 - Catan dice roll as main loop
+- Collectible-card / pack-opening sports gameplay
 
 ---
+
+### v0.2 design note
+
+The First 12 Months prototype may still use rectangular UI panels for readability, but do not frame people as collectible sports cards.
+
+Use:
+
+- Player profiles
+- Prospect dossiers
+- Staff profiles
+- Scout reports
+- Region reports
+- Front-office records
+
+Hockey regions are neutral player-producing ecosystems. Full map movement, Recruitment Influence, and affiliate systems are future prototypes, but the language and data model should not contradict them.
 
 ## 4. Core loop
 
@@ -77,7 +94,7 @@ Each month, the player:
 2. Chooses or adjusts build project.
 3. Chooses or adjusts research project.
 4. Chooses scouting/exploration priority.
-5. Reviews cards/events/regions.
+5. Reviews profiles/events/regions.
 6. Clicks **End Month**.
 7. Watches resources/progress/events resolve.
 8. Gets new information or options.
@@ -146,7 +163,7 @@ Must include:
 - Build panel
 - Research panel
 - Discovery/world panel
-- Cards panel
+- Profiles/reports panel
 - Event log
 - Era progress
 - End Month button
@@ -253,17 +270,20 @@ Chance to reveal partner region/staff/diplomacy hint.
 
 ---
 
-## 10. Region cards
+## 10. Hockey region reports
 
-Start with 8–12 hidden cards.
+Start with 8–12 hidden hockey region reports. These represent neutral city-state-like hockey ecosystems, not rival clubs and not empty terrain.
 
-Each region has:
+Each hockey region has:
 
 - Name
 - Terrain flavor
 - Hockey resource
 - Scouting difficulty
 - Possible yield
+- Scouting Coverage
+- Recruitment Influence potential
+- Possible player outputs
 - Scout report
 - Tags
 
@@ -282,25 +302,25 @@ Examples:
 
 ---
 
-## 11. Staff/prospect/player cards
+## 11. Staff/prospect/player profiles/reports
 
 Examples:
 
 ### Local Coach
 
-Type: Staff  
+Type: Staff profile  
 Effect: +1 Hockey Knowledge/month or improved player events  
 Flavor: “He owns three whistles and uses all of them.”
 
 ### Volunteer Trainer
 
-Type: Staff  
+Type: Staff profile  
 Effect: reduces negative injury events  
 Flavor: “Not officially certified, but oddly effective.”
 
 ### Raw Desert Winger
 
-Type: Prospect  
+Type: Prospect profile  
 Position: Forward  
 Potential: medium-high  
 Risk: high  
@@ -308,7 +328,7 @@ Flavor: “Skates like he learned in a parking lot. Hands like he learned in a d
 
 ### Quiet Lake Goalie
 
-Type: Prospect  
+Type: Prospect profile  
 Position: Goalie  
 Potential: high  
 Risk: unknown  
@@ -316,7 +336,7 @@ Flavor: “Says almost nothing. Tracks pucks like a rumor.”
 
 ### Prairie Defenseman
 
-Type: Prospect  
+Type: Prospect profile  
 Position: Defense  
 Potential: medium  
 Risk: low  
@@ -346,7 +366,7 @@ Requirements to enter Club Formation Era:
 - Outdoor Rink completed
 - At least 1 research completed
 - At least 2 regions discovered
-- At least 1 staff/prospect/player card acquired
+- At least 1 staff/prospect/player profile acquired
 
 Unlock message:
 

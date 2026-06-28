@@ -258,6 +258,7 @@ export type WorldTile = {
   y: number;
   terrain: WorldTerrain;
   variant: number; // 0-3 art variation within the terrain family
+  elevation: number; // 0..~1.1 height field; drives how tall the iso tile rises
   feature?: WorldFeature;
   valid: boolean; // can be entered / founded on (water is not)
 };

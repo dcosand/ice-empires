@@ -27,7 +27,9 @@ import {
 // ---- Isometric geometry --------------------------------------------------
 const TILE_W = 64; // diamond width
 const TILE_H = 32; // diamond height (2:1 iso)
-const LIFT = 13; // extruded "thickness" of land tiles (SimCity-2000 chunk)
+const BASE_THICK = 11; // constant chunk below every tile's top diamond
+const MAX_RISE = 50; // pixels a full-elevation (1.0) tile rises above ground
+const FOG_RISE = 7; // unexplored tiles sit low and flat
 
 const isoX = (gx: number, gy: number) => (gx - gy) * (TILE_W / 2);
 const isoY = (gx: number, gy: number) => (gx + gy) * (TILE_H / 2);
@@ -104,36 +106,47 @@ function drawScene(
       const tile = tileAt(world, gx, gy)!;
       const revealed = revealedSet.has(key);
       const pal = revealed ? TERRAIN[tile.terrain] ?? TERRAIN.plains : FOG;
-      const lift = revealed ? tileLift(tile) : LIFT;
+      const rise = revealed ? tileRise(tile) : FOG_RISE;
       const topColor = revealed ? variantTopColor(tile, pal.top) : pal.top;
 
-      const g = new Graphics();
-      g.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-      g.zIndex = gx + gy;
-
-      // extruded side faces
-      g.poly([-TILE_W / 2, 0, 0, TILE_H / 2, 0, TILE_H / 2 + lift, -TILE_W / 2, lift]).fill(pal.side);
-      g.poly([TILE_W / 2, 0, 0, TILE_H / 2, 0, TILE_H / 2 + lift, TILE_W / 2, lift]).fill(
-        darken(pal.side),
-      );
-      // top face
-      g.poly(diamond()).fill(topColor).stroke({ width: 1, color: 0x0a1018, alpha: 0.3 });
-      if (revealed) drawTerrainDetails(g, tile, pal);
-
-      if (moveable.has(key)) {
-        drawMoveHint(g);
+      // --- extruded cliff sides (anchored at the shared ground plane) ---
+      const gSide = new Graphics();
+      gSide.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+      gSide.zIndex = gx + gy;
+      // The top edge is lifted by `rise`; the base stays at a constant depth so
+      // every tile shares one ground plane and taller tiles show taller cliffs.
+      gSide
+        .poly([-TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, -TILE_W / 2, BASE_THICK])
+        .fill(pal.side);
+      gSide
+        .poly([TILE_W / 2, -rise, 0, TILE_H / 2 - rise, 0, TILE_H / 2 + BASE_THICK, TILE_W / 2, BASE_THICK])
+        .fill(darken(pal.side));
+      // A rim highlight where the lifted top meets the cliff sells the height.
+      if (revealed && rise > 16) {
+        gSide
+          .poly([-TILE_W / 2, -rise, 0, TILE_H / 2 - rise, TILE_W / 2, -rise])
+          .stroke({ width: 1, color: lighten(pal.side, 0.22), alpha: 0.5 });
       }
+      layer.addChild(gSide);
+
+      // --- top face, raised by `rise` and drawn just above its own sides ---
+      const gTop = new Graphics();
+      gTop.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
+      gTop.zIndex = gx + gy + 0.05;
+      gTop.poly(diamond()).fill(topColor).stroke({ width: 1, color: 0x0a1018, alpha: 0.3 });
+      if (revealed) drawTerrainDetails(gTop, tile, pal);
+      if (moveable.has(key)) drawMoveHint(gTop);
       if (selectedKey === key) {
-        g.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
+        gTop.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
       }
-      layer.addChild(g);
+      layer.addChild(gTop);
 
       // ---- markers on top of the tile ----
       const regionId = regionIdAtTile(gx, gy);
       const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : "hidden";
       if (revealed && regionId && rState !== "hidden") {
         const pin = new Graphics();
-        pin.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+        pin.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
         pin.zIndex = gx + gy + 0.4;
         const col = PIN_COLOR[rState];
         pin.poly([-4, -14, 4, -14, 0, -5]).fill(col);
@@ -146,14 +159,22 @@ function drawScene(
       }
 
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
-      if (isHQ) layer.addChild(hqMarker(gx, gy, c, accent, clubLabel, logoTexture));
+      if (isHQ) {
+        const mk = hqMarker(gx, gy, c, accent, clubLabel, logoTexture);
+        mk.position.y -= rise;
+        layer.addChild(mk);
+      }
 
       if (founder && founder.x === gx && founder.y === gy) {
-        layer.addChild(founderMarker(gx, gy, c, world.founderSelected, accent));
+        const mk = founderMarker(gx, gy, c, world.founderSelected, accent);
+        mk.position.y -= rise;
+        layer.addChild(mk);
       }
 
       if (scout && scout.x === gx && scout.y === gy) {
-        layer.addChild(scoutMarker(gx, gy, c, world.scoutSelected, accent));
+        const mk = scoutMarker(gx, gy, c, world.scoutSelected, accent);
+        mk.position.y -= rise;
+        layer.addChild(mk);
       }
     }
   }
@@ -199,7 +220,10 @@ function hqMarker(
 ) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  m.zIndex = gx + gy + 0.7;
+  // HQ is a key landmark and carries a name label that hangs below the pin, so
+  // keep the whole marker above neighbouring tile tops (which would otherwise
+  // paint over the lower half of the label).
+  m.zIndex = gx + gy + 50;
 
   const base = new Graphics();
   base.ellipse(0, 1, 20, 7).fill({ color: 0x000000, alpha: 0.35 });
@@ -242,11 +266,31 @@ function hqMarker(
   return m;
 }
 
-function tileLift(tile: WorldTile): number {
-  if (tile.terrain === "water" || tile.feature === "lake") return 4;
-  if (tile.terrain === "mountain") return 24;
-  if (tile.terrain === "ice") return 9;
-  return LIFT;
+// How far a tile's top rises above the shared ground plane, in pixels. Driven
+// by the per-tile elevation field so two plains tiles (or two mountains) can sit
+// at noticeably different heights. Falls back to a terrain estimate for any
+// world saved before elevation existed.
+function tileRise(tile: WorldTile): number {
+  const e = tile.elevation ?? fallbackElevation(tile);
+  return Math.round(e * MAX_RISE);
+}
+
+function fallbackElevation(tile: WorldTile): number {
+  const jitter = (tile.variant ?? 0) * 0.05;
+  switch (tile.terrain) {
+    case "water":
+      return 0;
+    case "coastal":
+      return 0.08;
+    case "mountain":
+      return 0.78 + jitter;
+    case "high-desert":
+      return 0.42 + jitter;
+    case "ice":
+      return 0.3 + jitter;
+    default:
+      return 0.22 + jitter;
+  }
 }
 
 function variantTopColor(tile: WorldTile, base: number): number {
@@ -378,14 +422,16 @@ function drawPond(g: Graphics, v: number, lake: boolean) {
   });
 }
 
-// The Scout: a hockey exec in his 30s in a team-colored polo, holding a
-// clipboard. Drawn billboard-style (facing camera) as vector art so it stays
-// crisp at any zoom. `accent` is the club color, so the polo matches the team.
+// The Scout: a hockey exec bundled for the field in a team-colored, fur-trimmed
+// parka, glassing the horizon through binoculars. Drawn billboard-style (facing
+// camera) as vector art so it stays crisp at any zoom. `accent` is the club
+// color, so the parka matches the team.
 const SKIN = 0xe7b48b;
 const SKIN_SHADE = 0xc8946a;
-const HAIR = 0x4a3526;
-const PANTS = 0x33404f;
-const SHOE = 0x14181f;
+const FUR = 0xe9ddc6;
+const FUR_SHADE = 0xc9bca0;
+const BOOT = 0x20242c;
+const SNOWPANT = 0x3a4654;
 
 function scoutMarker(
   gx: number,
@@ -398,9 +444,9 @@ function scoutMarker(
   s.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
   s.zIndex = gx + gy + 0.6;
 
-  const polo = accent;
-  const poloShade = darken(accent);
-  const collar = lighten(accent, 0.45);
+  const parka = accent;
+  const parkaDark = darkenBy(accent, 0.3);
+  const parkaLight = lighten(accent, 0.28);
 
   // selected ground ring + contact shadow
   if (selected) {
@@ -408,44 +454,52 @@ function scoutMarker(
   }
   s.ellipse(0, 1, 11, 4).fill({ color: 0x000000, alpha: 0.35 });
 
-  // legs + shoes
-  s.roundRect(-5, -13, 4, 11, 1.5).fill(PANTS);
-  s.roundRect(1, -13, 4, 11, 1.5).fill(PANTS);
-  s.roundRect(-6.5, -3, 6, 3, 1).fill(SHOE);
-  s.roundRect(0.5, -3, 6, 3, 1).fill(SHOE);
+  // chunky snow boots + insulated legs
+  s.roundRect(-6.5, -4, 6.5, 4, 1.5).fill(BOOT);
+  s.roundRect(0, -4, 6.5, 4, 1.5).fill(BOOT);
+  s.roundRect(-5, -14, 4.5, 11, 2).fill(SNOWPANT);
+  s.roundRect(0.5, -14, 4.5, 11, 2).fill(SNOWPANT);
+  s.roundRect(0.5, -14, 4.5, 11, 2).fill({ color: 0x000000, alpha: 0.18 }); // leg shading
 
-  // polo torso + short sleeves
-  s.roundRect(-8, -27, 16, 15, 4).fill(polo);
-  s.roundRect(2.5, -26, 5, 13, 3).fill({ color: poloShade, alpha: 0.55 }); // shading
-  s.roundRect(-11.5, -26.5, 5.5, 7, 2.5).fill(polo); // left sleeve
-  s.roundRect(6, -26.5, 5.5, 7, 2.5).fill(polo); // right sleeve
+  // parka body with fur-trimmed hem
+  s.roundRect(-9.5, -31, 19, 20, 6).fill(parka);
+  s.roundRect(3, -30, 6, 18, 4).fill({ color: parkaDark, alpha: 0.5 }); // right-side shade
+  s.roundRect(-9.5, -16, 19, 4, 2).fill(FUR); // fur hem
+  s.roundRect(-9.5, -16, 19, 1.6, 2).fill({ color: FUR_SHADE, alpha: 0.7 });
+  // center zip + a pocket flap
+  s.roundRect(-0.8, -30, 1.6, 16, 0.6).fill({ color: parkaDark, alpha: 0.85 });
+  s.roundRect(-7, -21, 5, 3.5, 1).fill({ color: parkaDark, alpha: 0.4 });
 
-  // forearms angle in to hold the clipboard
-  s.poly([-9.5, -20, -6, -20, -4.5, -9.5, -8, -9.5]).fill(SKIN);
-  s.poly([9.5, -20, 6, -20, 4.5, -9.5, 8, -9.5]).fill(SKIN);
+  // raised sleeves (arms up to hold the binoculars at the eyes)
+  s.roundRect(-13, -31, 6, 11, 3).fill(parka);
+  s.roundRect(-13, -31, 2.4, 11, 2).fill({ color: parkaLight, alpha: 0.4 });
+  s.roundRect(7, -31, 6, 11, 3).fill(parka);
+  s.roundRect(10.6, -31, 2.4, 11, 2).fill({ color: parkaDark, alpha: 0.45 });
+  // forearms angling up toward the face
+  s.poly([-11.5, -30, -8, -31, -4.5, -37, -7.5, -38]).fill(parka);
+  s.poly([11.5, -30, 8, -31, 4.5, -37, 7.5, -38]).fill(parka);
+  // mittened hands gripping the binoculars
+  s.circle(-5.5, -37.5, 2.4).fill(parkaDark);
+  s.circle(5.5, -37.5, 2.4).fill(parkaDark);
 
-  // clipboard held at the chest
-  s.roundRect(-5, -19, 10, 11, 1.5).fill(0xeae4d2).stroke({ width: 1.2, color: 0x4a4636 });
-  s.roundRect(-1.6, -20, 3.2, 2, 0.6).fill(0x9aa0a6); // clip
-  s.rect(-3, -16, 6, 1).fill(0xb6bac0);
-  s.rect(-3, -14, 6, 1).fill(0xb6bac0);
-  s.rect(-3, -12, 4.5, 1).fill(0xb6bac0);
-  s.circle(-5.5, -9, 2.1).fill(SKIN); // hands
-  s.circle(5.5, -9, 2.1).fill(SKIN);
+  // hood: fur ruff ringing the face
+  s.circle(0, -39, 8.4).fill(FUR);
+  s.arc(0, -39, 8.4, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 2.4, color: FUR_SHADE, alpha: 0.6 });
+  s.circle(0, -39, 5.9).fill(parkaDark); // hood interior shadow
+  // face peeking out of the hood
+  s.circle(0, -38.4, 5).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
 
-  // collar + placket
-  s.poly([-4, -27, -1, -27, -1, -22.5]).fill(collar);
-  s.poly([4, -27, 1, -27, 1, -22.5]).fill(collar);
-  s.roundRect(-1.1, -27, 2.2, 8, 1).fill(poloShade);
+  // binoculars raised to the eyes
+  s.roundRect(-5, -40.5, 10, 4, 1.8).fill(0x171b22);
+  s.roundRect(-1.2, -40, 2.4, 3, 0.8).fill(0x2a2f38); // bridge
+  s.circle(-3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
+  s.circle(3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
+  s.circle(-4.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 }); // lens glints
+  s.circle(3.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 });
 
-  // neck + head + hair
-  s.roundRect(-2, -31, 4, 4, 1).fill(SKIN_SHADE);
-  s.circle(0, -34.2, 5.8).fill(HAIR); // hair back
-  s.circle(-5, -33, 1.3).fill(SKIN); // ears
-  s.circle(5, -33, 1.3).fill(SKIN);
-  s.circle(0, -33.2, 5.2).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE }); // face
-  s.circle(-2, -33.6, 0.85).fill(0x2a2320); // eyes
-  s.circle(2, -33.6, 0.85).fill(0x2a2320);
+  // faint puff of cold breath
+  s.circle(7, -36, 1.6).fill({ color: 0xffffff, alpha: 0.16 });
+  s.circle(9, -35, 1.1).fill({ color: 0xffffff, alpha: 0.1 });
   return s;
 }
 

@@ -81,11 +81,13 @@ export function createWorld(seed = Date.now()): WorldState {
       const terrain = generatedTerrain(x, y, seed);
       const feature = generatedFeature(x, y, terrain, seed);
       const variant = Math.floor(noise2d(x, y, seed + 4049) * 4);
+      const elevation = generatedElevation(x, y, terrain, feature, seed);
       tiles.push({
         x,
         y,
         terrain,
         variant,
+        elevation,
         feature,
         valid: terrain !== "water" && feature !== "lake",
       });
@@ -101,6 +103,7 @@ export function createWorld(seed = Date.now()): WorldState {
         ...tile,
         terrain: "plains",
         feature: undefined,
+        elevation: generatedElevation(x, y, "plains", undefined, seed),
         valid: true,
       };
     }
@@ -145,6 +148,60 @@ function generatedTerrain(x: number, y: number, seed: number): WorldTerrain {
   if (moisture < 0.28 && ny > 0.18) return "desert";
   if (moisture < 0.42 && ny > 0.18) return "high-desert";
   return "plains";
+}
+
+// A continuous height field, 0 (sea level) .. ~1.1 (high peaks). Built from the
+// same continental/ridge noise as the terrain so highlands cluster naturally,
+// plus a per-tile jitter so neighbours of the same terrain still rise and dip.
+// This is what gives the map its "z space": rolling plains, sunken basins,
+// towering, varied mountains.
+function generatedElevation(
+  x: number,
+  y: number,
+  terrain: WorldTerrain,
+  feature: WorldFeature | undefined,
+  seed: number,
+): number {
+  const continental = octaveNoise(x, y, seed);
+  const ridge = octaveNoise(x - 500, y + 900, seed + 2718);
+  const base = continental * 0.72 + ridge * 0.28; // ~0..1
+  const jitter = (noise2d(x, y, seed + 5501) - 0.5) * 0.22;
+
+  let e: number;
+  switch (terrain) {
+    case "water":
+      e = 0;
+      break;
+    case "coastal":
+      e = 0.05 + base * 0.07;
+      break;
+    case "mountain":
+      // Tall and the most varied: sharp ridge noise drives real peaks.
+      e = 0.6 + ridge * 0.42 + Math.max(0, jitter);
+      break;
+    case "high-desert":
+      e = 0.36 + base * 0.32 + jitter; // elevated plateaus
+      break;
+    case "ice":
+      e = 0.24 + base * 0.3 + jitter;
+      break;
+    case "desert":
+      e = 0.14 + base * 0.22 + jitter;
+      break;
+    case "tropical":
+      e = 0.1 + base * 0.22 + jitter;
+      break;
+    case "plains":
+    default:
+      e = 0.13 + base * 0.34 + jitter; // gentle rolling hills
+      break;
+  }
+
+  // Standing water sits in basins, below the surrounding land.
+  if (feature === "lake") e = Math.min(e, 0.04);
+  else if (feature === "pond") e *= 0.6;
+
+  return Math.max(0, Math.min(1.12, e));
 }
 
 function generatedFeature(
