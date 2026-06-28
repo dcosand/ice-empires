@@ -2,6 +2,7 @@ import type {
   GameState,
   WorldState,
   WorldFeature,
+  WorldHockeyOrg,
   WorldPondMarker,
   WorldTerrain,
   WorldTile,
@@ -20,6 +21,20 @@ export const SCOUT_MOVES = 3;
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
 const POND_MARKER_COUNT = 24;
+const HOCKEY_ORG_COUNT = 10;
+
+const HOCKEY_ORG_NAMES = [
+  "Northern Lights League",
+  "Iron Range Hockey Association",
+  "Harbor Ice Union",
+  "Prairie Rink Council",
+  "Alpine Skating Club",
+  "Cedar Valley Junior League",
+  "Frontier Hockey Society",
+  "Blue Line Academy",
+  "Canal District Hockey Club",
+  "Summit Rink Collective",
+];
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -112,6 +127,8 @@ export function createWorld(seed = Date.now()): WorldState {
     };
   }
 
+  const hockeyOrgs = generateHockeyOrgs(tiles, start, seed);
+
   return {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
@@ -127,7 +144,8 @@ export function createWorld(seed = Date.now()): WorldState {
     founderSelected: false,
     scouts: [],
     selectedScoutId: null,
-    pondMarkers: generatePondMarkers(tiles, start, seed),
+    pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs),
+    hockeyOrgs,
     scout: null,
     scoutSelected: false,
   };
@@ -154,18 +172,20 @@ function generatePondMarkers(
   tiles: WorldTile[],
   start: { x: number; y: number },
   seed: number,
+  hockeyOrgs: WorldHockeyOrg[],
 ): WorldPondMarker[] {
   const markers: WorldPondMarker[] = [];
-  const occupied = new Set<string>();
+  const occupied = new Set<string>(hockeyOrgs.map((org) => tileKey(org.x, org.y)));
   const addMarker = (x: number, y: number, n: number) => {
     const tile = tiles[y * WORLD_WIDTH + x];
     const key = tileKey(x, y);
-    if (!tile?.valid || occupied.has(key)) return false;
+    if (!tile || occupied.has(key) || !canPlacePondMarker(tile)) return false;
     const encounter = POND_ENCOUNTERS[n % POND_ENCOUNTERS.length];
     markers.push({
       id: `pond-marker-${x}-${y}`,
       x,
       y,
+      kind: encounter.kind,
       encounterId: encounter.id,
       investigated: false,
     });
@@ -190,7 +210,7 @@ function generatePondMarkers(
   }
 
   const candidates = tiles
-    .filter((tile) => tile.valid && tile.terrain !== "mountain")
+    .filter(canPlacePondMarker)
     .map((tile) => ({
       tile,
       score: noise2d(tile.x, tile.y, seed + 12091),
@@ -205,6 +225,81 @@ function generatePondMarkers(
   }
 
   return markers;
+}
+
+function generateHockeyOrgs(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+): WorldHockeyOrg[] {
+  const orgs: WorldHockeyOrg[] = [];
+  const occupied = new Set<string>();
+  const archetypes: WorldHockeyOrg["archetype"][] = [
+    "minor-club",
+    "junior-league",
+    "rink-society",
+    "academy",
+  ];
+
+  const candidates = tiles
+    .filter(canPlaceHockeyOrg)
+    .map((tile) => ({
+      tile,
+      score:
+        noise2d(tile.x, tile.y, seed + 24091) +
+        Math.min(0.35, Math.hypot(tile.x - start.x, tile.y - start.y) / 160),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { tile } of candidates) {
+    if (orgs.length >= HOCKEY_ORG_COUNT) break;
+    if (Math.hypot(tile.x - start.x, tile.y - start.y) < 7) continue;
+    const tooClose = orgs.some((org) => Math.hypot(tile.x - org.x, tile.y - org.y) < 9);
+    if (tooClose || occupied.has(tileKey(tile.x, tile.y))) continue;
+    const idx = orgs.length;
+    orgs.push({
+      id: `hockey-org-${idx + 1}`,
+      name: HOCKEY_ORG_NAMES[idx % HOCKEY_ORG_NAMES.length],
+      x: tile.x,
+      y: tile.y,
+      archetype: archetypes[idx % archetypes.length],
+      discovered: false,
+    });
+    occupied.add(tileKey(tile.x, tile.y));
+  }
+
+  return orgs;
+}
+
+function canPlacePondMarker(tile: WorldTile): boolean {
+  return (
+    tile.valid &&
+    tile.terrain !== "water" &&
+    tile.terrain !== "mountain" &&
+    tile.feature !== "river" &&
+    tile.feature !== "lake" &&
+    !hasMesaLandform(tile)
+  );
+}
+
+function canPlaceHockeyOrg(tile: WorldTile): boolean {
+  return (
+    tile.valid &&
+    tile.terrain !== "water" &&
+    tile.terrain !== "mountain" &&
+    tile.feature !== "lake" &&
+    !hasMesaLandform(tile)
+  );
+}
+
+export function tileVisualRand(x: number, y: number, salt: number): number {
+  let h = Math.imul((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791), 2654435761);
+  h = (h ^ (h >>> 15)) >>> 0;
+  return h / 4294967295;
+}
+
+export function hasMesaLandform(tile: WorldTile): boolean {
+  return tile.terrain === "high-desert" && tileVisualRand(tile.x, tile.y, 11) < 0.09;
 }
 
 // Flood-fill the passable (land) tiles into connected components, then choose a

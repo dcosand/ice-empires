@@ -23,10 +23,12 @@ import type { ClubDef } from "../types/game";
 import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
 import {
+  hasMesaLandform,
   moveableTilesFor,
   regionIdAtTile,
   tileAt,
   tileKey,
+  tileVisualRand,
 } from "../engine/world";
 import {
   activeScout,
@@ -211,11 +213,18 @@ function drawScene(
         layer.addChild(pin);
       }
 
+      const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
+      if (revealed && org) {
+        const mk = hockeyOrgMarker(gx, gy, c, org.archetype);
+        mk.position.y -= rise;
+        layer.addChild(mk);
+      }
+
       const pond = world.pondMarkers.find(
         (m) => !m.investigated && m.x === gx && m.y === gy,
       );
       if (revealed && pond) {
-        const mk = pondMarker(gx, gy, c);
+        const mk = pondMarker(gx, gy, c, pond.kind);
         mk.position.y -= rise;
         layer.addChild(mk);
       }
@@ -257,15 +266,108 @@ function drawScene(
   }
 }
 
-function pondMarker(gx: number, gy: number, c: { x: number; y: number }) {
+function hockeyOrgMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  archetype: string,
+) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 0.5;
+  const g = new Graphics();
+  const accent =
+    archetype === "academy"
+      ? 0x7cc4e8
+      : archetype === "junior-league"
+        ? 0xc94b4b
+        : archetype === "rink-society"
+          ? 0x74b66d
+          : 0xf0c65c;
+
+  // Persistent neutral hockey organization: an isometric mini-district with a
+  // plaza, low arena, and a few stacked civic buildings. This reads as "place"
+  // on the terrain instead of a collectible icon.
+  g.ellipse(0, 7, 24, 8).fill({ color: 0x000000, alpha: 0.24 });
+  g.poly([-26, 2, -6, -8, 24, 2, 4, 12]).fill({ color: 0x31465b, alpha: 0.5 });
+  g.poly([-21, 1, -5, -7, 19, 1, 3, 9]).fill({ color: 0xc7dce3, alpha: 0.88 }).stroke({
+    width: 1,
+    color: 0x203141,
+    alpha: 0.5,
+  });
+  g.poly([-15, 0, -5, -5, 12, 0, 2, 5]).fill({ color: 0x9fc2d0, alpha: 0.75 });
+  drawIsoBlock(g, -14, 3, 9, 12, 0x60747c, accent);
+  drawIsoBlock(g, -5, -2, 8, 21, 0x52656d, accent);
+  drawIsoBlock(g, 4, 1, 10, 16, 0x6a7d84, accent);
+  drawIsoBlock(g, 13, 4, 7, 10, 0x5d7078, accent);
+  // Arena roof / civic rink.
+  g.ellipse(6, 2, 15, 6).fill(0xdce8ec).stroke({ width: 1.2, color: 0x263746, alpha: 0.75 });
+  g.arc(6, 2, 13, Math.PI, 0).stroke({ width: 1.1, color: accent, alpha: 0.9 });
+  g.rect(-23, 5, 45, 3).fill({ color: accent, alpha: 0.65 });
+  m.addChild(g);
+  return m;
+}
+
+function drawIsoBlock(g: Graphics, x: number, y: number, w: number, h: number, body: number, accent: number) {
+  const d = 4;
+  const roof = lighten(body, 0.18);
+  const side = darkenBy(body, 0.18);
+  g.poly([x, y - h, x + w, y - h - d, x + w + d, y - h, x + d, y + d - h]).fill(roof);
+  g.poly([x, y - h, x + d, y + d - h, x + d, y, x, y]).fill(body);
+  g.poly([x + d, y + d - h, x + w + d, y - h, x + w + d, y, x + d, y]).fill(side);
+  g.poly([x, y - h, x + w, y - h - d, x + w + d, y - h, x + w + d, y, x + d, y, x, y]).stroke({
+    width: 0.8,
+    color: 0x24303a,
+    alpha: 0.55,
+  });
+  for (let yy = y - h + 4; yy < y - 1; yy += 5) {
+    g.rect(x + 2, yy, 2, 2).fill({ color: 0xe8d68a, alpha: 0.72 });
+    if (w > 8) g.rect(x + 6, yy, 2, 2).fill({ color: 0xe8d68a, alpha: 0.55 });
+  }
+  g.rect(x + 1, y - h + 1, Math.max(3, w - 2), 1).fill({ color: accent, alpha: 0.75 });
+}
+
+function pondMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  kind: string,
+) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
   m.zIndex = gx + gy + 0.45;
   const g = new Graphics();
-  g.ellipse(0, 1, 10, 4).fill({ color: 0x000000, alpha: 0.28 });
-  g.circle(0, -15, 7).fill(0xf0c65c).stroke({ width: 2, color: 0x132033 });
-  g.circle(-2, -17, 2).fill(0xffffff, 0.9);
-  g.poly([-3, -8, 3, -8, 0, -2]).fill(0xf0c65c);
+  const accent =
+    kind === "equipment"
+      ? 0x8fb2c8
+      : kind === "local-believer"
+        ? 0x74b66d
+        : kind === "mishap"
+          ? 0xb65f4b
+          : kind === "rumor"
+            ? 0xd8c46d
+            : 0xb98655;
+
+  // Goodie hut as human activity: campfire, logs, smoke, bedroll/crate. It is
+  // deliberately simpler than a rink because the tile footprint is tiny.
+  g.ellipse(0, 5, 17, 6).fill({ color: 0x000000, alpha: 0.22 });
+  g.poly([-13, 4, -4, 0, 10, 4, 1, 8]).fill({ color: 0x2a3b42, alpha: 0.28 });
+  g.roundRect(7, 1, 9, 5, 1.5).fill(darkenBy(accent, 0.12)).stroke({ width: 1, color: 0x1b2b3b, alpha: 0.55 });
+  g.poly([7, 1, 11, -2, 16, 1]).fill(lighten(accent, 0.12)).stroke({ width: 0.8, color: 0x1b2b3b, alpha: 0.45 });
+  // Crossed logs.
+  g.roundRect(-9, 3, 16, 3, 1.5).fill(0x6e4a2c);
+  g.roundRect(-7, -1, 15, 3, 1.5).fill(0x815833);
+  g.poly([-8, 2, 7, 6]).stroke({ width: 3, color: 0x4d321d, alpha: 0.75 });
+  g.poly([7, 2, -8, 6]).stroke({ width: 3, color: 0x4d321d, alpha: 0.75 });
+  // Flame with type-colored outer glow and hot core.
+  g.circle(0, 2, 8).fill({ color: accent, alpha: 0.18 });
+  g.poly([-5, 3, -2, -7, 1, -2, 4, -10, 6, 3]).fill(0xd85d2f);
+  g.poly([-3, 3, 0, -4, 3, 3]).fill(0xffc857);
+  g.poly([-1, 2, 1, -1, 2, 2]).fill(0xfff2b0);
+  // Smoke curls, light enough to stay subtle over any terrain.
+  g.poly([-1, -10, -4, -16, -1, -21, 2, -25]).stroke({ width: 1.4, color: 0xc5d0d2, alpha: 0.48 });
+  g.poly([3, -9, 7, -15, 5, -20, 9, -24]).stroke({ width: 1.1, color: 0xc5d0d2, alpha: 0.32 });
+  g.poly([-12, 6, -8, 9, -3, 8]).stroke({ width: 1.2, color: 0xa7d8e8, alpha: 0.55 });
   m.addChild(g);
   return m;
 }
@@ -409,9 +511,7 @@ function drawMoveHint(g: Graphics) {
 // Two same-terrain tiles still differ because they seed different variants and
 // mirroring. salt selects an independent stream (variant / mirror / jitter).
 function tileRand(x: number, y: number, salt: number): number {
-  let h = Math.imul((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791), 2654435761);
-  h = (h ^ (h >>> 15)) >>> 0;
-  return h / 4294967295;
+  return tileVisualRand(x, y, salt);
 }
 
 type TileLook = { v: number; mirror: boolean; jx: number };
@@ -865,7 +965,7 @@ function landformSprite(tile: WorldTile): Sprite | null {
   if (tile.terrain === "high-desert") {
     // Mesas are rare landmarks; desert hills are intermittent so high-desert
     // doesn't become a repeating field of rounded bubbles.
-    const isMesa = tileRand(tile.x, tile.y, 11) < 0.09;
+    const isMesa = hasMesaLandform(tile);
     const hasHill = tileRand(tile.x, tile.y, 18) < 0.34;
     if (!isMesa && !hasHill) return null;
     const variant = look.v % 3;
@@ -1806,6 +1906,9 @@ function MapControls({
   const region = regionId ? REGIONS_BY_ID[regionId] : null;
   const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : null;
   const revealed = sel ? state.world?.revealed.includes(`${sel[0]},${sel[1]}`) : false;
+  const org = sel
+    ? state.world?.hockeyOrgs.find((o) => o.x === sel[0] && o.y === sel[1])
+    : null;
 
   const marker = sel
     ? state.world?.pondMarkers.find(
@@ -1862,12 +1965,26 @@ function MapControls({
         </div>
       )}
 
-      {sel && !(region && revealed && rState !== "hidden") && (
+      {sel && revealed && org && (
+        <div className="map-detail">
+          <div className="detail-head">
+            <strong>{org.name}</strong>
+            <span className="region-resource">Independent Hockey Association</span>
+          </div>
+          <div className="region-report">
+            A persistent neutral hockey power. Later, scouts and envoys will build
+            relationships here instead of consuming it like a goodie hut.
+          </div>
+          <div className="state-tag">{org.archetype.replace("-", " ")}</div>
+        </div>
+      )}
+
+      {sel && !(org && revealed) && !(region && revealed && rState !== "hidden") && (
         <div className="map-detail">
           {revealed && marker ? (
             <span className="muted">
-              Pond hockey marker — move a scout here and use{" "}
-              <strong>Investigate Marker</strong>.
+              Goodie hut · {marker.kind.replace("-", " ")} — move a scout here and
+              use <strong>Investigate Marker</strong>. It disappears after use.
             </span>
           ) : revealed ? (
             <span className="muted">Open terrain — nothing of hockey interest here yet.</span>

@@ -1,15 +1,10 @@
 import type { PondEncounter } from "../types/game";
 
-// PLACEHOLDER DATA — not wired into any system yet. See PondEncounter in
-// types/game.ts. These are Civ-style "goodie huts": one-time early discoveries
-// the Scout / Pond Scout can stumble onto in the Pond Hockey Era. They are
-// deliberately distinct from the persistent, city-state-like Hockey Regions in
-// /data/regions.ts.
-//
-// NEXT ITERATION: roll one of these when an exploration unit reveals new ground,
-// weight outcomes by whether a Pond Scout / Rink Evangelist is owned, then apply
-// possibleEffects (grant a card, nudge a resource, etc.) via a new
-// encounterSystem.ts and log the result.
+// One-time early discoveries the Scout / Pond Scout can investigate in the Pond
+// Hockey Era. These are the Civ-style "goodie huts": they are generated with
+// the world, shown as small rink/barn markers, and disappear after investigation.
+// They are deliberately distinct from persistent Independent Hockey Associations
+// and from city-state-like Hockey Regions in /data/regions.ts.
 
 export const POND_ENCOUNTERS: PondEncounter[] = [
   {
@@ -55,6 +50,14 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     name: "The Tough Guy",
     kind: "mishap",
     description: "A local tough guy joins, then asks what offsides means.",
+    possibleEffects: [{ type: "flavorOnly" }],
+  },
+  {
+    id: "rink-map-rumor",
+    name: "The Rink Map Rumor",
+    kind: "rumor",
+    description:
+      "A smudged diner placemat claims there is playable ice three towns over.",
     possibleEffects: [{ type: "flavorOnly" }],
   },
 ];

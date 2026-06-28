@@ -374,8 +374,18 @@ export type WorldPondMarker = {
   id: string;
   x: number;
   y: number;
+  kind: PondEncounter["kind"];
   encounterId: string;
   investigated: boolean;
+};
+
+export type WorldHockeyOrg = {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  archetype: "minor-club" | "junior-league" | "rink-society" | "academy";
+  discovered: boolean;
 };
 
 export type WorldState = {
@@ -389,6 +399,7 @@ export type WorldState = {
   scouts: WorldUnit[]; // movable exploration units produced by HQ / founding
   selectedScoutId: string | null;
   pondMarkers: WorldPondMarker[]; // one-time "goodie hut" exploration markers
+  hockeyOrgs: WorldHockeyOrg[]; // persistent neutral hockey powers / city-state analogs
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
 };

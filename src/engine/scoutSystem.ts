@@ -113,6 +113,11 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
       {
         ...world,
         revealed: addReveal(world.revealed, x, y),
+        hockeyOrgs: world.hockeyOrgs.map((org) =>
+          Math.abs(org.x - x) <= 1 && Math.abs(org.y - y) <= 1
+            ? { ...org, discovered: true }
+            : org,
+        ),
       },
       nextScouts,
       moved.id ?? selectedId ?? null,
@@ -191,7 +196,12 @@ export function investigatePondMarker(state: GameState, markerId: string): GameS
     detail = `${detail} Outcome: a useful rumor for the scouting files.`;
   }
 
-  return prependLog(next, "discovery", `Investigated ${encounter.name}`, detail);
+  return prependLog(
+    next,
+    "discovery",
+    `Investigated ${encounter.name}`,
+    `Goodie hut: ${marker.kind.replace("-", " ")}. ${detail}`,
+  );
 }
 
 function resourceLabel(resource: ResourceKey): string {
