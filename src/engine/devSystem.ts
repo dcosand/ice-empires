@@ -1,5 +1,6 @@
 import type { GameState } from "../types/game";
 import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
+import { createWorld } from "./world";
 
 // Dev tools — reachable only from the in-app dev panel, never from normal play.
 // They mutate state directly (bypassing costs / prerequisites) so a developer
@@ -50,4 +51,12 @@ export function devToggleResearch(state: GameState, techId: string): GameState {
 
 export function devSetRevealAll(state: GameState, value: boolean): GameState {
   return { ...state, devRevealAll: value };
+}
+
+// Generate a brand-new world with a fresh random seed so each click produces a
+// different map. Resets the founder/fog/scout/HQ that live on the world (a new
+// landmass needs a new starting position); other game state is left untouched.
+export function devRegenMap(state: GameState): GameState {
+  const seed = (Math.random() * 0x7fffffff) | 0;
+  return { ...state, world: createWorld(seed) };
 }

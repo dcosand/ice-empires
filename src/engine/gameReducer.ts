@@ -18,6 +18,7 @@ import {
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import {
+  devRegenMap,
   devResetTurn1,
   devSetRevealAll,
   devToggleFacility,
@@ -118,6 +119,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_RESET_TURN1":
       return devResetTurn1(state);
+
+    case "DEV_REGEN_MAP":
+      return devRegenMap(state);
 
     case "DEV_TOGGLE_FACILITY":
       return devToggleFacility(state, action.facilityId);

@@ -43,7 +43,7 @@ const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number 
   mountain: { top: 0x7d8c8d, side: 0x59696d, detail: 0xd7e5e7 },
   plains: { top: 0x6f9350, side: 0x52703b, detail: 0x9dbb70 },
   tropical: { top: 0x3f9862, side: 0x2d7048, detail: 0x88c96d },
-  water: { top: 0x2f6f9e, side: 0x244f6f, detail: 0x7ccceb },
+  water: { top: 0x1d4f78, side: 0x123750, detail: 0x4f93bd },
 };
 const FOG = { top: 0x111c28, side: 0x0a1119, detail: 0x1c2b3d };
 
@@ -82,6 +82,7 @@ function drawScene(
   state: GameState,
   selectedKey: string | null,
   logoTexture: Texture | null,
+  leaderTexture: Texture | null,
   registerScout: (node: Container | null, baseY: number) => void,
 ) {
   layer.removeChildren().forEach((c) => c.destroy());
@@ -181,7 +182,7 @@ function drawScene(
       }
 
       if (founder && founder.x === gx && founder.y === gy) {
-        const mk = founderMarker(gx, gy, c, world.founderSelected, accent);
+        const mk = leaderMarker(gx, gy, c, world.founderSelected, accent, leaderTexture);
         mk.position.y -= rise;
         layer.addChild(mk);
       }
@@ -199,33 +200,58 @@ function drawScene(
   }
 }
 
-function founderMarker(
+// The Leader: the club's chosen figure, shown as their actual leader.png portrait
+// in a team-colored ring, mounted on a small stand on the tile. Billboard-style
+// so it stays upright and crisp at any zoom.
+function leaderMarker(
   gx: number,
   gy: number,
   c: { x: number; y: number },
   selected: boolean | undefined,
   accent: number,
+  leaderTexture: Texture | null,
 ) {
-  const m = new Graphics();
+  const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
   m.zIndex = gx + gy + 0.65;
 
-  if (selected) {
-    m.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
-  }
-  m.ellipse(0, 1, 12, 4).fill({ color: 0x000000, alpha: 0.35 });
+  const cy = -28; // portrait centre height above the tile
+  const R = 16; // portrait radius
 
-  // Founding Group: a simple expedition pennant and bundled hockey sticks.
-  m.rect(-2, -36, 3, 34).fill(0xe6eef6);
-  m.poly([1, -36, 20, -31, 1, -25]).fill(accent).stroke({ width: 1.5, color: 0x05121c });
-  m.roundRect(-12, -22, 24, 18, 4).fill(0x18293b).stroke({ width: 2, color: accent });
-  m.circle(0, -27, 7).fill(0xe7b48b).stroke({ width: 1, color: 0xc8946a });
-  m.circle(-2.5, -28, 0.8).fill(0x2a2320);
-  m.circle(2.5, -28, 0.8).fill(0x2a2320);
-  m.roundRect(-14, -14, 5, 16, 2).fill(0x33404f);
-  m.roundRect(9, -14, 5, 16, 2).fill(0x33404f);
-  m.poly([-18, 0, -16, 0, -10, -33, -12, -33]).fill(0xd8b673);
-  m.poly([18, 0, 16, 0, 10, -33, 12, -33]).fill(0xd8b673);
+  const base = new Graphics();
+  base.ellipse(0, 1, 12, 4).fill({ color: 0x000000, alpha: 0.35 });
+  if (selected) base.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
+  base.roundRect(-2.5, cy, 5, -cy - 2, 2).fill(0x2a3645); // stand from ground to portrait
+  base.circle(0, cy, R + 2).fill(0x0f1824); // disc backing + ring
+  m.addChild(base);
+
+  if (leaderTexture) {
+    const sp = new Sprite(leaderTexture);
+    // Bias the anchor upward so the face (top-centre of most portraits) sits in
+    // the disc rather than the chest.
+    sp.anchor.set(0.5, 0.42);
+    const s = (R * 2) / Math.min(leaderTexture.width, leaderTexture.height); // cover
+    sp.scale.set(s);
+    sp.position.set(0, cy);
+    const mask = new Graphics();
+    mask.circle(0, cy, R).fill(0xffffff);
+    m.addChild(mask);
+    sp.mask = mask;
+    m.addChild(sp);
+  } else {
+    const fb = new Graphics();
+    fb.circle(0, cy, R - 2).fill(0xe7b48b).stroke({ width: 1, color: 0xc8946a });
+    fb.circle(-4, cy - 1, 1).fill(0x2a2320);
+    fb.circle(4, cy - 1, 1).fill(0x2a2320);
+    m.addChild(fb);
+  }
+
+  // Team-colored rim drawn on top so the border stays crisp over the portrait.
+  const rim = new Graphics();
+  rim.circle(0, cy, R).stroke({ width: selected ? 3 : 2.5, color: selected ? 0xffffff : accent });
+  rim.circle(0, cy, R + 2).stroke({ width: 2, color: accent });
+  m.addChild(rim);
+
   return m;
 }
 
@@ -425,6 +451,8 @@ function drawStandingFeatures(
   if (look.mirror) g.scale.x = -1;
 
   switch (tile.terrain) {
+    case "water":
+      return false; // open ocean — nothing stands on it (waves are ground cover)
     case "mountain":
       mountainPeaks(g, look, pal);
       return true;
@@ -682,18 +710,14 @@ function plainsFeatures(g: Graphics, look: TileLook, tile: WorldTile): boolean {
   // Highland grassland (from the elevation field) rises as an actual hill mound
   // off the flat ground; lowland grassland stays flat with trees/rocks. The
   // elevation field now only *selects* where hills appear, never the ground height.
-  const hilly = (tile.elevation ?? 0) > 0.42;
+  const hilly = (tile.elevation ?? 0) > 0.52;
   if (hilly) {
     hill(g, look.jx * 0.4, 9, 17 + look.v * 1.5, 34, look);
     return true;
   }
   switch (look.v) {
-    case 2:
-      broadleaf(g, look.jx, 8, 20, 16, leaf, leafDark);
-      return true;
     case 3:
-      broadleaf(g, -8 + look.jx * 0.3, 8, 16, 12, leaf, leafDark);
-      broadleaf(g, 9, 7, 21, 15, leaf, leafDark);
+      broadleaf(g, look.jx, 8, 20, 16, leaf, leafDark);
       return true;
     case 4:
       rock(g, look.jx, 7, 5, 0x9aa0a6, 0x6c7176);
@@ -852,6 +876,7 @@ export function IsoWorldMap({
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
+  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
 
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
@@ -1044,10 +1069,28 @@ export function IsoWorldMap({
         const layer = new Container();
         layer.sortableChildren = true;
         app.stage.addChild(layer);
-        layer.position.set(app.screen.width / 2, app.screen.height / 2 - 60);
+        // Center on the host's real laid-out size (app.screen can lag the CSS
+        // height on first mount), so the map sits centered in the canvas.
+        layer.position.set(
+          (host.clientWidth || app.screen.width) / 2,
+          (host.clientHeight || app.screen.height) / 2 - 60,
+        );
         layerRef.current = layer;
         appRef.current = app;
         readyRef.current = true;
+
+        // Keep the view centered when the canvas resizes (taller viewports,
+        // window resizes) by shifting the layer with half the size delta, so the
+        // map fills the window instead of staying anchored to its original size.
+        let lastW = app.screen.width;
+        let lastH = app.screen.height;
+        app.renderer.on("resize", (w: number, h: number) => {
+          layer.x += (w - lastW) / 2;
+          layer.y += (h - lastH) / 2;
+          lastW = w;
+          lastH = h;
+          app.stage.hitArea = app.screen;
+        });
 
         // Pan + click handling on the stage.
         app.stage.eventMode = "static";
@@ -1119,7 +1162,7 @@ export function IsoWorldMap({
           sa.node.rotation = Math.sin(t * 1.7) * 0.03;
         });
 
-        drawScene(layer, state, selectedKey, logoTexture, registerScout);
+        drawScene(layer, state, selectedKey, logoTexture, leaderTexture, registerScout);
       });
 
     return () => {
@@ -1140,29 +1183,27 @@ export function IsoWorldMap({
 
   useEffect(() => {
     let cancelled = false;
-    if (!activeClub) {
-      setLogoTexture(null);
-      return;
-    }
     setLogoTexture(null);
+    setLeaderTexture(null);
+    if (!activeClub) return;
+    // HQ logo + the Leader unit's portrait, loaded from the club's asset folder.
     Assets.load<Texture>(clubAsset(activeClub, "logo"))
-      .then((texture) => {
-        if (!cancelled) setLogoTexture(texture);
-      })
-      .catch(() => {
-        if (!cancelled) setLogoTexture(null);
-      });
+      .then((texture) => !cancelled && setLogoTexture(texture))
+      .catch(() => !cancelled && setLogoTexture(null));
+    Assets.load<Texture>(clubAsset(activeClub, "leader"))
+      .then((texture) => !cancelled && setLeaderTexture(texture))
+      .catch(() => !cancelled && setLeaderTexture(null));
     return () => {
       cancelled = true;
     };
   }, [activeClub?.assetKey]);
 
-  // Redraw whenever the world, selection, or logo texture changes.
+  // Redraw whenever the world, selection, or a texture changes.
   useEffect(() => {
     if (readyRef.current && layerRef.current) {
-      drawScene(layerRef.current, state, selectedKey, logoTexture, registerScout);
+      drawScene(layerRef.current, state, selectedKey, logoTexture, leaderTexture, registerScout);
     }
-  }, [state, selectedKey, logoTexture]);
+  }, [state, selectedKey, logoTexture, leaderTexture]);
 
   return (
     <div className="panel iso-panel">
@@ -1209,13 +1250,13 @@ function MapControls({
       {founder && !state.world?.hqTile && (
         <div className="scout-bar">
           <span>
-            🧭 <strong>Founding Group</strong> · {founder.movesRemaining}/{founder.movesPerTurn} moves
+            👤 <strong>Leader</strong> · {founder.movesRemaining}/{founder.movesPerTurn} moves
           </span>
           <button
             className={`btn${state.world?.founderSelected ? " btn-primary" : ""}`}
             onClick={() => dispatch({ type: "SELECT_FOUNDING_UNIT" })}
           >
-            {state.world?.founderSelected ? "Selected — click a tile" : "Select Founding Group"}
+            {state.world?.founderSelected ? "Selected — click a tile" : "Select Leader"}
           </button>
         </div>
       )}

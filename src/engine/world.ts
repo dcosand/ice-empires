@@ -136,37 +136,46 @@ export function createWorld(seed = Date.now()): WorldState {
 
 // ---- Map generation tunables ---------------------------------------------
 // Raise SEA_LEVEL for more ocean / smaller continents; lower it for more land.
-const SEA_LEVEL = 0.34; // continent field below this is open water
-const COAST_BAND = 0.06; // band just above sea level rendered as coast
-const EDGE_FALLOFF = 0.7; // how hard the map rim is pushed underwater (continents)
-const MOUNTAIN_RIDGE = 0.84; // ridged-noise level that becomes mountains
-const MOUNTAIN_INLAND = 0.5; // mountains only where the land field is this high
+const SEA_LEVEL = 0.47; // continent field below this is open water
+const COAST_BAND = 0.045; // band just above sea level rendered as coast
+const EDGE_MARGIN = 0.16; // outer fraction of the map that falls away to ocean
+const EDGE_FALLOFF = 0.6; // how hard that outer margin is pushed underwater
+const MOUNTAIN_RIDGE = 0.93; // ridged-noise level that becomes mountains (higher = fewer)
+const MOUNTAIN_INLAND = 0.54; // mountains only where the land field is this high
+const BIOME_JITTER_T = 0.1; // per-tile temperature wobble for within-cluster variety
+const BIOME_JITTER_M = 0.16; // per-tile moisture wobble for within-cluster variety
 
-// Low-frequency landmass field with a radial edge falloff. The big /34 octave
-// gathers land into a few broad masses (continents) rather than speckle, and the
-// distance-from-centre term sinks the map rim so continents sit in open ocean.
-// (Technique: Red Blob Games' island/elevation-minus-gradient shaping.)
+// Landmass field. A domain-warped, medium-frequency noise gathers land into
+// several discrete masses (continents) with irregular, fragmented coastlines,
+// and only the OUTER MARGIN falls away to ocean — so the interior can split into
+// multiple continents separated by open sea rather than one central pangaea.
 function continentField(x: number, y: number, seed: number): number {
+  // Warp the sample point so coastlines are ragged (bays, straits, islands).
+  const wx = x + (smoothNoise(x / 26, y / 26, seed + 51) - 0.5) * 28;
+  const wy = y + (smoothNoise(x / 26, y / 26, seed + 71) - 0.5) * 28;
   const base =
-    smoothNoise(x / 34, y / 34, seed) * 0.6 +
-    smoothNoise(x / 16, y / 16, seed + 101) * 0.28 +
-    smoothNoise(x / 7, y / 7, seed + 211) * 0.12;
-  const dx = (x / (WORLD_WIDTH - 1)) * 2 - 1;
-  const dy = (y / (WORLD_HEIGHT - 1)) * 2 - 1;
-  const d = Math.min(1, Math.hypot(dx, dy) / Math.SQRT2); // 0 centre .. 1 corner
-  // Cubic falloff: interior barely touched, rim driven firmly underwater.
-  return base - Math.pow(d, 3) * EDGE_FALLOFF;
+    smoothNoise(wx / 22, wy / 22, seed) * 0.5 +
+    smoothNoise(wx / 11, wy / 11, seed + 101) * 0.32 +
+    smoothNoise(wx / 5, wy / 5, seed + 211) * 0.18;
+  // Edge-only falloff: interior untouched, only the outer EDGE_MARGIN ring sinks
+  // so land never reaches the border but inland seas can still divide continents.
+  const nx = x / (WORLD_WIDTH - 1);
+  const ny = y / (WORLD_HEIGHT - 1);
+  const edge = Math.min(nx, 1 - nx, ny, 1 - ny); // 0 at border .. 0.5 at centre
+  const penalty =
+    edge < EDGE_MARGIN ? Math.pow(1 - edge / EDGE_MARGIN, 2) * EDGE_FALLOFF : 0;
+  return base - penalty;
 }
 
 // Domain-warped, finer-grained moisture field (0 dry .. 1 wet). Warping the
 // sample point with a second noise breaks the straight, blocky biome bands that
 // plain thresholded noise produces, so wet/dry regions interlock organically.
 function moistureField(x: number, y: number, seed: number): number {
-  const wx = x + (smoothNoise(x / 20, y / 20, seed + 700) - 0.5) * 18;
-  const wy = y + (smoothNoise(x / 20, y / 20, seed + 900) - 0.5) * 18;
+  const wx = x + (smoothNoise(x / 18, y / 18, seed + 700) - 0.5) * 20;
+  const wy = y + (smoothNoise(x / 18, y / 18, seed + 900) - 0.5) * 20;
   return (
-    smoothNoise(wx / 12, wy / 12, seed ^ 0x9e3779b9) * 0.7 +
-    smoothNoise(wx / 5, wy / 5, seed + 33) * 0.3
+    smoothNoise(wx / 9, wy / 9, seed ^ 0x9e3779b9) * 0.62 +
+    smoothNoise(wx / 4, wy / 4, seed + 33) * 0.38
   );
 }
 
@@ -180,11 +189,12 @@ function temperatureField(x: number, y: number, seed: number): number {
   return Math.max(0, Math.min(1, t));
 }
 
-// Ridged noise (0..1, peaks along lines) so mountains form ranges, not blobs.
+// Ridged noise (0..1, peaks along narrow lines) so mountains form thin ranges,
+// not broad blobs. Higher frequency than the landmass field keeps ranges tight.
 function ridgeField(x: number, y: number, seed: number): number {
   const n =
-    smoothNoise(x / 14, y / 14, seed + 2718) * 0.6 +
-    smoothNoise(x / 6, y / 6, seed + 2719) * 0.4;
+    smoothNoise(x / 11, y / 11, seed + 2718) * 0.6 +
+    smoothNoise(x / 5, y / 5, seed + 2719) * 0.4;
   return 1 - Math.abs(2 * n - 1);
 }
 
@@ -214,7 +224,12 @@ function generatedTerrain(x: number, y: number, seed: number): WorldTerrain {
     return "mountain";
   }
 
-  return biome(temperatureField(x, y, seed), moistureField(x, y, seed));
+  // Per-tile jitter on top of the smooth climate fields sprinkles the occasional
+  // off-type tile into a cluster (a high-desert tile inside desert, a patch of
+  // plains in the tropics) for variety, without breaking the broad coherence.
+  const tJ = (noise2d(x, y, seed + 8081) - 0.5) * BIOME_JITTER_T;
+  const mJ = (noise2d(x, y, seed + 9091) - 0.5) * BIOME_JITTER_M;
+  return biome(temperatureField(x, y, seed) + tJ, moistureField(x, y, seed) + mJ);
 }
 
 // A continuous height field, 0 (sea level) .. ~1.1 (high peaks). Drives where
@@ -228,9 +243,12 @@ function generatedElevation(
   feature: WorldFeature | undefined,
   seed: number,
 ): number {
-  const land = Math.max(0, continentField(x, y, seed)); // ~0..0.6
   const ridge = ridgeField(x, y, seed);
-  const jitter = (noise2d(x, y, seed + 5501) - 0.5) * 0.18;
+  // A dedicated rolling-height noise (0..1) decoupled from the continent
+  // magnitude — otherwise every land tile (land >= SEA_LEVEL) reads as elevated
+  // and almost all plains become hills. This way only a fraction genuinely rise.
+  const localH = smoothNoise(x / 10, y / 10, seed + 6161);
+  const jitter = (noise2d(x, y, seed + 5501) - 0.5) * 0.12;
 
   let e: number;
   switch (terrain) {
@@ -238,26 +256,26 @@ function generatedElevation(
       e = 0;
       break;
     case "coastal":
-      e = 0.05 + land * 0.1;
+      e = 0.05 + localH * 0.08;
       break;
     case "mountain":
       e = 0.6 + ridge * 0.45 + Math.max(0, jitter);
       break;
     case "high-desert":
-      e = 0.36 + land * 0.55 + jitter; // elevated plateaus
+      e = 0.34 + localH * 0.4 + jitter; // elevated plateaus
       break;
     case "ice":
-      e = 0.24 + land * 0.5 + jitter;
+      e = 0.22 + localH * 0.4 + jitter;
       break;
     case "desert":
-      e = 0.14 + land * 0.4 + jitter;
+      e = 0.12 + localH * 0.3 + jitter;
       break;
     case "tropical":
-      e = 0.1 + land * 0.4 + jitter;
+      e = 0.1 + localH * 0.35 + jitter;
       break;
     case "plains":
     default:
-      e = 0.13 + land * 0.6 + jitter; // higher land reads as hills
+      e = 0.1 + localH * 0.6 + jitter; // only the higher rolls read as hills
       break;
   }
 
