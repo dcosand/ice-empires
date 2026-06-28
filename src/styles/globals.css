@@ -1193,10 +1193,11 @@ button {
   margin-bottom: 10px;
 }
 .fm-club-logo {
-  height: 42px;
-  width: 42px;
+  height: 52px;
+  width: auto;
+  max-width: 64px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.7));
 }
 .fm-moves {
   margin: 12px 0;
@@ -1217,10 +1218,11 @@ button {
   gap: 12px;
 }
 .topbar-logo {
-  height: 40px;
-  width: 40px;
+  height: 46px;
+  width: auto;
+  max-width: 58px;
   object-fit: contain;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.6));
 }
 
 /* ---------- Blocked End Month helper ---------- */
@@ -1271,11 +1273,11 @@ button {
 .fr-logo {
   position: relative;
   z-index: 2;
-  height: 96px;
+  height: 116px;
   width: auto;
-  max-width: 70%;
+  max-width: 80%;
   object-fit: contain;
-  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.7));
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.8));
 }
 .fr-body {
   display: grid;
@@ -1354,14 +1356,14 @@ button {
 }
 .cc-logo {
   position: absolute;
-  top: 12px;
+  top: 10px;
   left: 12px;
   z-index: 2;
-  height: 52px;
+  height: 66px;
   width: auto;
-  max-width: 72px;
+  max-width: 96px;
   object-fit: contain;
-  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.8));
+  filter: drop-shadow(0 3px 10px rgba(0, 0, 0, 0.85));
 }
 .cc-portrait-text {
   position: absolute;
