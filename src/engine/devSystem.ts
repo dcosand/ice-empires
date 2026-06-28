@@ -15,8 +15,9 @@ export function devResetTurn1(state: GameState): GameState {
     month: 1,
     resources: { ...state.club.startingResources },
     facilities: [],
+    units: [],
     completedResearch: [],
-    activeBuild: null,
+    activeProduction: null,
     activeResearch: null,
     discovery: {
       activePriorityId: DEFAULT_DISCOVERY_PRIORITY,
