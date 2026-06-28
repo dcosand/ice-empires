@@ -4,6 +4,7 @@ import { FACILITIES_BY_ID } from "../data/facilities";
 import { UNITS_BY_ID } from "../data/units";
 import { RESEARCH_BY_ID } from "../data/research";
 import { ERAS } from "../data/eras";
+import { clubAsset } from "../data/clubs";
 import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
@@ -13,6 +14,7 @@ import {
   getActiveResearchProgress,
 } from "../engine/selectors";
 import { productionItemName } from "../engine/productionSystem";
+import { ItemArt } from "./ItemArt";
 
 const RESOURCE_ORDER: ResourceKey[] = [
   "budget",
@@ -36,6 +38,18 @@ export function ClubHQPanel({ state }: { state: GameState }) {
     <div className="hq-screen">
       <div className="hq-hero" style={heroStyle}>
         <div className="hq-hero-art" aria-hidden />
+        {club && (
+          <img
+            className="hq-hero-photo"
+            src={clubAsset(club, "background")}
+            alt=""
+            aria-hidden
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).style.display = "none";
+            }}
+          />
+        )}
+        <div className="hq-hero-scrim" aria-hidden />
         <div className="hq-hero-body">
           <div className="hq-eyebrow">
             {era?.name ?? "Club HQ"} · Month {state.month}
@@ -108,11 +122,14 @@ export function ClubHQPanel({ state }: { state: GameState }) {
         {state.facilities.length === 0 ? (
           <div className="faint">No facilities yet. The ice is bare.</div>
         ) : (
-          <div className="hq-chips">
+          <div className="hq-facilities">
             {state.facilities.map((id) => (
-              <span className="hq-chip" key={id}>
-                {FACILITIES_BY_ID[id]?.name ?? id}
-              </span>
+              <div className="hq-facility" key={id}>
+                <ItemArt kind="facility" id={id} className="hq-facility-art" />
+                <span className="hq-facility-name">
+                  {FACILITIES_BY_ID[id]?.name ?? id}
+                </span>
+              </div>
             ))}
           </div>
         )}
@@ -131,14 +148,17 @@ export function ClubHQPanel({ state }: { state: GameState }) {
               const def = UNITS_BY_ID[unit.unitDefId];
               return (
                 <div className="hq-unit" key={unit.id}>
-                  <div className="hq-unit-top">
-                    <span className="hq-unit-name">{unit.name}</span>
-                    <span className="hq-unit-cat">{def?.category ?? ""}</span>
-                  </div>
-                  <div className="hq-unit-ability">{def?.abilitySummary}</div>
-                  <div className="hq-unit-foot">
-                    <span className="hq-unit-status">{unit.status}</span>
-                    <span className="faint">at Club HQ · since mo {unit.createdMonth}</span>
+                  <ItemArt kind="unit" id={unit.unitDefId} className="hq-unit-art" />
+                  <div className="hq-unit-body">
+                    <div className="hq-unit-top">
+                      <span className="hq-unit-name">{unit.name}</span>
+                      <span className="hq-unit-cat">{def?.category ?? ""}</span>
+                    </div>
+                    <div className="hq-unit-ability">{def?.abilitySummary}</div>
+                    <div className="hq-unit-foot">
+                      <span className="hq-unit-status">{unit.status}</span>
+                      <span className="faint">since mo {unit.createdMonth}</span>
+                    </div>
                   </div>
                 </div>
               );

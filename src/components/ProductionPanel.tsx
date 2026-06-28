@@ -13,6 +13,7 @@ import {
 } from "../engine/productionSystem";
 import { getMonthlyIncome } from "../engine/selectors";
 import { ProgressBar } from "./ProgressBar";
+import { ItemArt } from "./ItemArt";
 
 type Tab = "facilities" | "units" | "locked";
 
@@ -143,10 +144,11 @@ function ProductionOptionCard({
   return (
     <div className={`prod-option status-${opt.status}`}>
       <div className="prod-option-head">
+        <ItemArt kind={opt.kind} id={opt.id} className="prod-thumb" />
         <div className="prod-titles">
           <span className="prod-name">{opt.name}</span>
           <span className="prod-tag">
-            {opt.kind === "unit" ? "Unit" : "Facility"} · {opt.categoryLabel}
+            {opt.kind === "unit" ? `Unit · ${opt.categoryLabel}` : "Facility"}
           </span>
         </div>
         <div className="prod-cost">
