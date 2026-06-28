@@ -36,19 +36,19 @@ export function FoundingMap({
         <div className="fm-header">
           <div className="eyebrow">Founding Phase · Month 0</div>
           <h1 className="title-xl" style={{ fontSize: 30, margin: "4px 0" }}>
-            {founded ? `${club.name} is founded` : "Lead the Founding Group"}
+            {founded ? `${club.name} is founded` : "Guide Your Leader"}
           </h1>
           <p className="muted" style={{ margin: 0 }}>
             {founded
               ? "Your home is on the map. This world carries into the season — same HQ, same fog."
-              : `Select the Founding Group, move across this ${world.width}x${world.height} generated world, then found your club on a tile you like.`}
+              : `Select your Leader, move across this ${world.width}x${world.height} generated world, then found your club on a tile you like.`}
           </p>
         </div>
 
         <IsoWorldMap state={state} dispatch={dispatch} />
 
         <div className="fm-legend muted">
-          🧭 Founding Group &nbsp;·&nbsp; highlighted tiles are legal moves &nbsp;·&nbsp;
+          👤 Leader &nbsp;·&nbsp; highlighted tiles are legal moves &nbsp;·&nbsp;
           dark tiles are fog &nbsp;·&nbsp; water is impassable
         </div>
       </div>
@@ -75,7 +75,7 @@ export function FoundingMap({
         {!founded && founder && (
           <>
             <div className="fm-step">
-              <strong>1.</strong> Click the 🧭 Founding Group to select it.
+              <strong>1.</strong> Click the 👤 Leader to select it.
             </div>
             <div className="fm-step">
               <strong>2.</strong> Click a highlighted tile to move (1 point each).
@@ -90,7 +90,7 @@ export function FoundingMap({
                 {founder.movesRemaining} / {founder.movesPerTurn}
               </strong>
               {!selected && (
-                <span className="faint"> · select the Founding Group first</span>
+                <span className="faint"> · select the Leader first</span>
               )}
               {selected && founder.movesRemaining === 0 && (
                 <span className="faint"> · end the founding turn for more</span>
@@ -115,7 +115,7 @@ export function FoundingMap({
             </button>
             {!selected && (
               <div className="faint" style={{ marginTop: 8, fontSize: 12 }}>
-                Select the Founding Group first.
+                Select the Leader first.
               </div>
             )}
           </>
@@ -126,7 +126,7 @@ export function FoundingMap({
             <div className="era-banner" style={{ marginBottom: 14 }}>
               <h3>Club HQ established</h3>
               <div className="muted">
-                The Founding Group becomes your <strong>Club Leadership</strong>{" "}
+                Your Leader becomes your <strong>Club Leadership</strong>{" "}
                 and stays at Club HQ. {club.name} enters the Pond Hockey Era.
               </div>
             </div>

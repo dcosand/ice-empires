@@ -32,6 +32,7 @@ export function DevPanel({
   if (!open) return null;
 
   const inGame = !!state.club;
+  const hasWorld = !!state.world;
 
   return (
     <div style={panelStyle}>
@@ -51,6 +52,15 @@ export function DevPanel({
           />
           <span>Reveal all tiles</span>
         </label>
+        <button
+          style={hasWorld ? actionBtnStyle : disabledBtnStyle}
+          disabled={!hasWorld}
+          onClick={() => dispatch({ type: "DEV_REGEN_MAP" })}
+          title="Generate a brand-new world with a fresh random seed"
+        >
+          🗺 Regenerate Map
+        </button>
+        {!hasWorld && <div style={hintStyle}>Start a game to generate a map first.</div>}
       </div>
 
       <div style={sectionStyle}>

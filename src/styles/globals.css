@@ -1110,9 +1110,9 @@ button {
   font-size: 12px;
 }
 .founding-map-screen .iso-canvas {
-  height: calc(100vh - 210px);
+  height: calc(100vh - 200px);
   min-height: 560px;
-  max-height: 790px;
+  max-height: 1400px;
 }
 .founding-map-screen .iso-panel {
   margin-bottom: 0;
@@ -1599,7 +1599,7 @@ button {
 .iso-canvas {
   position: relative;
   width: 100%;
-  height: min(64vh, 600px);
+  height: clamp(420px, 72vh, 1100px);
   min-height: 420px;
   border-radius: 10px;
   overflow: hidden;
@@ -1653,9 +1653,9 @@ button {
   margin-bottom: 10px;
 }
 .map-stage .iso-canvas {
-  height: calc(100vh - 250px);
+  height: calc(100vh - 230px);
   min-height: 560px;
-  max-height: 780px;
+  max-height: 1400px;
 }
 .map-stage .map-detail {
   max-width: 720px;

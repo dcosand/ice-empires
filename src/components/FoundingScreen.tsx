@@ -81,7 +81,7 @@ export function FoundingScreen({
               Begin the Founding Expedition →
             </button>
             <div className="faint" style={{ marginTop: 8, fontSize: 12 }}>
-              You'll lead a Founding Group across the ice and choose where to
+              You'll lead your Leader across the ice and choose where to
               plant the club.
             </div>
             <button

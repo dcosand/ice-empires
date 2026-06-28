@@ -431,6 +431,7 @@ export type GameAction =
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----
   | { type: "DEV_RESET_TURN1" }
+  | { type: "DEV_REGEN_MAP" }
   | { type: "DEV_TOGGLE_FACILITY"; facilityId: string }
   | { type: "DEV_TOGGLE_RESEARCH"; techId: string }
   | { type: "DEV_SET_REVEAL_ALL"; value: boolean };
