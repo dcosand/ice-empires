@@ -19,8 +19,9 @@ export function createInitialState(): GameState {
     club: null,
     resources: { ...EMPTY_RESOURCES },
     facilities: [],
+    units: [],
     completedResearch: [],
-    activeBuild: null,
+    activeProduction: null,
     activeResearch: null,
     discovery: {
       activePriorityId: DEFAULT_DISCOVERY_PRIORITY,

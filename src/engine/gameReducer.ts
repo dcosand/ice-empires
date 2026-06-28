@@ -1,6 +1,6 @@
 import type { GameAction, GameState } from "../types/game";
 import { createInitialState, foundClub } from "./initialState";
-import { selectBuild } from "./buildSystem";
+import { startProduction } from "./productionSystem";
 import { selectResearch } from "./researchSystem";
 import { selectDiscoveryPriority } from "./discoverySystem";
 import {
@@ -64,8 +64,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // Keep the world — it persists into play (HQ, fog, revealed tiles).
       return { ...state, phase: "playing" };
 
-    case "SELECT_BUILD":
-      return selectBuild(state, action.facilityId);
+    case "START_PRODUCTION":
+      return startProduction(state, action.kind, action.itemId);
 
     case "SELECT_RESEARCH":
       return selectResearch(state, action.techId);

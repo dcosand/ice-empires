@@ -11,15 +11,16 @@ import { ResourceBar } from "./ResourceBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
 import { ClubHQPanel } from "./ClubHQPanel";
-import { BuildPanel } from "./BuildPanel";
+import { ProductionPanel } from "./ProductionPanel";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
+import { getAvailableResearch } from "../engine/selectors";
 import {
-  getAvailableFacilities,
-  getAvailableResearch,
-} from "../engine/selectors";
+  productionItemName,
+  startableProductionCount,
+} from "../engine/productionSystem";
 
 type OverlayView =
   | "build"
@@ -80,7 +81,7 @@ export function Dashboard({
 
       {overlay && (
         <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
-          {overlay === "build" && <BuildPanel state={state} dispatch={dispatch} />}
+          {overlay === "build" && <ProductionPanel state={state} dispatch={dispatch} />}
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "club" && <ClubHQPanel state={state} />}
@@ -115,9 +116,9 @@ function CommandRail({
   dispatch: Dispatch<GameAction>;
   open: (view: OverlayView) => void;
 }) {
-  const buildOptions = getAvailableFacilities(state).length;
+  const buildOptions = startableProductionCount(state);
   const researchOptions = getAvailableResearch(state).length;
-  const buildReady = !!state.activeBuild || buildOptions === 0;
+  const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
   const discoveryReady = !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
   const scout = state.world?.scout;
@@ -138,8 +139,14 @@ function CommandRail({
       <div className="rail-title">Next Tasks</div>
       <TaskButton
         done={buildReady}
-        label={state.activeBuild ? "Build active" : buildOptions === 0 ? "Builds complete" : "Choose build"}
-        detail={activeBuildName(state)}
+        label={
+          state.activeProduction
+            ? "Production active"
+            : buildOptions === 0
+              ? "Nothing to build"
+              : "Choose production"
+        }
+        detail={activeProductionName(state)}
         onClick={() => open("build")}
       />
       <TaskButton
@@ -257,9 +264,12 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
   return titles[view];
 }
 
-function activeBuildName(state: GameState) {
-  if (!state.activeBuild) return undefined;
-  return FACILITIES_BY_ID[state.activeBuild.facilityId]?.name;
+function activeProductionName(state: GameState) {
+  if (!state.activeProduction) return undefined;
+  return productionItemName(
+    state.activeProduction.kind,
+    state.activeProduction.itemId,
+  );
 }
 
 function activeResearchName(state: GameState) {
