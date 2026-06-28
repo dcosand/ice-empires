@@ -4,7 +4,6 @@ import { createInitialState } from "./engine/initialState";
 import { LandingScreen } from "./components/LandingScreen";
 import { ClubSelectScreen } from "./components/ClubSelectScreen";
 import { FoundingScreen } from "./components/FoundingScreen";
-import { FoundingMap } from "./components/FoundingMap";
 import { Dashboard } from "./components/Dashboard";
 import { BackgroundMusic } from "./components/BackgroundMusic";
 import { DevPanel } from "./components/DevPanel";
@@ -31,9 +30,6 @@ export function App() {
     }
     if (state.phase === "founding") {
       return <FoundingScreen state={state} dispatch={dispatch} />;
-    }
-    if (state.phase === "foundingMap") {
-      return <FoundingMap state={state} dispatch={dispatch} />;
     }
     return <Dashboard state={state} dispatch={dispatch} />;
   }

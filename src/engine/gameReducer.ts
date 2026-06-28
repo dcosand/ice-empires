@@ -1,5 +1,5 @@
 import type { GameAction, GameState } from "../types/game";
-import { createInitialState, foundClub } from "./initialState";
+import { beginFounding, createInitialState } from "./initialState";
 import { startProduction } from "./productionSystem";
 import { selectResearch } from "./researchSystem";
 import { selectDiscoveryPriority } from "./discoverySystem";
@@ -37,12 +37,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "SELECT_CLUB":
       return { ...state, phase: "founding", selectedClubId: action.clubId };
 
-    case "START_FOUNDING":
-      return {
+    case "START_FOUNDING": {
+      // The founding turn IS Month 1, played on the same map-oriented Dashboard
+      // as the rest of the game: seed the club and generate the world, then go
+      // straight into "playing" with the Founding Group on the board.
+      if (!state.selectedClubId) return state;
+      const withWorld: GameState = {
         ...state,
-        phase: "foundingMap",
+        phase: "playing",
         world: createWorld(Date.now()),
       };
+      return beginFounding(withWorld, state.selectedClubId);
+    }
 
     case "SELECT_FOUNDING_UNIT":
       if (!state.world || state.world.hqTile || !state.world.founder) {
@@ -59,16 +65,26 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "FOUND_CLUB": {
       const world = state.world;
       if (!world || world.hqTile || !world.founder) return state;
-      // Place HQ on the founding tile, then seed the club (resources, month 1).
+      const club = state.club;
+      if (!club) return state;
+      // Plant HQ on the founding tile (Founding Group -> Club Leadership, a Scout
+      // takes the ice). The club + resources + Month 1 were already seeded at the
+      // start of the founding turn, so this only marks the home and logs it.
       const placed = foundOnTile(state);
-      const founded = foundClub(placed, action.clubId);
-      if (!founded.club) return state; // invalid club id
-      return founded;
+      return {
+        ...placed,
+        eventLog: [
+          {
+            id: "club-founded",
+            month: placed.month,
+            title: `${club.name} HQ established`,
+            message: `${club.name} plants its home ice. Production opens — start building your first facility.`,
+            type: "era",
+          },
+          ...placed.eventLog,
+        ],
+      };
     }
-
-    case "BEGIN_SEASON":
-      // Keep the world — it persists into play (HQ, fog, revealed tiles).
-      return { ...state, phase: "playing" };
 
     case "START_PRODUCTION":
       return startProduction(state, action.kind, action.itemId);

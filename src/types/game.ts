@@ -18,7 +18,6 @@ export type Phase =
   | "landing"
   | "clubSelect"
   | "founding"
-  | "foundingMap"
   | "playing"
   | "complete";
 
@@ -418,7 +417,6 @@ export type GameAction =
   | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
-  | { type: "BEGIN_SEASON" }
   | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }

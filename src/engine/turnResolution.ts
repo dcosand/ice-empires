@@ -16,6 +16,8 @@ import { makeLog } from "./log";
 // each system in order. Each system appends readable log lines.
 export function endMonth(state: GameState): GameState {
   if (state.phase !== "playing" || !state.club) return state;
+  // The founding turn can't be ended until the club's HQ is planted.
+  if (state.world && !state.world.hqTile) return state;
 
   const draft: GameState = structuredClone(state);
   draft.month += 1;
