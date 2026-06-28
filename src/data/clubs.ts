@@ -125,10 +125,10 @@ export const CLUBS: Record<string, ClubDef> = Object.fromEntries(
 
 export const DEFAULT_CLUB_ID = arizonaMonsoon.id;
 
-// Path to a club asset. `kind` is the file stem (logo / leader / background).
+// Path to a club asset. `kind` is the file stem (logo / leader / background / rink).
 export function clubAsset(
   club: ClubDef,
-  kind: "logo" | "leader" | "background",
+  kind: "logo" | "leader" | "background" | "rink",
 ): string {
   return `/assets/clubs/${club.assetKey}/${kind}.png`;
 }

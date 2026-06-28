@@ -3,7 +3,7 @@ import type { GameAction, GameState } from "../types/game";
 import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
 import { TopBar } from "./TopBar";
 import { ResourceBar } from "./ResourceBar";
-import { WorldMap } from "./WorldMap";
+import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
 import { ThisMonthPanel } from "./ThisMonthPanel";
 import { ClubHQPanel } from "./ClubHQPanel";
@@ -47,7 +47,7 @@ export function Dashboard({
       <div className="strategy-grid">
         {/* Map-first: the world dominates the center/left */}
         <div className="map-col">
-          <WorldMap state={state} dispatch={dispatch} />
+          <IsoWorldMap state={state} dispatch={dispatch} />
           <DiscoveryPanel state={state} dispatch={dispatch} />
         </div>
 

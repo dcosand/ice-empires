@@ -168,7 +168,8 @@ export function endFoundingTurn(state: GameState): GameState {
 }
 
 // Found the club on the Founding Group's tile: HQ goes here, the Founding Group
-// becomes Club Leadership (no longer a movable unit).
+// becomes Club Leadership (no longer a movable unit), and your first Scout takes
+// the ice at HQ — controllable from Month 1 to explore the world.
 export function foundOnTile(state: GameState): GameState {
   const world = state.world;
   if (!world || world.hqTile || !world.founder) return state;
@@ -180,6 +181,13 @@ export function foundOnTile(state: GameState): GameState {
       hqTile: hq,
       founder: null,
       founderSelected: false,
+      scout: {
+        x: hq.x,
+        y: hq.y,
+        movesPerTurn: SCOUT_MOVES,
+        movesRemaining: SCOUT_MOVES,
+      },
+      scoutSelected: false,
       revealed: addReveal(world.revealed, hq.x, hq.y),
     },
   };

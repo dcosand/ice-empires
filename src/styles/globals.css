@@ -623,7 +623,7 @@ button {
 /* ---------- Strategy grid ---------- */
 .strategy-grid {
   display: grid;
-  grid-template-columns: minmax(0, 1.65fr) minmax(320px, 1fr);
+  grid-template-columns: minmax(0, 2.4fr) minmax(300px, 0.9fr);
   gap: 16px;
   align-items: start;
 }
@@ -1553,4 +1553,40 @@ button {
 .influenced-note {
   color: var(--gold);
   font-size: 13px;
+}
+
+/* =========================================================================
+   v8 — PixiJS isometric world map
+   ========================================================================= */
+.iso-panel {
+  padding: 14px;
+}
+.iso-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 10px;
+}
+.iso-canvas {
+  position: relative;
+  width: 100%;
+  height: min(64vh, 600px);
+  min-height: 420px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--border-bright);
+  background:
+    radial-gradient(120% 90% at 50% 0%, #12233a 0%, #0a1018 70%);
+  cursor: grab;
+  touch-action: none;
+}
+.iso-canvas:active {
+  cursor: grabbing;
+}
+.iso-canvas canvas {
+  display: block;
+}
+.iso-controls {
+  margin-top: 12px;
 }
