@@ -2237,12 +2237,55 @@ button {
   display: block;
 }
 
-/* ---- Production chooser: combined visual gallery ---- */
+/* ---- Production chooser: grouped, collapsible visual gallery ---- */
+.prod-section {
+  margin-top: 14px;
+}
+.prod-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 4px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--border);
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+}
+.prod-section-head:hover {
+  color: var(--text);
+}
+.prod-section-chevron {
+  font-size: 11px;
+  color: var(--text-faint);
+  transition: transform 0.15s ease;
+}
+.prod-section-chevron.open {
+  transform: rotate(90deg);
+}
+.prod-section-title {
+  font-weight: 800;
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+.prod-section-count {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 1px 9px;
+}
 .prod-gallery {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
-  margin-top: 14px;
+  margin-top: 12px;
 }
 .prod-card {
   position: relative;
@@ -2279,16 +2322,27 @@ button {
   border-color: var(--accent);
   box-shadow: inset 0 0 0 1px var(--accent);
 }
-.prod-card.status-built {
+.prod-card.status-built,
+.prod-card.status-completed {
   opacity: 0.62;
   cursor: default;
 }
-.prod-card.status-built:hover {
+.prod-card.status-built:hover,
+.prod-card.status-completed:hover {
   transform: none;
 }
+.prod-card.status-completed .prod-card-badge {
+  color: var(--good);
+  border-color: var(--good);
+}
 .prod-card.status-locked {
-  border-style: dashed;
-  cursor: help;
+  opacity: 0.45;
+  filter: grayscale(0.85);
+  cursor: not-allowed;
+}
+.prod-card.status-locked:hover {
+  transform: none;
+  border-color: var(--border);
 }
 .prod-card.unaffordable .prod-card-cost {
   color: var(--bad);
