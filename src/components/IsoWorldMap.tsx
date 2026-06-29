@@ -1253,6 +1253,16 @@ function mixColor(a: number, b: number, amt: number): number {
   return (mix(ar, br) << 16) | (mix(ag, bg) << 8) | mix(ab, bb);
 }
 
+// A thin imperative handle onto the Pixi camera (the world `layer` transform),
+// so React overlays like the minimap can read where the view is looking and
+// recenter it without forcing a Pixi redraw on every pan. `centerOnLocal` takes
+// a point in layer-local space (the same space tiles are positioned in:
+// isoX(gx,gy) - centroid.x).
+type CameraApi = {
+  getView: () => { x: number; y: number; scale: number; vw: number; vh: number };
+  centerOnLocal: (localX: number, localY: number) => void;
+};
+
 // ---- Component -----------------------------------------------------------
 export function IsoWorldMap({
   state,
@@ -1275,6 +1285,7 @@ export function IsoWorldMap({
   const keyMoveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const rightClickRef = useRef<(gx: number, gy: number) => void>(() => {});
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
+  const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
   const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
@@ -1491,6 +1502,24 @@ export function IsoWorldMap({
         appRef.current = app;
         readyRef.current = true;
 
+        // Expose the camera so the minimap can read the view and recenter it.
+        cameraRef.current = {
+          getView: () => ({
+            x: layer.x,
+            y: layer.y,
+            scale: layer.scale.x,
+            vw: app.screen.width,
+            vh: app.screen.height,
+          }),
+          centerOnLocal: (localX, localY) => {
+            const s = layer.scale.x;
+            layer.position.set(
+              app.screen.width / 2 - localX * s,
+              app.screen.height / 2 - localY * s,
+            );
+          },
+        };
+
         // Keep the view centered when the canvas resizes (taller viewports,
         // window resizes) by shifting the layer with half the size delta, so the
         // map fills the window instead of staying anchored to its original size.
@@ -1589,6 +1618,7 @@ export function IsoWorldMap({
       if (a) a.destroy();
       appRef.current = null;
       layerRef.current = null;
+      cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1628,9 +1658,185 @@ export function IsoWorldMap({
           </div>
         </div>
       </div>
-      <div ref={hostRef} className="iso-canvas" />
+      <div className="iso-canvas-wrap">
+        <div ref={hostRef} className="iso-canvas" />
+        <MiniMap state={state} cameraRef={cameraRef} />
+      </div>
       <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
     </div>
+  );
+}
+
+// ---- Minimap -------------------------------------------------------------
+const MM_W = 220; // minimap width in CSS pixels; height follows world aspect
+
+function cssHex(n: number): string {
+  return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
+}
+
+// A corner minimap: a 1px-per-tile fog/terrain picture scaled up crisply, with
+// HQ / Scout / region dots, the live camera viewport quad, and click-to-pan.
+// It reads the same fog model as the main map (unseen → dark, explored → dim,
+// visible → bright) and drives the camera via the imperative CameraApi handle.
+function MiniMap({
+  state,
+  cameraRef,
+}: {
+  state: GameState;
+  cameraRef: { current: CameraApi | null };
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Static composite (scaled terrain + markers), rebuilt only on state change;
+  // the per-frame loop just blits this and strokes the moving viewport quad.
+  const compositeRef = useRef<HTMLCanvasElement | null>(null);
+  const world = state.world;
+  const mmW = MM_W;
+  const mmH = world
+    ? Math.max(1, Math.round((MM_W * world.height) / world.width))
+    : Math.round(MM_W * 0.625);
+
+  // Rebuild the terrain + marker composite whenever fog / markers change.
+  useEffect(() => {
+    if (!world) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const tw = world.width;
+    const th = world.height;
+    const buf = document.createElement("canvas");
+    buf.width = tw;
+    buf.height = th;
+    const bctx = buf.getContext("2d");
+    if (!bctx) return;
+    const revealedSet = new Set(world.revealed);
+    const visibleSet = visibleTiles(world);
+    for (let gy = 0; gy < th; gy++) {
+      for (let gx = 0; gx < tw; gx++) {
+        const tile = world.tiles[gy * tw + gx];
+        const key = `${gx},${gy}`;
+        const explored = state.devRevealAll || revealedSet.has(key);
+        const visible = state.devRevealAll || visibleSet.has(key);
+        let col: number;
+        if (!explored) col = 0x0a1119;
+        else {
+          const base = (TERRAIN[tile.terrain] ?? TERRAIN.plains).top;
+          col = visible ? base : mixColor(darkenBy(base, 0.4), 0x1b2b3d, 0.45);
+        }
+        bctx.fillStyle = cssHex(col);
+        bctx.fillRect(gx, gy, 1, 1);
+      }
+    }
+
+    const comp = compositeRef.current ?? document.createElement("canvas");
+    comp.width = mmW * dpr;
+    comp.height = mmH * dpr;
+    compositeRef.current = comp;
+    const cctx = comp.getContext("2d");
+    if (!cctx) return;
+    cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cctx.imageSmoothingEnabled = false;
+    cctx.clearRect(0, 0, mmW, mmH);
+    cctx.drawImage(buf, 0, 0, mmW, mmH);
+
+    const dot = (gx: number, gy: number, color: number, r: number, ring = false) => {
+      const mx = ((gx + 0.5) / tw) * mmW;
+      const my = ((gy + 0.5) / th) * mmH;
+      cctx.beginPath();
+      cctx.arc(mx, my, r, 0, Math.PI * 2);
+      cctx.fillStyle = cssHex(color);
+      cctx.fill();
+      if (ring) {
+        cctx.lineWidth = 1;
+        cctx.strokeStyle = "rgba(255,255,255,0.9)";
+        cctx.stroke();
+      }
+    };
+
+    // Region pins that have been at least discovered, on explored tiles.
+    for (const [regionId, rState] of Object.entries(state.discovery.regionStates)) {
+      if (rState === "hidden") continue;
+      const region = REGIONS_BY_ID[regionId];
+      if (!region) continue;
+      if (!state.devRevealAll && !revealedSet.has(`${region.tile.x},${region.tile.y}`)) continue;
+      dot(region.tile.x, region.tile.y, PIN_COLOR[rState], 2.4);
+    }
+    const accent = accentNumber(getActiveClub(state)?.accent);
+    if (world.founder) dot(world.founder.x, world.founder.y, accent, 2.8, true);
+    if (world.scout) dot(world.scout.x, world.scout.y, 0x38bdf8, 2.8, true);
+    if (world.hqTile) dot(world.hqTile.x, world.hqTile.y, accent, 3.4, true);
+  }, [state, world, mmW, mmH]);
+
+  // Per-frame: blit the composite and stroke the live camera viewport quad.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !world) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = mmW * dpr;
+    canvas.height = mmH * dpr;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const cen = centroid(world);
+    let raf = 0;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, mmW, mmH);
+      const comp = compositeRef.current;
+      if (comp) ctx.drawImage(comp, 0, 0, mmW, mmH);
+      const cam = cameraRef.current?.getView();
+      if (cam && cam.scale > 0) {
+        const corners: Array<[number, number]> = [
+          [0, 0],
+          [cam.vw, 0],
+          [cam.vw, cam.vh],
+          [0, cam.vh],
+        ];
+        ctx.beginPath();
+        corners.forEach(([sx, sy], i) => {
+          const lx = (sx - cam.x) / cam.scale;
+          const ly = (sy - cam.y) / cam.scale;
+          const a = (lx + cen.x) / (TILE_W / 2);
+          const b = (ly + cen.y) / (TILE_H / 2);
+          const gx = (a + b) / 2;
+          const gy = (b - a) / 2;
+          const mx = (gx / world.width) * mmW;
+          const my = (gy / world.height) * mmH;
+          if (i === 0) ctx.moveTo(mx, my);
+          else ctx.lineTo(mx, my);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [world, mmW, mmH, cameraRef]);
+
+  if (!world) return null;
+
+  // Click (or drag) on the minimap recenters the main camera on that tile.
+  const jumpTo = (e: { clientX: number; clientY: number; currentTarget: HTMLCanvasElement }) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const gx = ((e.clientX - rect.left) / rect.width) * world.width;
+    const gy = ((e.clientY - rect.top) / rect.height) * world.height;
+    const cen = centroid(world);
+    cameraRef.current?.centerOnLocal(isoX(gx, gy) - cen.x, isoY(gx, gy) - cen.y);
+  };
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="iso-minimap"
+      style={{ width: mmW, height: mmH }}
+      title="Click to jump the view"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        jumpTo(e);
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons & 1) jumpTo(e);
+      }}
+    />
   );
 }
 
