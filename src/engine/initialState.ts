@@ -32,6 +32,7 @@ export function createInitialState(): GameState {
     cards: [],
     eventLog: [],
     rngSeed: 0,
+    pendingEncounter: null,
     devRevealAll: false,
   };
 }

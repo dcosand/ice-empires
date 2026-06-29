@@ -34,7 +34,39 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
       "The stranger brought three sticks, two usable skates, and one deeply suspicious puck.",
     possibleEffects: [
       { type: "addResource", resource: "operations", amount: 2 },
-      { type: "setback", message: "The puck was, in fact, cursed." },
+      {
+        type: "setback",
+        message: "Half the gear was junk and the rest cost you to haul off.",
+        resource: "budget",
+        amount: 2,
+      },
+    ],
+  },
+  {
+    id: "abandoned-playbook",
+    name: "An Abandoned Playbook",
+    kind: "rumor",
+    description:
+      "Tucked in a warming hut: a weathered notebook of drills nobody around here recognizes.",
+    possibleEffects: [
+      { type: "grantTech", techId: "organized-practice" },
+      { type: "addResource", resource: "hockeyKnowledge", amount: 2 },
+    ],
+  },
+  {
+    id: "frozen-creditor",
+    name: "A Debt Comes Due",
+    kind: "mishap",
+    description:
+      "A man on the ice insists your club already owes him for last winter's ice time.",
+    possibleEffects: [
+      {
+        type: "setback",
+        message: "You quietly settle up to make him go away.",
+        resource: "budget",
+        amount: 3,
+      },
+      { type: "flavorOnly" },
     ],
   },
   {

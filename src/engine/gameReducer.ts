@@ -10,11 +10,12 @@ import {
   moveFounder,
 } from "./world";
 import {
-  investigatePondMarker,
   moveScout,
   recruitScout,
+  resolvePendingEncounter,
   selectScout,
   surveyRegion,
+  triggerPondEncounter,
 } from "./scoutSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
@@ -59,7 +60,11 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, world: { ...state.world, founderSelected: true } };
 
     case "MOVE_FOUNDING_UNIT":
-      return moveFounder(state, action.x, action.y);
+      return triggerPondEncounter(
+        moveFounder(state, action.x, action.y),
+        action.x,
+        action.y,
+      );
 
     case "END_FOUNDING_TURN":
       return endFoundingTurn(state);
@@ -104,10 +109,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return selectScout(state, action.scoutId);
 
     case "MOVE_SCOUT":
-      return moveScout(state, action.x, action.y, action.scoutId);
+      return triggerPondEncounter(
+        moveScout(state, action.x, action.y, action.scoutId),
+        action.x,
+        action.y,
+      );
 
-    case "INVESTIGATE_POND_MARKER":
-      return investigatePondMarker(state, action.markerId);
+    case "RESOLVE_ENCOUNTER":
+      return resolvePendingEncounter(state);
 
     case "SURVEY_REGION":
       return surveyRegion(state, action.regionId);

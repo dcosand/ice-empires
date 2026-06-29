@@ -1,5 +1,12 @@
-import type { GameState, ResourceKey, WorldPondMarker, WorldState, WorldUnit } from "../types/game";
+import type {
+  EncounterEffect,
+  GameState,
+  ResourceKey,
+  WorldState,
+  WorldUnit,
+} from "../types/game";
 import { REGIONS_BY_ID } from "../data/regions";
+import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
 import {
   addReveal,
@@ -136,41 +143,65 @@ export function surveyableRegionId(state: GameState): string | null {
   return s === "discovered" || s === "rumored" ? regionId : null;
 }
 
-export function investigablePondMarker(state: GameState): WorldPondMarker | null {
-  const scout = activeScout(state.world);
+// A goodie hut auto-resolves the instant a unit steps onto it: we roll the
+// outcome, hide the marker, and stage a PendingEncounter for the UI to surface
+// as a pop-up. The effect itself is NOT applied yet — that happens on
+// acknowledgement (resolvePendingEncounter), so the player sees the event first.
+export function triggerPondEncounter(state: GameState, x: number, y: number): GameState {
   const world = state.world;
-  if (!scout || !world) return null;
-  return (
-    world.pondMarkers.find(
-      (m) => !m.investigated && m.x === scout.x && m.y === scout.y,
-    ) ?? null
-  );
-}
+  if (!world || state.pendingEncounter) return state;
 
-export function investigatePondMarker(state: GameState, markerId: string): GameState {
-  const world = state.world;
-  const marker = investigablePondMarker(state);
-  if (!world || !marker || marker.id !== markerId) return state;
+  // Only fire if a unit is actually standing on the tile (a failed/blocked move
+  // must not detonate a distant hut).
+  const unitHere =
+    (world.founder && world.founder.x === x && world.founder.y === y) ||
+    allScouts(world).some((s) => s.x === x && s.y === y);
+  if (!unitHere) return state;
+
+  const marker = world.pondMarkers.find(
+    (m) => !m.investigated && m.x === x && m.y === y,
+  );
+  if (!marker) return state;
   const encounter = POND_ENCOUNTERS_BY_ID[marker.encounterId];
   if (!encounter) return state;
 
-  let next: GameState = {
+  const roll = nextRandom(state.rngSeed + marker.x * 31 + marker.y * 17);
+  const effects = encounter.possibleEffects;
+  const effect = effects[Math.floor(roll.value * effects.length)] ?? effects[0];
+  const { outcome, tone } = describeOutcome(effect);
+
+  return {
     ...state,
+    rngSeed: roll.seed,
     world: {
       ...world,
       pondMarkers: world.pondMarkers.map((m) =>
         m.id === marker.id ? { ...m, investigated: true } : m,
       ),
     },
+    pendingEncounter: {
+      markerId: marker.id,
+      encounterId: encounter.id,
+      name: encounter.name,
+      kind: marker.kind,
+      description: encounter.description,
+      outcome,
+      tone,
+      effect,
+    },
   };
+}
 
-  const roll = nextRandom(next.rngSeed + marker.x * 31 + marker.y * 17);
-  next = { ...next, rngSeed: roll.seed };
-  const effects = encounter.possibleEffects;
-  const effect = effects[Math.floor(roll.value * effects.length)] ?? effects[0];
-  let detail = encounter.description;
+// Apply the staged goodie-hut effect once the player acknowledges the pop-up,
+// then log it and clear the pending encounter.
+export function resolvePendingEncounter(state: GameState): GameState {
+  const pe = state.pendingEncounter;
+  if (!pe) return state;
+  const effect = pe.effect;
 
-  if (effect?.type === "addResource") {
+  let next: GameState = { ...state, pendingEncounter: null };
+
+  if (effect.type === "addResource") {
     next = {
       ...next,
       resources: {
@@ -178,30 +209,75 @@ export function investigatePondMarker(state: GameState, markerId: string): GameS
         [effect.resource]: next.resources[effect.resource] + effect.amount,
       },
     };
-    detail = `${detail} Outcome: +${effect.amount} ${resourceLabel(effect.resource)}.`;
-  } else if (effect?.type === "addCard") {
-    const before = next.cards.length;
+  } else if (effect.type === "setback" && effect.resource && effect.amount) {
+    next = {
+      ...next,
+      resources: {
+        ...next.resources,
+        [effect.resource]: Math.max(0, next.resources[effect.resource] - effect.amount),
+      },
+    };
+  } else if (effect.type === "addCard") {
     const draft: GameState = structuredClone(next);
     grantCard(draft, effect.cardId, () => undefined);
-    next = draft.cards.length > before ? draft : next;
-    detail =
-      draft.cards.length > before
-        ? `${detail} Outcome: a new hockey person joins your club.`
-        : `${detail} Outcome: the lead was already in your notebook.`;
-  } else if (effect?.type === "teamAttribute") {
-    detail = `${detail} Outcome: +${effect.amount} future ${effect.attribute} development.`;
-  } else if (effect?.type === "setback") {
-    detail = `${detail} Outcome: ${effect.message}`;
-  } else {
-    detail = `${detail} Outcome: a useful rumor for the scouting files.`;
+    next = draft;
+  } else if (effect.type === "grantTech") {
+    if (!next.completedResearch.includes(effect.techId)) {
+      const draft: GameState = structuredClone(next);
+      draft.completedResearch = [...draft.completedResearch, effect.techId];
+      const def = RESEARCH_BY_ID[effect.techId];
+      if (def) {
+        for (const unlock of def.unlocks) {
+          if (unlock.type === "card") grantCard(draft, unlock.cardId, () => undefined);
+        }
+      }
+      next = draft;
+    }
   }
+  // teamAttribute / flavorOnly: no mechanical change yet.
 
   return prependLog(
     next,
     "discovery",
-    `Investigated ${encounter.name}`,
-    `Goodie hut: ${marker.kind.replace("-", " ")}. ${detail}`,
+    `Investigated ${pe.name}`,
+    `Goodie hut: ${pe.kind.replace("-", " ")}. ${pe.description} Outcome: ${pe.outcome}`,
   );
+}
+
+// Human-readable result line + tone for an encounter effect, shown in the pop-up
+// and reused in the event log.
+function describeOutcome(effect: EncounterEffect): {
+  outcome: string;
+  tone: "good" | "bad" | "neutral";
+} {
+  switch (effect.type) {
+    case "addResource":
+      return { outcome: `+${effect.amount} ${resourceLabel(effect.resource)}.`, tone: "good" };
+    case "addCard":
+      return { outcome: "A new hockey person joins your club.", tone: "good" };
+    case "teamAttribute":
+      return {
+        outcome: `+${effect.amount} future ${effect.attribute} development.`,
+        tone: "good",
+      };
+    case "grantTech": {
+      const def = RESEARCH_BY_ID[effect.techId];
+      return {
+        outcome: `Free technology unlocked: ${def?.name ?? effect.techId}.`,
+        tone: "good",
+      };
+    }
+    case "setback":
+      return {
+        outcome:
+          effect.resource && effect.amount
+            ? `${effect.message} (-${effect.amount} ${resourceLabel(effect.resource)})`
+            : effect.message,
+        tone: "bad",
+      };
+    default:
+      return { outcome: "A useful rumor for the scouting files.", tone: "neutral" };
+  }
 }
 
 function resourceLabel(resource: ResourceKey): string {

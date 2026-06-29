@@ -34,7 +34,6 @@ import {
 import {
   activeScout,
   allScouts,
-  investigablePondMarker,
   surveyableRegionId,
 } from "../engine/scoutSystem";
 import {
@@ -516,10 +515,15 @@ function variantTopColor(tile: WorldTile, base: number): number {
   return amt >= 0 ? lighten(base, amt) : darkenBy(base, Math.abs(amt));
 }
 
+// A tile the selected unit can step to: a soft inset diamond that traces the
+// tile shape (echoing the white selection outline) instead of busy arrows.
 function drawMoveHint(g: Graphics) {
-  g.poly([-24, -12, -12, -16, -8, -14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
-  g.poly([24, 12, 12, 16, 8, 14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
-  g.circle(0, 0, 3).fill({ color: 0x7dd3fc, alpha: 0.72 });
+  const w = TILE_W * 0.6;
+  const h = TILE_H * 0.6;
+  const ring = [0, -h / 2, w / 2, 0, 0, h / 2, -w / 2, 0];
+  g.poly(ring)
+    .fill({ color: 0x7dd3fc, alpha: 0.1 })
+    .stroke({ width: 1.5, color: 0x7dd3fc, alpha: 0.7 });
 }
 
 // Per-tile deterministic randomness. Lets every tile pick a stable variant and
@@ -1803,14 +1807,14 @@ function UnitOverlay({
   const role = isLeader ? "Founding Group" : "Exploration";
   const outOfMoves = unit.movesRemaining <= 0;
 
-  // Scout field orders are tied to the tile the unit is standing on.
+  // Scout field orders are tied to the tile the unit is standing on. Goodie huts
+  // are no longer a manual order — they auto-resolve into a pop-up on arrival.
   const surveyId = !isLeader ? surveyableRegionId(state) : null;
-  const marker = !isLeader ? investigablePondMarker(state) : null;
   const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
   const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
   const connecting =
     !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
-  const hasOrder = isLeader ? !!club : !!surveyId || !!marker || canConnect;
+  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -1854,16 +1858,6 @@ function UnitOverlay({
               onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
             >
               Survey Region
-            </button>
-          )}
-          {marker && (
-            <button
-              className="btn btn-primary btn-block"
-              onClick={() =>
-                dispatch({ type: "INVESTIGATE_POND_MARKER", markerId: marker.id })
-              }
-            >
-              Investigate Marker
             </button>
           )}
           {canConnect && scoutRegionId && (
@@ -1999,8 +1993,8 @@ function MapControls({
         <div className="map-detail">
           {revealed && marker ? (
             <span className="muted">
-              Goodie hut · {marker.kind.replace("-", " ")} — move a scout here and
-              use <strong>Investigate Marker</strong>. It disappears after use.
+              Goodie hut · {marker.kind.replace("-", " ")} — move a scout onto it
+              to investigate. It resolves on arrival, then disappears.
             </span>
           ) : revealed ? (
             <span className="muted">Open terrain — nothing of hockey interest here yet.</span>

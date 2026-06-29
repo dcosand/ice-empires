@@ -20,7 +20,8 @@ import { productionItemName } from "../engine/productionSystem";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 
-type Tab = "overview" | "personnel" | "production" | "facilities" | "units";
+export type HQTab = "overview" | "personnel" | "production" | "facilities" | "units";
+type Tab = HQTab;
 
 const RESOURCE_ORDER: ResourceKey[] = [
   "budget",
@@ -41,12 +42,14 @@ export function ClubHQScreen({
   state,
   dispatch,
   onClose,
+  initialTab = "overview",
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onClose: () => void;
+  initialTab?: Tab;
 }) {
-  const [tab, setTab] = useState<Tab>("overview");
+  const [tab, setTab] = useState<Tab>(initialTab);
   const club = state.club;
   const era = ERAS[state.eraId];
 

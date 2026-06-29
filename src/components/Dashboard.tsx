@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import type { Dispatch, ReactNode, SyntheticEvent } from "react";
-import type { EventLogEntry, GameAction, GameState } from "../types/game";
+import type {
+  EventLogEntry,
+  GameAction,
+  GameState,
+  PendingEncounter,
+} from "../types/game";
 import { clubAsset } from "../data/clubs";
 import { DISCOVERY_BY_ID } from "../data/discovery";
 import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
@@ -10,8 +15,7 @@ import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
-import { ClubHQScreen } from "./ClubHQScreen";
-import { ProductionPanel } from "./ProductionPanel";
+import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
@@ -41,6 +45,18 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const [overlay, setOverlay] = useState<OverlayView>(null);
+  // Production now lives inside the Club HQ screen: the "build" task deep-links
+  // straight to its Production tab instead of opening a separate panel.
+  const [hqInitialTab, setHqInitialTab] = useState<HQTab>("overview");
+  const openView = (view: OverlayView) => {
+    if (view === "build") {
+      setHqInitialTab("production");
+      setOverlay("club");
+      return;
+    }
+    if (view === "club") setHqInitialTab("overview");
+    setOverlay(view);
+  };
   const [dismissedCompletions, setDismissedCompletions] = useState<Set<string>>(
     () => new Set(completionEvents(state).map((e) => e.id)),
   );
@@ -61,7 +77,7 @@ export function Dashboard({
       <TopBar
         state={state}
         dispatch={dispatch}
-        onOpenHQ={() => setOverlay("club")}
+        onOpenHQ={() => openView("club")}
       />
 
       {state.nextEraUnlocked && (
@@ -84,16 +100,15 @@ export function Dashboard({
         <IsoWorldMap
           state={state}
           dispatch={dispatch}
-          onOpenHQ={() => setOverlay("club")}
+          onOpenHQ={() => openView("club")}
         />
-        <CommandRail state={state} dispatch={dispatch} open={setOverlay} />
+        <CommandRail state={state} dispatch={dispatch} open={openView} />
       </div>
 
-      <InfoDock state={state} open={setOverlay} />
+      <InfoDock state={state} open={openView} />
 
       {overlay && overlay !== "club" && (
         <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
-          {overlay === "build" && <ProductionPanel state={state} dispatch={dispatch} />}
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "cards" && <CardsPanel state={state} />}
@@ -107,6 +122,14 @@ export function Dashboard({
           state={state}
           dispatch={dispatch}
           onClose={() => setOverlay(null)}
+          initialTab={hqInitialTab}
+        />
+      )}
+
+      {state.pendingEncounter && (
+        <EncounterOverlay
+          encounter={state.pendingEncounter}
+          onAcknowledge={() => dispatch({ type: "RESOLVE_ENCOUNTER" })}
         />
       )}
 
@@ -416,6 +439,58 @@ function completionEvents(state: GameState): EventLogEntry[] {
       (event.type === "research" && event.title.endsWith(" complete")),
   );
 }
+
+// Goodie-hut pop-up: shown the moment a unit steps onto a marker. The player
+// reads the randomized event + its outcome, then "Continue" commits the effect.
+function EncounterOverlay({
+  encounter,
+  onAcknowledge,
+}: {
+  encounter: PendingEncounter;
+  onAcknowledge: () => void;
+}) {
+  const icon = ENCOUNTER_ICON[encounter.kind] ?? "❄️";
+  return (
+    <div
+      className="task-overlay completion-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={encounter.name}
+    >
+      <button
+        className="overlay-scrim"
+        aria-label="Acknowledge encounter"
+        onClick={onAcknowledge}
+      />
+      <div className="completion-sheet">
+        <div className={`completion-art encounter-${encounter.tone}`}>
+          <span className="completion-icon">{icon}</span>
+          <span className="completion-glow" />
+        </div>
+        <div className="completion-copy">
+          <div className="eyebrow">Goodie Hut · {encounter.kind.replace("-", " ")}</div>
+          <h2>{encounter.name}</h2>
+          <p>{encounter.description}</p>
+          <div className="completion-value">
+            <span>{encounter.tone === "bad" ? "Setback" : "Outcome"}</span>
+            <strong>{encounter.outcome}</strong>
+          </div>
+          <button className="btn btn-gold" onClick={onAcknowledge}>
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ENCOUNTER_ICON: Record<PendingEncounter["kind"], string> = {
+  wanderer: "🧍",
+  equipment: "🥅",
+  "local-believer": "🙌",
+  mishap: "💥",
+  rumor: "🗺️",
+};
 
 function CompletionOverlay({
   event,

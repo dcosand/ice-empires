@@ -272,7 +272,12 @@ export type EncounterEffect =
   | { type: "addCard"; cardId: string }
   | { type: "addResource"; resource: ResourceKey; amount: number }
   | { type: "teamAttribute"; attribute: string; amount: number }
-  | { type: "setback"; message: string }
+  // A free, fully-completed technology (and its unlocks). The "discovery of a
+  // new tech" goodie-hut outcome.
+  | { type: "grantTech"; techId: string }
+  // A negative outcome. An optional resource/amount actually deducts from the
+  // club (budget/operations hits); message-only setbacks stay pure flavor.
+  | { type: "setback"; message: string; resource?: ResourceKey; amount?: number }
   | { type: "flavorOnly" };
 
 export type PondEncounter = {
@@ -281,6 +286,20 @@ export type PondEncounter = {
   kind: "wanderer" | "equipment" | "local-believer" | "mishap" | "rumor";
   description: string;
   possibleEffects: EncounterEffect[];
+};
+
+// A goodie-hut outcome that has been rolled (when a unit steps onto the marker)
+// but not yet applied — it waits for the player to acknowledge the pop-up, at
+// which point the effect is committed. See scoutSystem's trigger/resolve pair.
+export type PendingEncounter = {
+  markerId: string;
+  encounterId: string;
+  name: string;
+  kind: PondEncounter["kind"];
+  description: string; // flavor narrative
+  outcome: string; // human-readable result line shown in the pop-up
+  tone: "good" | "bad" | "neutral";
+  effect: EncounterEffect;
 };
 
 // ---------------------------------------------------------------------------
@@ -427,6 +446,8 @@ export type GameState = {
   cards: CardDef[];
   eventLog: EventLogEntry[];
   rngSeed: number;
+  // A goodie-hut outcome awaiting the player's acknowledgement (pop-up open).
+  pendingEncounter: PendingEncounter | null;
   devRevealAll: boolean; // dev tool: render every tile regardless of fog of war
 };
 
@@ -448,7 +469,7 @@ export type GameAction =
   | { type: "RECRUIT_SCOUT" }
   | { type: "SELECT_SCOUT"; scoutId?: string }
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
-  | { type: "INVESTIGATE_POND_MARKER"; markerId: string }
+  | { type: "RESOLVE_ENCOUNTER" }
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }

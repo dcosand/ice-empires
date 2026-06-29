@@ -208,7 +208,7 @@ export function createWorld(seed = Date.now()): WorldState {
         variant,
         elevation,
         feature,
-        valid: terrain !== "water" && feature !== "lake",
+        valid: terrain !== "water" && terrain !== "mountain" && feature !== "lake",
       });
     }
   }
