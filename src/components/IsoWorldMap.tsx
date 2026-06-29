@@ -24,6 +24,7 @@ import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
 import {
   hasMesaLandform,
+  hockeyOrgDisplayName,
   moveableTilesFor,
   regionIdAtTile,
   tileAt,
@@ -215,7 +216,7 @@ function drawScene(
 
       const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
       if (revealed && org) {
-        const mk = hockeyOrgMarker(gx, gy, c, org.archetype);
+        const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
         mk.position.y -= rise;
         layer.addChild(mk);
       }
@@ -271,10 +272,11 @@ function hockeyOrgMarker(
   gy: number,
   c: { x: number; y: number },
   archetype: string,
+  label: string,
 ) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  m.zIndex = gx + gy + 0.5;
+  m.zIndex = gx + gy + 12;
   const g = new Graphics();
   const accent =
     archetype === "academy"
@@ -305,6 +307,20 @@ function hockeyOrgMarker(
   g.arc(6, 2, 13, Math.PI, 0).stroke({ width: 1.1, color: accent, alpha: 0.9 });
   g.rect(-23, 5, 45, 3).fill({ color: accent, alpha: 0.65 });
   m.addChild(g);
+
+  const text = new Text({
+    text: label,
+    style: {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: label.length > 16 ? 9 : 10,
+      fontWeight: "800",
+      fill: 0xe6eef6,
+      stroke: { color: 0x07111c, width: 4 },
+    },
+  });
+  text.anchor.set(0.5, 0);
+  text.position.set(0, 10);
+  m.addChild(text);
   return m;
 }
 
@@ -1968,7 +1984,7 @@ function MapControls({
       {sel && revealed && org && (
         <div className="map-detail">
           <div className="detail-head">
-            <strong>{org.name}</strong>
+            <strong>{hockeyOrgDisplayName(org)}</strong>
             <span className="region-resource">Independent Hockey Association</span>
           </div>
           <div className="region-report">

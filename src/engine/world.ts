@@ -24,17 +24,119 @@ const POND_MARKER_COUNT = 24;
 const HOCKEY_ORG_COUNT = 10;
 
 const HOCKEY_ORG_NAMES = [
-  "Northern Lights League",
-  "Iron Range Hockey Association",
-  "Harbor Ice Union",
-  "Prairie Rink Council",
-  "Alpine Skating Club",
-  "Cedar Valley Junior League",
-  "Frontier Hockey Society",
-  "Blue Line Academy",
-  "Canal District Hockey Club",
-  "Summit Rink Collective",
+  "Moscow",
+  "Yaroslavl",
+  "Jokerit",
+  "Tampere",
+  "Lugano",
+  "Bratislava",
+  "Iserlohn",
+  "Linköping",
+  "Malmö",
+  "Anchorage",
+  "Baie-Comeau",
+  "Barrie",
+  "Blainville-Boisbriand",
+  "Brampton",
+  "Brandon",
+  "Brantford",
+  "Brookville",
+  "Burlington",
+  "Cape Breton",
+  "Cedar Rapids",
+  "Charlottetown",
+  "Chestnut Hill",
+  "Chicoutimi",
+  "Colorado Springs",
+  "Denver",
+  "Des Moines",
+  "Drummondville",
+  "Dubuque",
+  "Duluth",
+  "Durham",
+  "Easton",
+  "Edmonton",
+  "Erie",
+  "Everett",
+  "Fairbanks",
+  "Fargo",
+  "Flint",
+  "Gatineau",
+  "Grand Forks",
+  "Green Bay",
+  "Guelph",
+  "Kamloops",
+  "Kalamazoo",
+  "Kelowna",
+  "Kearney",
+  "Kennewick",
+  "Kingston",
+  "Kitchener",
+  "Lethbridge",
+  "Lincoln",
+  "London",
+  "Lowell",
+  "Madison",
+  "Medicine Hat",
+  "Moncton",
+  "Moose Jaw",
+  "Muskegon",
+  "Niagara",
+  "North Andover",
+  "North Bay",
+  "Omaha",
+  "Orono",
+  "Oshawa",
+  "Ottawa",
+  "Owen Sound",
+  "Oxford",
+  "Penticton",
+  "Peterborough",
+  "Plymouth",
+  "Portland",
+  "Prince Albert",
+  "Prince George",
+  "Providence",
+  "Québec City",
+  "Red Deer",
+  "Regina",
+  "Rimouski",
+  "Rouyn-Noranda",
+  "Saginaw",
+  "Saint John",
+  "Sarnia",
+  "Saskatoon",
+  "Sault Ste. Marie",
+  "Shawinigan",
+  "Sherbrooke",
+  "Sioux City",
+  "Sioux Falls",
+  "Spokane",
+  "St. Charles",
+  "St. Cloud",
+  "St. John’s",
+  "Sudbury",
+  "Swift Current",
+  "Tempe",
+  "Tri-City",
+  "Val-d’Or",
+  "Vancouver",
+  "Victoria",
+  "Victoriaville",
+  "Waterloo",
+  "Wenatchee",
+  "Windsor",
 ];
+const HOCKEY_ORG_NAME_SET = new Set(HOCKEY_ORG_NAMES);
+
+export function hockeyOrgDisplayName(
+  org: Pick<WorldHockeyOrg, "id" | "name" | "x" | "y">,
+): string {
+  if (HOCKEY_ORG_NAME_SET.has(org.name)) return org.name;
+  const n = Number(org.id.replace(/\D/g, "")) || 0;
+  const idx = Math.floor(tileVisualRand(org.x + n, org.y - n, 44017) * HOCKEY_ORG_NAMES.length);
+  return HOCKEY_ORG_NAMES[idx] ?? "Independent";
+}
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -240,6 +342,7 @@ function generateHockeyOrgs(
     "rink-society",
     "academy",
   ];
+  const namePool = shuffledHockeyOrgNames(seed);
 
   const candidates = tiles
     .filter(canPlaceHockeyOrg)
@@ -259,7 +362,7 @@ function generateHockeyOrgs(
     const idx = orgs.length;
     orgs.push({
       id: `hockey-org-${idx + 1}`,
-      name: HOCKEY_ORG_NAMES[idx % HOCKEY_ORG_NAMES.length],
+      name: namePool[idx % namePool.length],
       x: tile.x,
       y: tile.y,
       archetype: archetypes[idx % archetypes.length],
@@ -269,6 +372,15 @@ function generateHockeyOrgs(
   }
 
   return orgs;
+}
+
+function shuffledHockeyOrgNames(seed: number): string[] {
+  return HOCKEY_ORG_NAMES.map((name, i) => ({
+    name,
+    score: noise2d(i, HOCKEY_ORG_NAMES.length - i, seed + 33191),
+  }))
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.name);
 }
 
 function canPlacePondMarker(tile: WorldTile): boolean {
