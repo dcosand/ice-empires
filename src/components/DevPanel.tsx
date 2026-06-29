@@ -33,6 +33,7 @@ export function DevPanel({
 
   const inGame = !!state.club;
   const hasWorld = !!state.world;
+  const rivalCount = state.world?.rivals.length ?? 0;
 
   return (
     <div style={panelStyle}>
@@ -72,6 +73,21 @@ export function DevPanel({
           ⟲ Reset to Turn 1
         </button>
         {!inGame && <div style={hintStyle}>Found a club first to reset its season.</div>}
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Rivals ({rivalCount})</div>
+        <button
+          style={rivalCount > 0 ? actionBtnStyle : disabledBtnStyle}
+          disabled={rivalCount === 0}
+          onClick={() => dispatch({ type: "DEV_MEET_RIVAL" })}
+          title="Open the leader meeting screen for the nearest rival club"
+        >
+          🤝 Meet nearest rival
+        </button>
+        <div style={hintStyle}>
+          Enable “Reveal all tiles” to see rival HQs and their scouts on the map.
+        </div>
       </div>
 
       <div style={sectionStyle}>

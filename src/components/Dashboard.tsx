@@ -16,6 +16,7 @@ import { TopBar } from "./TopBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
 import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
+import { RivalMeetingScreen } from "./RivalMeetingScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
@@ -130,6 +131,14 @@ export function Dashboard({
         <EncounterOverlay
           encounter={state.pendingEncounter}
           onAcknowledge={() => dispatch({ type: "RESOLVE_ENCOUNTER" })}
+        />
+      )}
+
+      {state.pendingMeeting && (
+        <RivalMeetingScreen
+          clubId={state.pendingMeeting.clubId}
+          month={state.month}
+          onClose={() => dispatch({ type: "ACKNOWLEDGE_MEETING" })}
         />
       )}
 

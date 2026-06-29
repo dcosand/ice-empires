@@ -33,6 +33,7 @@ export function createInitialState(): GameState {
     eventLog: [],
     rngSeed: 0,
     pendingEncounter: null,
+    pendingMeeting: null,
     devRevealAll: false,
   };
 }

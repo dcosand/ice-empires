@@ -1,6 +1,6 @@
 import type { GameState } from "../types/game";
 import { REGIONS_BY_ID } from "../data/regions";
-import { CLUB_LIST } from "../data/clubs";
+import { CLUB_LIST, CLUBS } from "../data/clubs";
 import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
 
@@ -47,11 +47,26 @@ export function maybeRivalRumor(draft: GameState, push: PushLog): void {
   const regionId = eligible[Math.floor(roll2.value * eligible.length)];
   const region = REGIONS_BY_ID[regionId];
 
-  // Pick a rival club (not the player's).
-  const rivals = CLUB_LIST.filter((c) => c.id !== draft.club?.id);
-  const roll3 = nextRandom(draft.rngSeed);
-  draft.rngSeed = roll3.seed;
-  const rival = rivals[Math.floor(roll3.value * rivals.length)];
+  // Prefer a REAL rival club — the one whose HQ sits nearest the region — so the
+  // rumor names a club actually on the map. Fall back to a random non-player club
+  // only if no rivals were placed (degenerate map).
+  const worldRivals = draft.world?.rivals ?? [];
+  let rival = CLUB_LIST.find((c) => c.id !== draft.club?.id) ?? CLUB_LIST[0];
+  if (worldRivals.length > 0 && region) {
+    let bestD = Infinity;
+    for (const r of worldRivals) {
+      const d = Math.hypot(r.hqTile.x - region.tile.x, r.hqTile.y - region.tile.y);
+      if (d < bestD) {
+        bestD = d;
+        rival = CLUBS[r.clubId] ?? rival;
+      }
+    }
+  } else {
+    const rivals = CLUB_LIST.filter((c) => c.id !== draft.club?.id);
+    const roll3 = nextRandom(draft.rngSeed);
+    draft.rngSeed = roll3.seed;
+    rival = rivals[Math.floor(roll3.value * rivals.length)] ?? rival;
+  }
 
   const roll4 = nextRandom(draft.rngSeed);
   draft.rngSeed = roll4.seed;

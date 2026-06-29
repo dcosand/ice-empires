@@ -407,6 +407,42 @@ export type WorldHockeyOrg = {
   discovered: boolean;
 };
 
+// ---------------------------------------------------------------------------
+// Rival clubs (AI opponents — foundation for multiplayer)
+// ---------------------------------------------------------------------------
+// Every club the human did NOT select founds its own HQ on turn 1 and runs a
+// lightweight monthly turn (accumulate production -> spawn scouts that wander).
+// This is deliberately NOT a full strategic AI — it's the foundation the real
+// opponent / diplomacy systems will grow from.
+
+export type RivalUnitKind = "scout";
+
+// A movable rival unit on the world. Mirrors WorldUnit, but kept separate so the
+// player's own movement / selection code never has to reason about enemy units.
+export type RivalUnit = {
+  id: string;
+  x: number;
+  y: number;
+  movesPerTurn: number;
+  movesRemaining: number;
+  kind: RivalUnitKind;
+};
+
+export type RivalClub = {
+  clubId: string; // -> CLUBS[clubId] for name / accent / assets
+  hqTile: { x: number; y: number };
+  productionPoints: number; // lightweight economy accumulator toward next unit
+  units: RivalUnit[];
+  contacted: boolean; // has the human made first contact with this rival?
+};
+
+// A first-contact "leader scene" awaiting the player's acknowledgement. Mirrors
+// PendingEncounter — set when the human bumps into a rival, cleared on Continue.
+// This overlay will grow into the diplomacy / negotiation screen in later eras.
+export type PendingMeeting = {
+  clubId: string;
+};
+
 export type WorldState = {
   width: number;
   height: number;
@@ -419,6 +455,7 @@ export type WorldState = {
   selectedScoutId: string | null;
   pondMarkers: WorldPondMarker[]; // one-time "goodie hut" exploration markers
   hockeyOrgs: WorldHockeyOrg[]; // persistent neutral hockey powers / city-state analogs
+  rivals: RivalClub[]; // AI opponent clubs with their own HQs + units
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
 };
@@ -448,6 +485,8 @@ export type GameState = {
   rngSeed: number;
   // A goodie-hut outcome awaiting the player's acknowledgement (pop-up open).
   pendingEncounter: PendingEncounter | null;
+  // A rival first-contact meeting awaiting acknowledgement (leader scene open).
+  pendingMeeting: PendingMeeting | null;
   devRevealAll: boolean; // dev tool: render every tile regardless of fog of war
 };
 
@@ -470,6 +509,7 @@ export type GameAction =
   | { type: "SELECT_SCOUT"; scoutId?: string }
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
   | { type: "RESOLVE_ENCOUNTER" }
+  | { type: "ACKNOWLEDGE_MEETING" }
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }
@@ -479,4 +519,5 @@ export type GameAction =
   | { type: "DEV_REGEN_MAP" }
   | { type: "DEV_TOGGLE_FACILITY"; facilityId: string }
   | { type: "DEV_TOGGLE_RESEARCH"; techId: string }
-  | { type: "DEV_SET_REVEAL_ALL"; value: boolean };
+  | { type: "DEV_SET_REVEAL_ALL"; value: boolean }
+  | { type: "DEV_MEET_RIVAL" };

@@ -1,5 +1,7 @@
 import type {
   GameState,
+  RivalClub,
+  RivalUnit,
   WorldState,
   WorldFeature,
   WorldHockeyOrg,
@@ -10,6 +12,7 @@ import type {
 } from "../types/game";
 import { REGIONS } from "../data/regions";
 import { POND_ENCOUNTERS } from "../data/pondEncounters";
+import { CLUB_LIST } from "../data/clubs";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
@@ -17,11 +20,17 @@ export const WORLD_WIDTH = 120;
 export const WORLD_HEIGHT = 75;
 export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
+// Rival scouts wander at the same pace as the player's Pond Scout.
+export const RIVAL_SCOUT_MOVES = 3;
 // A club may only be founded on a landmass with at least this many connected
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
 const POND_MARKER_COUNT = 24;
 const HOCKEY_ORG_COUNT = 10;
+// Rival HQs keep this far from the player start and from each other so the AI
+// clubs spread evenly across the continent rather than crowding the human.
+const RIVAL_MIN_FROM_START = 10;
+const RIVAL_MIN_SPACING = 12;
 
 const HOCKEY_ORG_NAMES = [
   "Moscow",
@@ -193,7 +202,7 @@ export function regionIdAtTile(x: number, y: number): string | null {
   return REGION_BY_TILE[tileKey(x, y)] ?? null;
 }
 
-export function createWorld(seed = Date.now()): WorldState {
+export function createWorld(seed = Date.now(), playerClubId?: string | null): WorldState {
   const tiles: WorldTile[] = [];
   for (let y = 0; y < WORLD_HEIGHT; y++) {
     for (let x = 0; x < WORLD_WIDTH; x++) {
@@ -230,6 +239,7 @@ export function createWorld(seed = Date.now()): WorldState {
   }
 
   const hockeyOrgs = generateHockeyOrgs(tiles, start, seed);
+  const rivals = placeRivals(tiles, start, seed, playerClubId ?? null, hockeyOrgs);
 
   return {
     width: WORLD_WIDTH,
@@ -248,9 +258,79 @@ export function createWorld(seed = Date.now()): WorldState {
     selectedScoutId: null,
     pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs),
     hockeyOrgs,
+    rivals,
     scout: null,
     scoutSelected: false,
   };
+}
+
+// A movable rival unit (rival scouts wander to create "bump into" moments).
+export function createRivalUnit(
+  id: string,
+  x: number,
+  y: number,
+): RivalUnit {
+  return {
+    id,
+    x,
+    y,
+    movesPerTurn: RIVAL_SCOUT_MOVES,
+    movesRemaining: RIVAL_SCOUT_MOVES,
+    kind: "scout",
+  };
+}
+
+// Found every club the human did NOT select on turn 1, spread evenly across the
+// continent and kept clear of the player start and each other. Each rival starts
+// with one scout at its HQ so there's something to discover under the fog from
+// the first month. Mirrors generateHockeyOrgs' candidate-scoring approach.
+function placeRivals(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+  playerClubId: string | null,
+  hockeyOrgs: WorldHockeyOrg[],
+): RivalClub[] {
+  const rivalClubs = CLUB_LIST.filter((c) => c.id !== playerClubId);
+  const rivals: RivalClub[] = [];
+  const occupied = new Set<string>(hockeyOrgs.map((o) => tileKey(o.x, o.y)));
+
+  // Score land tiles far from the player start the highest so rivals settle out
+  // across the rest of the map; a noise term keeps placement from clumping.
+  const candidates = tiles
+    .filter(canPlaceHockeyOrg)
+    .map((tile) => ({
+      tile,
+      score:
+        noise2d(tile.x, tile.y, seed + 54091) * 0.5 +
+        Math.min(0.5, Math.hypot(tile.x - start.x, tile.y - start.y) / 120),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const club of rivalClubs) {
+    const spot = candidates.find(({ tile }) => {
+      const key = tileKey(tile.x, tile.y);
+      if (occupied.has(key)) return false;
+      if (Math.hypot(tile.x - start.x, tile.y - start.y) < RIVAL_MIN_FROM_START) {
+        return false;
+      }
+      return !rivals.some(
+        (r) => Math.hypot(tile.x - r.hqTile.x, tile.y - r.hqTile.y) < RIVAL_MIN_SPACING,
+      );
+    });
+    if (!spot) continue; // degenerate map: skip rather than crowd
+    const { tile } = spot;
+    occupied.add(tileKey(tile.x, tile.y));
+    rivals.push({
+      clubId: club.id,
+      hqTile: { x: tile.x, y: tile.y },
+      productionPoints: 0,
+      contacted: false,
+      units: [createRivalUnit(`rival-${club.id}-scout-1`, tile.x, tile.y)],
+    });
+  }
+
+  return rivals;
 }
 
 export function createScoutUnit(
