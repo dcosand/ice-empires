@@ -30,6 +30,7 @@ import {
   tileAt,
   tileKey,
   tileVisualRand,
+  visibleTiles,
 } from "../engine/world";
 import {
   activeScout,
@@ -63,6 +64,11 @@ const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number 
   water: { top: 0x153f5e, side: 0x0d2942, detail: 0x356f95 },
 };
 const FOG = { top: 0x111c28, side: 0x0a1119, detail: 0x1c2b3d };
+// Explored-but-not-currently-visible tiles render their real terrain, then get
+// multiplied by this cool, dark tint so they read as dim "memory" — desaturated
+// and bluish, with no live markers — versus full-color tiles you can see now.
+const MEMORY_TINT = 0x5a6e86;
+const MEMORY_ALPHA = 0.86;
 
 const PIN_COLOR: Record<DiscoveryStateValue, number> = {
   hidden: 0x000000,
@@ -87,6 +93,16 @@ function shortClubLabel(club: ClubDef): string {
 }
 
 const diamond = (h = TILE_H): number[] => [0, -h / 2, TILE_W / 2, 0, 0, h / 2, -TILE_W / 2, 0];
+
+// Dim a display object to "explored memory": a cool, dark multiply tint plus a
+// touch of transparency. Works uniformly on Graphics and Sprites (both carry
+// tint/alpha), so terrain slabs, standing features, landform/vegetation sprites
+// and region pins all read consistently as remembered-not-seen.
+function applyMemory(obj: { tint: number; alpha: number }, memory: boolean) {
+  if (!memory) return;
+  obj.tint = MEMORY_TINT;
+  obj.alpha = MEMORY_ALPHA;
+}
 
 // Centroid offset so the map draws centered around the world container origin.
 function centroid(w: WorldState) {
@@ -120,15 +136,21 @@ function drawScene(
         ? moveableTilesFor(world, selectedScout)
         : new Set<string>();
   const revealedSet = new Set(world.revealed);
+  const visibleSet = visibleTiles(world);
 
   for (let gy = 0; gy < world.height; gy++) {
     for (let gx = 0; gx < world.width; gx++) {
       const key = tileKey(gx, gy);
       const tile = tileAt(world, gx, gy)!;
-      const revealed = state.devRevealAll || revealedSet.has(key);
-      const pal = revealed ? TERRAIN[tile.terrain] ?? TERRAIN.plains : FOG;
-      const rise = revealed ? tileRise(tile) : FOG_RISE;
-      const topColor = revealed ? variantTopColor(tile, pal.top) : pal.top;
+      // Three fog tiers: unseen (never explored) → dark fog; explored (seen
+      // before, not in current vision) → remembered terrain, dimmed, no live
+      // markers; visible (in current vision) → full color and live info.
+      const explored = state.devRevealAll || revealedSet.has(key);
+      const visible = state.devRevealAll || visibleSet.has(key);
+      const memory = explored && !visible;
+      const pal = explored ? TERRAIN[tile.terrain] ?? TERRAIN.plains : FOG;
+      const rise = explored ? tileRise(tile) : FOG_RISE;
+      const topColor = explored ? variantTopColor(tile, pal.top) : pal.top;
 
       // --- extruded cliff sides (anchored at the shared ground plane) ---
       const gSide = new Graphics();
@@ -148,11 +170,12 @@ function drawScene(
       gSide.poly([-TILE_W / 2, BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK, -TILE_W / 2, BASE_THICK]).fill(darkenBy(pal.side, 0.35));
       gSide.poly([TILE_W / 2, BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK - 3, 0, TILE_H / 2 + BASE_THICK, TILE_W / 2, BASE_THICK]).fill(darkenBy(pal.side, 0.45));
       // A rim highlight along the slab's top edge keeps the ground plane crisp.
-      if (revealed) {
+      if (explored) {
         gSide
           .poly([-TILE_W / 2, -rise, 0, TILE_H / 2 - rise, TILE_W / 2, -rise])
           .stroke({ width: 1, color: lighten(pal.side, 0.22), alpha: 0.5 });
       }
+      applyMemory(gSide, memory);
       layer.addChild(gSide);
 
       // --- top face, raised by `rise` and drawn just above its own sides ---
@@ -161,9 +184,10 @@ function drawScene(
       gTop.zIndex = gx + gy + 0.05;
       // Solid base color; the ground texture adds flat multi-tone color patches.
       gTop.poly(diamond()).fill(topColor);
-      if (revealed) drawGroundTexture(gTop, tile, pal, topColor);
+      if (explored) drawGroundTexture(gTop, tile, pal, topColor);
       // Soft seam (was a hard dark grid line, which read as a board game).
       gTop.poly(diamond()).stroke({ width: 1, color: 0x0c1722, alpha: 0.12 });
+      applyMemory(gTop, memory);
       if (moveable.has(key)) drawMoveHint(gTop);
       if (selectedKey === key) {
         gTop.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
@@ -174,24 +198,28 @@ function drawScene(
       // off the tile top so taller terrain visibly towers over flat ground.
       // Drawn as their own z-ordered object so tiles in front overlap the bases
       // of features behind them (true iso depth), exactly like the unit sprites.
-      if (revealed) {
+      if (explored) {
         const feat = new Graphics();
         feat.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
         feat.zIndex = gx + gy + 0.1;
-        if (drawStandingFeatures(feat, tile)) layer.addChild(feat);
-        else feat.destroy();
+        if (drawStandingFeatures(feat, tile)) {
+          applyMemory(feat, memory);
+          layer.addChild(feat);
+        } else feat.destroy();
 
         // Raster landforms (mountains, mesas, desert hills) as billboard sprites.
         const lf = landformSprite(tile);
         if (lf) {
           lf.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise + 8);
           lf.zIndex = gx + gy + 0.12;
+          applyMemory(lf, memory);
           layer.addChild(lf);
         }
         const veg = vegetationSprite(tile);
         if (veg) {
           veg.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise + 8);
           veg.zIndex = gx + gy + 0.14;
+          applyMemory(veg, memory);
           layer.addChild(veg);
         }
       }
@@ -199,7 +227,7 @@ function drawScene(
       // ---- markers on top of the tile ----
       const regionId = regionIdAtTile(gx, gy);
       const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : "hidden";
-      if (revealed && regionId && rState !== "hidden") {
+      if (explored && regionId && rState !== "hidden") {
         const pin = new Graphics();
         pin.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
         pin.zIndex = gx + gy + 0.4;
@@ -207,25 +235,29 @@ function drawScene(
         pin.poly([-4, -14, 4, -14, 0, -5]).fill(col);
         pin.circle(0, -20, 7).fill(col).stroke({ width: 2, color: 0x05121c });
         pin.circle(0, -20, 2.5).fill(0xffffff);
-        if (state.discovery.contested.includes(regionId)) {
+        // "Contested" is live intel — only trust it where you currently have eyes.
+        if (visible && state.discovery.contested.includes(regionId)) {
           pin.circle(0, -20, 11).stroke({ width: 2, color: 0xef6f6f });
         }
+        applyMemory(pin, memory);
         layer.addChild(pin);
       }
 
       const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
-      if (revealed && org) {
+      if (explored && org) {
         const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
         mk.position.y -= rise;
+        applyMemory(mk, memory);
         layer.addChild(mk);
       }
 
       const pond = world.pondMarkers.find(
         (m) => !m.investigated && m.x === gx && m.y === gy,
       );
-      if (revealed && pond) {
+      if (explored && pond) {
         const mk = pondMarker(gx, gy, c, pond.kind);
         mk.position.y -= rise;
+        applyMemory(mk, memory);
         layer.addChild(mk);
       }
 
@@ -1383,6 +1415,16 @@ function mixColor(a: number, b: number, amt: number): number {
   return (mix(ar, br) << 16) | (mix(ag, bg) << 8) | mix(ab, bb);
 }
 
+// A thin imperative handle onto the Pixi camera (the world `layer` transform),
+// so React overlays like the minimap can read where the view is looking and
+// recenter it without forcing a Pixi redraw on every pan. `centerOnLocal` takes
+// a point in layer-local space (the same space tiles are positioned in:
+// isoX(gx,gy) - centroid.x).
+type CameraApi = {
+  getView: () => { x: number; y: number; scale: number; vw: number; vh: number };
+  centerOnLocal: (localX: number, localY: number) => void;
+};
+
 // ---- Component -----------------------------------------------------------
 export function IsoWorldMap({
   state,
@@ -1405,6 +1447,7 @@ export function IsoWorldMap({
   const keyMoveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const rightClickRef = useRef<(gx: number, gy: number) => void>(() => {});
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
+  const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
   const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
@@ -1636,6 +1679,24 @@ export function IsoWorldMap({
         appRef.current = app;
         readyRef.current = true;
 
+        // Expose the camera so the minimap can read the view and recenter it.
+        cameraRef.current = {
+          getView: () => ({
+            x: layer.x,
+            y: layer.y,
+            scale: layer.scale.x,
+            vw: app.screen.width,
+            vh: app.screen.height,
+          }),
+          centerOnLocal: (localX, localY) => {
+            const s = layer.scale.x;
+            layer.position.set(
+              app.screen.width / 2 - localX * s,
+              app.screen.height / 2 - localY * s,
+            );
+          },
+        };
+
         // Keep the view centered when the canvas resizes (taller viewports,
         // window resizes) by shifting the layer with half the size delta, so the
         // map fills the window instead of staying anchored to its original size.
@@ -1734,6 +1795,7 @@ export function IsoWorldMap({
       if (a) a.destroy();
       appRef.current = null;
       layerRef.current = null;
+      cameraRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -1776,6 +1838,7 @@ export function IsoWorldMap({
       <div className="iso-stage">
         <div ref={hostRef} className="iso-canvas" />
         <UnitOverlay state={state} dispatch={dispatch} />
+        <MiniMap state={state} cameraRef={cameraRef} />
       </div>
       <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
     </div>
@@ -1898,6 +1961,190 @@ function UnitOverlay({
   );
 }
 
+// ---- Minimap -------------------------------------------------------------
+const MM_W = 220; // minimap width in CSS pixels; height follows world aspect
+
+function cssHex(n: number): string {
+  return "#" + (n & 0xffffff).toString(16).padStart(6, "0");
+}
+
+// A corner minimap: a 1px-per-tile fog/terrain picture scaled up crisply, with
+// HQ / Scout / region dots, the live camera viewport quad, and click-to-pan.
+// It reads the same fog model as the main map (unseen → dark, explored → dim,
+// visible → bright) and drives the camera via the imperative CameraApi handle.
+function MiniMap({
+  state,
+  cameraRef,
+}: {
+  state: GameState;
+  cameraRef: { current: CameraApi | null };
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Static composite (scaled terrain + markers), rebuilt only on state change;
+  // the per-frame loop just blits this and strokes the moving viewport quad.
+  const compositeRef = useRef<HTMLCanvasElement | null>(null);
+  const world = state.world;
+  const mmW = MM_W;
+  const mmH = world
+    ? Math.max(1, Math.round((MM_W * world.height) / world.width))
+    : Math.round(MM_W * 0.625);
+
+  // Rebuild the terrain + marker composite whenever fog / markers change.
+  useEffect(() => {
+    if (!world) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const tw = world.width;
+    const th = world.height;
+    const buf = document.createElement("canvas");
+    buf.width = tw;
+    buf.height = th;
+    const bctx = buf.getContext("2d");
+    if (!bctx) return;
+    const revealedSet = new Set(world.revealed);
+    const visibleSet = visibleTiles(world);
+    for (let gy = 0; gy < th; gy++) {
+      for (let gx = 0; gx < tw; gx++) {
+        const tile = world.tiles[gy * tw + gx];
+        const key = `${gx},${gy}`;
+        const explored = state.devRevealAll || revealedSet.has(key);
+        const visible = state.devRevealAll || visibleSet.has(key);
+        let col: number;
+        if (!explored) col = 0x0a1119;
+        else {
+          const base = (TERRAIN[tile.terrain] ?? TERRAIN.plains).top;
+          col = visible ? base : mixColor(darkenBy(base, 0.4), 0x1b2b3d, 0.45);
+        }
+        bctx.fillStyle = cssHex(col);
+        bctx.fillRect(gx, gy, 1, 1);
+      }
+    }
+
+    const comp = compositeRef.current ?? document.createElement("canvas");
+    comp.width = mmW * dpr;
+    comp.height = mmH * dpr;
+    compositeRef.current = comp;
+    const cctx = comp.getContext("2d");
+    if (!cctx) return;
+    cctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    cctx.imageSmoothingEnabled = false;
+    cctx.clearRect(0, 0, mmW, mmH);
+    cctx.drawImage(buf, 0, 0, mmW, mmH);
+
+    const dot = (gx: number, gy: number, color: number, r: number, ring = false) => {
+      const mx = ((gx + 0.5) / tw) * mmW;
+      const my = ((gy + 0.5) / th) * mmH;
+      cctx.beginPath();
+      cctx.arc(mx, my, r, 0, Math.PI * 2);
+      cctx.fillStyle = cssHex(color);
+      cctx.fill();
+      if (ring) {
+        cctx.lineWidth = 1;
+        cctx.strokeStyle = "rgba(255,255,255,0.9)";
+        cctx.stroke();
+      }
+    };
+
+    // Region pins that have been at least discovered, on explored tiles.
+    for (const [regionId, rState] of Object.entries(state.discovery.regionStates)) {
+      if (rState === "hidden") continue;
+      const region = REGIONS_BY_ID[regionId];
+      if (!region) continue;
+      if (!state.devRevealAll && !revealedSet.has(`${region.tile.x},${region.tile.y}`)) continue;
+      dot(region.tile.x, region.tile.y, PIN_COLOR[rState], 2.4);
+    }
+    for (const org of world.hockeyOrgs) {
+      if (!state.devRevealAll && !revealedSet.has(`${org.x},${org.y}`)) continue;
+      dot(org.x, org.y, 0xf2c14e, 2.2, true);
+    }
+    for (const pond of world.pondMarkers) {
+      if (pond.investigated) continue;
+      if (!state.devRevealAll && !revealedSet.has(`${pond.x},${pond.y}`)) continue;
+      dot(pond.x, pond.y, 0x9fd4ff, 2);
+    }
+    const accent = accentNumber(getActiveClub(state)?.accent);
+    if (world.founder) dot(world.founder.x, world.founder.y, accent, 2.8, true);
+    for (const scout of allScouts(world)) {
+      dot(scout.x, scout.y, 0x38bdf8, 2.8, scout.id === world.selectedScoutId);
+    }
+    if (world.hqTile) dot(world.hqTile.x, world.hqTile.y, accent, 3.4, true);
+  }, [state, world, mmW, mmH]);
+
+  // Per-frame: blit the composite and stroke the live camera viewport quad.
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || !world) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    canvas.width = mmW * dpr;
+    canvas.height = mmH * dpr;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    const cen = centroid(world);
+    let raf = 0;
+    const draw = () => {
+      raf = requestAnimationFrame(draw);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, mmW, mmH);
+      const comp = compositeRef.current;
+      if (comp) ctx.drawImage(comp, 0, 0, mmW, mmH);
+      const cam = cameraRef.current?.getView();
+      if (cam && cam.scale > 0) {
+        const corners: Array<[number, number]> = [
+          [0, 0],
+          [cam.vw, 0],
+          [cam.vw, cam.vh],
+          [0, cam.vh],
+        ];
+        ctx.beginPath();
+        corners.forEach(([sx, sy], i) => {
+          const lx = (sx - cam.x) / cam.scale;
+          const ly = (sy - cam.y) / cam.scale;
+          const a = (lx + cen.x) / (TILE_W / 2);
+          const b = (ly + cen.y) / (TILE_H / 2);
+          const gx = (a + b) / 2;
+          const gy = (b - a) / 2;
+          const mx = (gx / world.width) * mmW;
+          const my = (gy / world.height) * mmH;
+          if (i === 0) ctx.moveTo(mx, my);
+          else ctx.lineTo(mx, my);
+        });
+        ctx.closePath();
+        ctx.strokeStyle = "rgba(255,255,255,0.85)";
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+    };
+    draw();
+    return () => cancelAnimationFrame(raf);
+  }, [world, mmW, mmH, cameraRef]);
+
+  if (!world) return null;
+
+  // Click (or drag) on the minimap recenters the main camera on that tile.
+  const jumpTo = (e: { clientX: number; clientY: number; currentTarget: HTMLCanvasElement }) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const gx = ((e.clientX - rect.left) / rect.width) * world.width;
+    const gy = ((e.clientY - rect.top) / rect.height) * world.height;
+    const cen = centroid(world);
+    cameraRef.current?.centerOnLocal(isoX(gx, gy) - cen.x, isoY(gx, gy) - cen.y);
+  };
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="iso-minimap"
+      style={{ width: mmW, height: mmH }}
+      title="Click to jump the view"
+      onPointerDown={(e) => {
+        e.currentTarget.setPointerCapture(e.pointerId);
+        jumpTo(e);
+      }}
+      onPointerMove={(e) => {
+        if (e.buttons & 1) jumpTo(e);
+      }}
+    />
+  );
+}
+
 // ---- Side controls (scout + selected-tile detail) ------------------------
 function MapControls({
   state,
@@ -1919,6 +2166,10 @@ function MapControls({
   const org = sel
     ? state.world?.hockeyOrgs.find((o) => o.x === sel[0] && o.y === sel[1])
     : null;
+  const selVisible =
+    sel && state.world
+      ? state.devRevealAll || visibleTiles(state.world).has(`${sel[0]},${sel[1]}`)
+      : false;
 
   const marker = sel
     ? state.world?.pondMarkers.find(
@@ -1997,7 +2248,11 @@ function MapControls({
               to investigate. It resolves on arrival, then disappears.
             </span>
           ) : revealed ? (
-            <span className="muted">Open terrain — nothing of hockey interest here yet.</span>
+            selVisible ? (
+              <span className="muted">Open terrain — nothing of hockey interest here yet.</span>
+            ) : (
+              <span className="faint">Explored terrain — last charted earlier; no current sightline here.</span>
+            )
           ) : (
             <span className="faint">Unexplored — shrouded in fog.</span>
           )}
