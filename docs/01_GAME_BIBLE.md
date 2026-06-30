@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-27  
 **Working title:** Ice Empires  
-**Default playable club:** Arizona Monsoon HC  
+**Default playable club:** Arizona Monsoon  
 **Version:** 0.2 dream bible / source of truth
 
 ---
@@ -228,7 +228,7 @@ Prototype can use descriptive hockey ecosystem labels, but final product should 
 
 ## 8. Default playable club
 
-### Arizona Monsoon HC
+### Arizona Monsoon
 
 Why it works:
 
@@ -251,7 +251,7 @@ Other fictional clubs:
 
 - Halifax Privateers — maritime grit, old-school toughness
 - Stockholm Royals — elegant development machine
-- Saskatoon Freeze — prairie loyalty and physical hockey
+- Calgary Freeze — foothills loyalty and physical hockey
 - Prague Lions — diplomacy and transfer savvy
 - Minneapolis North — talent-rich local powerhouse
 - Helsinki Ice Crown — cold, tactical, proud rival
@@ -665,7 +665,7 @@ Avoid a visible “Roll” button as the game loop.
 
 Eras represent the maturity of a hockey civilization, not literal real-world hockey history.
 
-The game should be inspired by hockey history without being trapped by it. Arizona Monsoon HC can discover basic skating in a desert while Helsinki Ice Crown begins with cold-weather identity. The order is about institutional development, not historical chronology.
+The game should be inspired by hockey history without being trapped by it. Arizona Monsoon can discover basic skating in a desert while Helsinki Ice Crown begins with cold-weather identity. The order is about institutional development, not historical chronology.
 
 ### Era 1: Pond Hockey Era
 
@@ -717,7 +717,7 @@ Hockey Knowledge should behave like a Civ-style science-per-month system in the 
 
 The player chooses one active research project. Each month, the club's Hockey Knowledge output progresses that project. Research unlocks new capabilities, not just passive numerical bonuses.
 
-Research should be **club-agnostic**. Flavor can be localized through club traits/events, but core techs should work for Arizona Monsoon HC, Minnesota Nova, Helsinki Ice Crown, Halifax Privateers, and every other club.
+Research should be **club-agnostic**. Flavor can be localized through club traits/events, but core techs should work for Arizona Monsoon, Minnesota Nova, Helsinki Ice Crown, Halifax Privateers, and every other club.
 
 Good core tech names:
 
@@ -1058,7 +1058,7 @@ Relationship states:
 Example rivals:
 
 - Mikko Vaaranen — Helsinki Ice Crown. Cold, tactical, proud.
-- Rex Malloy — Saskatoon Iron Herd. Old-school, physical, suspicious.
+- Rex Malloy — Calgary Iron Herd. Old-school, physical, suspicious.
 - Elena Novak — Prague Lions. Diplomatic, clever, opportunistic.
 - Carter Briggs — Minneapolis North. Confident, territorial, talent-rich.
 - Valentina Sokolov — Baltic Black Ice. Mysterious, patient, ruthless.

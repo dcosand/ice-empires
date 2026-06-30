@@ -4,7 +4,7 @@
 - [x] M0 — Read docs, write plan, record decisions.
 - [x] M1 — Skeleton: Vite+React+TS app, Landing → Founding → Dashboard shell,
       initial state, all panels present.
-- [x] M2 — Club founding wired (Arizona Monsoon HC).
+- [x] M2 — Club founding wired (Arizona Monsoon).
 - [x] M3 — Monthly loop: End Month advances time, adds income, logs events.
 - [x] M4 — Build & research: select, progress, complete, apply effects/unlocks.
 - [x] M5 — Discovery: priorities reveal region cards over months.

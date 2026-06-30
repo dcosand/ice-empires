@@ -40,7 +40,7 @@ Monthly-income effects from club base + facilities + cards are summed in
 facility completed this month begins yielding next month.
 
 ## D8 — Six selectable clubs share First-12-Months mechanics (temporary)
-All six clubs (Arizona, Halifax, Helsinki, Saskatoon, Prague, Minnesota Nova)
+All six clubs (Arizona, Halifax, Helsinki, Calgary, Prague, Minnesota Nova)
 are selectable and fully playable. Non-Arizona clubs currently reuse Arizona's
 starting profile and mechanics; they differ only in name, leader title, flavor,
 identity text, accent color, and art. Unique per-club mechanics are a future

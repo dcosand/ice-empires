@@ -100,7 +100,7 @@ Acceptance criteria:
 - Fog is visually satisfying.
 - Discovered tiles reveal terrain.
 - Explored tiles reveal hockey region/resource info.
-- Arizona Monsoon HC has a clear home tile/Club HQ marker.
+- Arizona Monsoon has a clear home tile/Club HQ marker.
 
 Non-goals:
 - Do not build procedural world generation yet.
@@ -121,7 +121,7 @@ Founding Group:
 - 2 movement points per turn
 - Can move to adjacent revealed tiles
 - Can reveal fog around itself
-- Can found Arizona Monsoon HC on a valid tile
+- Can found Arizona Monsoon on a valid tile
 
 After the club is founded, the unit becomes club leadership and the Club HQ is created.
 
@@ -158,7 +158,7 @@ Non-goals:
 ```text
 Improve the Club HQ panel so it feels like the player's capital city in Civilization.
 
-When Arizona Monsoon HC is founded, show:
+When Arizona Monsoon is founded, show:
 - Club name
 - Era
 - Leader archetype
@@ -205,7 +205,7 @@ Use this if the map keeps getting in the way.
 ```text
 Create an alternate prototype view called First 12 Months Dashboard that focuses on the opening-year game flow instead of map movement.
 
-Keep Ice Empires, Arizona Monsoon HC, Pond Hockey Era, and the same resources.
+Keep Ice Empires, Arizona Monsoon, Pond Hockey Era, and the same resources.
 
 This view should show:
 - Month counter

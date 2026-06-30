@@ -180,7 +180,7 @@ Readable chronicle, not debug console.
 
 ---
 
-## 6. Arizona Monsoon HC identity
+## 6. Arizona Monsoon identity
 
 Feel:
 
@@ -330,7 +330,7 @@ Create a premium indie strategy-game visual direction for Ice Empires, a turn-ba
 ### Arizona Monsoon crest
 
 ```text
-Design a fictional hockey club crest for Arizona Monsoon HC. The crest should combine desert storm imagery, ice hockey identity, monsoon teal, deep navy, and desert orange. It should feel like a premium fictional club in a strategy game, not an NHL logo clone.
+Design a fictional hockey club crest for Arizona Monsoon. The crest should combine desert storm imagery, ice hockey identity, monsoon teal, deep navy, and desert orange. It should feel like a premium fictional club in a strategy game, not an NHL logo clone.
 ```
 
 ### Rival GM portrait

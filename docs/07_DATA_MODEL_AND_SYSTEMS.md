@@ -79,7 +79,7 @@ Default club:
 ```ts
 const arizonaMonsoon = {
   id: "arizona-monsoon",
-  name: "Arizona Monsoon HC",
+  name: "Arizona Monsoon",
   cityRegion: "Arizona",
   leaderArchetype: "Desert Visionary",
   philosophy: "Nontraditional hockey growth",

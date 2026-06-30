@@ -29,7 +29,7 @@ rumor) — all core assertions pass.
   active (Local Hockey Search always defaulted), with helper copy naming what's
   missing. A completed project empties its slot, forcing a new pick next month;
   if no options remain, End Month is allowed.
-- **Six playable clubs**: Arizona, Halifax, Helsinki, Saskatoon, Prague, and
+- **Six playable clubs**: Arizona, Halifax, Helsinki, Calgary, Prague, and
   Minnesota Nova are selectable as real `ClubDef`s (shared mechanics for now,
   distinct identities). Removed "Recommended" and "Coming Soon".
 - **Club art wired** via `assetKey` (`clubAsset()`): logo/leader/background used on
@@ -65,8 +65,8 @@ Driven by the first visual review ("too much like a web dashboard of rectangles"
 Engine, resources, build/research/discovery/era logic all preserved.
 - Landing CTA → "Start New Dynasty" with "Opening Scenario: First 12 Months"
   subtext and copy framing the full game as longer than 12 months.
-- New **club selection screen** (phase `clubSelect`): Arizona Monsoon HC playable
-  + 5 "Coming Soon" fictional clubs (Halifax, Helsinki, Saskatoon, Prague,
+- New **club selection screen** (phase `clubSelect`): Arizona Monsoon playable
+  + 5 "Coming Soon" fictional clubs (Halifax, Helsinki, Calgary, Prague,
   Minneapolis) in `data/clubRoster.ts` to sell the 4X fantasy.
 - New **WorldMap** ("Mythic Hockey World"): stylized 2D map (Civ-II-flavored
   gridlines + desert→ice terrain), HQ home marker, region nodes placed via new
@@ -86,7 +86,7 @@ Engine, resources, build/research/discovery/era logic all preserved.
 - Read all source docs; produced implementation plan and recorded decisions
   (`DECISIONS.md`).
 - Scaffolded Vite + React + TypeScript project (no backend, local state).
-- Data layer (`src/data`): Arizona Monsoon HC, 5 facilities, 5 research techs,
+- Data layer (`src/data`): Arizona Monsoon, 5 facilities, 5 research techs,
   10 regions, 5 cards, flavor events, 2 eras + Club Formation requirements,
   5 discovery priorities.
 - Engine (`src/engine`): seeded RNG, initial/founding state, resources helpers,

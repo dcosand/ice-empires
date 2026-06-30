@@ -3,7 +3,7 @@
 **Date:** 2026-06-27  
 **Version:** 0.2  
 **Status:** First focused prototype target  
-**Default club:** Arizona Monsoon HC
+**Default club:** Arizona Monsoon
 
 ---
 
@@ -103,7 +103,7 @@ Each month, the player:
 
 ## 5. Starting state
 
-Club: **Arizona Monsoon HC**  
+Club: **Arizona Monsoon**  
 Leader archetype: **The Desert Visionary**  
 Era: **Pond Hockey Era**
 
@@ -144,7 +144,7 @@ Button: **Start First 12 Months**
 
 Default club:
 
-- Arizona Monsoon HC
+- Arizona Monsoon
 - Leader: Desert Visionary
 - Bonus: Nontraditional Market
 
@@ -152,7 +152,7 @@ Copy:
 
 > A storm is gathering in the desert. There is no arena, no league, no pipeline — just ice, stubbornness, and the belief that hockey can grow anywhere.
 
-CTA: **Found Arizona Monsoon HC**
+CTA: **Found Arizona Monsoon**
 
 ### Main dashboard
 
@@ -370,7 +370,7 @@ Requirements to enter Club Formation Era:
 
 Unlock message:
 
-> Arizona Monsoon HC has entered the Club Formation Era. The club is no longer just a dream. It has ice, people, arguments, and a schedule.
+> Arizona Monsoon has entered the Club Formation Era. The club is no longer just a dream. It has ice, people, arguments, and a schedule.
 
 For this prototype, the unlock message is enough.
 
@@ -399,7 +399,7 @@ The prototype succeeds if:
 
 - The player understands what to do.
 - The monthly turn rhythm makes sense.
-- Arizona Monsoon HC feels alive.
+- Arizona Monsoon feels alive.
 - Discoveries feel interesting.
 - Build/research progression feels rewarding.
 - The player wants to continue after 12 months.

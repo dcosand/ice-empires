@@ -3,7 +3,7 @@
 **Date:** 2026-06-27  
 **Version:** 0.2  
 **Working title:** Ice Empires  
-**Default playable club:** Arizona Monsoon HC  
+**Default playable club:** Arizona Monsoon  
 **Use this file to seed a new ChatGPT Project Folder.**
 
 ---
@@ -58,7 +58,7 @@ Other possible names: Icebound Empire, Empires on Ice, Draft & Dominion, Puck Em
 
 ### Default playable club
 
-**Arizona Monsoon HC**
+**Arizona Monsoon**
 
 This replaced “Phoenix Heat.” Arizona Monsoon has better personality: desert hockey, improbable storm, expansion underdog, and “hockey where hockey should not work.”
 
@@ -132,7 +132,7 @@ This should test the monthly game flow before investing in a perfect map, multip
 
 The player should:
 
-1. Found Arizona Monsoon HC.
+1. Found Arizona Monsoon.
 2. Advance through 12 monthly turns.
 3. Generate resources.
 4. Build early facilities.

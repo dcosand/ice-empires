@@ -1,7 +1,7 @@
 # Ice Empires — First 12 Months (prototype)
 
 A web prototype of the opening year of **Ice Empires**, a turn-based hockey
-civilization strategy game. You found Arizona Monsoon HC and play twelve monthly
+civilization strategy game. You found Arizona Monsoon and play twelve monthly
 turns: generate resources, build facilities, research hockey knowledge, scout an
 unknown hockey world, reveal staff/prospect/player cards, and progress toward the
 Club Formation Era.

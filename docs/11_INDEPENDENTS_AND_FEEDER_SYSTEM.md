@@ -48,7 +48,7 @@ As of the current codebase, Independents already exist as generated world marker
 
 The current name pool is:
 
-Moscow, Yaroslavl, Jokerit, Tampere, Lugano, Bratislava, Iserlohn, Linköping, Malmö, Anchorage, Baie-Comeau, Barrie, Blainville-Boisbriand, Brampton, Brandon, Brantford, Brookville, Burlington, Cape Breton, Cedar Rapids, Charlottetown, Chestnut Hill, Chicoutimi, Colorado Springs, Denver, Des Moines, Drummondville, Dubuque, Duluth, Durham, Easton, Edmonton, Erie, Everett, Fairbanks, Fargo, Flint, Gatineau, Grand Forks, Green Bay, Guelph, Kamloops, Kalamazoo, Kelowna, Kearney, Kennewick, Kingston, Kitchener, Lethbridge, Lincoln, London, Lowell, Madison, Medicine Hat, Moncton, Moose Jaw, Muskegon, Niagara, North Andover, North Bay, Omaha, Orono, Oshawa, Ottawa, Owen Sound, Oxford, Penticton, Peterborough, Plymouth, Portland, Prince Albert, Prince George, Providence, Québec City, Red Deer, Regina, Rimouski, Rouyn-Noranda, Saginaw, Saint John, Sarnia, Saskatoon, Sault Ste. Marie, Shawinigan, Sherbrooke, Sioux City, Sioux Falls, Spokane, St. Charles, St. Cloud, St. John’s, Sudbury, Swift Current, Tempe, Tri-City, Val-d’Or, Vancouver, Victoria, Victoriaville, Waterloo, Wenatchee, Windsor.
+Moscow, Yaroslavl, Jokerit, Tampere, Lugano, Bratislava, Iserlohn, Linköping, Malmö, Anchorage, Baie-Comeau, Barrie, Blainville-Boisbriand, Brampton, Brandon, Brantford, Brookville, Burlington, Cape Breton, Cedar Rapids, Charlottetown, Chestnut Hill, Chicoutimi, Colorado Springs, Denver, Des Moines, Drummondville, Dubuque, Duluth, Durham, Easton, Edmonton, Erie, Everett, Fairbanks, Fargo, Flint, Gatineau, Grand Forks, Green Bay, Guelph, Kamloops, Kalamazoo, Kelowna, Kearney, Kennewick, Kingston, Kitchener, Lethbridge, Lincoln, London, Lowell, Madison, Medicine Hat, Moncton, Moose Jaw, Muskegon, Niagara, North Andover, North Bay, Omaha, Orono, Oshawa, Ottawa, Owen Sound, Oxford, Penticton, Peterborough, Plymouth, Portland, Prince Albert, Prince George, Providence, Québec City, Red Deer, Regina, Rimouski, Rouyn-Noranda, Saginaw, Saint John, Sarnia, Calgary, Sault Ste. Marie, Shawinigan, Sherbrooke, Sioux City, Sioux Falls, Spokane, St. Charles, St. Cloud, St. John’s, Sudbury, Swift Current, Tempe, Tri-City, Val-d’Or, Vancouver, Victoria, Victoriaville, Waterloo, Wenatchee, Windsor.
 
 ---
 
@@ -160,7 +160,7 @@ First-contact rewards may include:
 Example event:
 
 > **First Contact: Finnish Goalie Lakes**  
-> Your scout found a region where every quiet kid seems to track pucks like a rumor. Arizona Monsoon HC gains +1 Reputation and initial Scouting Coverage.
+> Your scout found a region where every quiet kid seems to track pucks like a rumor. Arizona Monsoon gains +1 Reputation and initial Scouting Coverage.
 
 First contact should feel good, but it should not become permanent ownership.
 
@@ -188,7 +188,7 @@ This creates better hockey stories:
 
 - “We know Finnish Goalie Lakes has elite goalies, but Helsinki owns the relationships.”
 - “The Desert Expansion Zone loves us, but our scouting reports are still sloppy.”
-- “We found the Prairie Rink Belt first, but Saskatoon has been quietly investing there.”
+- “We found the Prairie Rink Belt first, but Calgary has been quietly investing there.”
 
 ---
 
@@ -418,7 +418,7 @@ Example progression:
 
 Club identity should matter in Independent relationships.
 
-Example: Arizona Monsoon HC
+Example: Arizona Monsoon
 
 **Nontraditional Market**
 
@@ -437,7 +437,7 @@ Example applications:
 Other clubs can have their own advantages:
 
 - Helsinki-style club: goalie/scouting bonus in cold regions.
-- Saskatoon-style club: stronger Prairie/Rink Belt influence.
+- Calgary-style club: stronger foothills and Prairie/Rink Belt influence.
 - Prague-style club: diplomacy/transfer network bonus.
 - Stockholm-style club: development pipeline bonus.
 
@@ -571,7 +571,7 @@ Additional generated examples from the current pool:
 "Tampere"
 "Lugano"
 "Baie-Comeau"
-"Saskatoon"
+"Calgary"
 ```
 
 Future feeder-system definitions may add terrain context, tags, scouting difficulty, relationship decay, talent cycles, staff outputs, and event hooks. The older concept examples such as **Finnish Goalie Lakes** and **Desert Expansion Zone** should be treated as design targets, not current data.
@@ -617,7 +617,7 @@ Avoid overly abstract labels:
 **Finnish Goalie Lakes**  
 Terrain: Frozen ponds / cold lakes  
 Status: Contested  
-First Contact: Arizona Monsoon HC  
+First Contact: Arizona Monsoon  
 Current Lean: Helsinki Ice Crown  
 Scouting Coverage: Arizona 62 / Helsinki 74  
 Pipeline Influence: Arizona 48 / Helsinki 71  

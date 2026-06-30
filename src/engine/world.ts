@@ -171,7 +171,7 @@ const HOCKEY_ORG_NAMES = [
   "Saginaw",
   "Saint John",
   "Sarnia",
-  "Saskatoon",
+  "Calgary",
   "Sault Ste. Marie",
   "Shawinigan",
   "Sherbrooke",

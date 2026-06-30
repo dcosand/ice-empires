@@ -28,4 +28,4 @@ export const CLUB_FORMATION_REQUIREMENTS: EraRequirement[] = [
 ];
 
 export const CLUB_FORMATION_UNLOCK_MESSAGE =
-  "Arizona Monsoon HC has entered the Club Formation Era. The club is no longer just a dream. It has ice, people, arguments, and a schedule.";
+  "Arizona Monsoon has entered the Club Formation Era. The club is no longer just a dream. It has ice, people, arguments, and a schedule.";

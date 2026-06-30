@@ -42,7 +42,7 @@ Treat the bible as context. Treat the PRD as the build target.
 
 The player starts with a tiny fictional hockey club in an unknown hockey world. They explore regions, build scouting/development infrastructure, research hockey knowledge, recruit staff and players, establish pipelines and affiliates, meet rival GMs, form leagues, compete in tournaments, unlock drafts, and eventually build a dynasty.
 
-Default club: **Arizona Monsoon HC**  
+Default club: **Arizona Monsoon**  
 Starting era: **Pond Hockey Era**  
 Prototype target: **Ice Empires: First 12 Months**
 
@@ -52,7 +52,7 @@ Prototype target: **Ice Empires: First 12 Months**
 
 Build a playable opening-year prototype where the player can:
 
-1. Start as Arizona Monsoon HC.
+1. Start as Arizona Monsoon.
 2. Found the club.
 3. Advance through 12 monthly turns.
 4. Generate resources.
@@ -199,7 +199,7 @@ App runs, landing screen exists, game state initializes.
 
 ### Milestone 2 — Club founding
 
-Arizona Monsoon HC can be founded; Club HQ appears.
+Arizona Monsoon can be founded; Club HQ appears.
 
 ### Milestone 3 — Monthly loop
 

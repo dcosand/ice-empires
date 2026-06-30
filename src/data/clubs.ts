@@ -20,7 +20,7 @@ const SHARED_START = {
 
 export const arizonaMonsoon: ClubDef = {
   id: "arizona-monsoon",
-  name: "Arizona Monsoon HC",
+  name: "Arizona Monsoon",
   cityRegion: "Sonoran Desert",
   leaderArchetype: "The Desert Visionary",
   philosophy: "Nontraditional hockey growth",
@@ -67,20 +67,20 @@ export const helsinkiIceCrown: ClubDef = {
   assetKey: "helsinki",
 };
 
-export const saskatoonIronHerd: ClubDef = {
-  id: "saskatoon-iron-herd",
-  name: "Saskatoon Iron Herd",
-  cityRegion: "Prairie Belt",
+export const calgaryIronHerd: ClubDef = {
+  id: "calgary-iron-herd",
+  name: "Calgary Iron Herd",
+  cityRegion: "Prairie Foothills",
   leaderArchetype: "The Rink-Town Builder",
   philosophy: "Rink density and grassroots pipelines",
   ...SHARED_START,
   identityText:
-    "Out on the prairie, every town has a rink and a grudge. The Iron Herd plans to turn that scattered density into one relentless, home-grown pipeline.",
+    "Where the prairie rises toward the Rockies, every town has a rink and a grudge. The Iron Herd plans to turn that scattered density into one relentless, home-grown pipeline.",
   foundingFlavor: "Every town a rink, every rink a feeder system.",
   tagline: "Every town a rink, every rink a feeder system.",
   accent: "#d8a24a",
   palette: { primary: "#2b3138", secondary: "#c8a65a", light: "#e9f1f4" },
-  assetKey: "saskatoon",
+  assetKey: "calgary",
 };
 
 export const pragueLions: ClubDef = {
@@ -119,31 +119,31 @@ export const detroitForge: ClubDef = {
   id: "detroit-forge",
   name: "Detroit Forge",
   cityRegion: "Great Lakes",
-  leaderArchetype: "The Assembly-Line Foreman",
-  philosophy: "Blue-collar depth and relentless forecheck",
+  leaderArchetype: "The Foundry Builder",
+  philosophy: "Infrastructure, discipline, and legacy building",
   ...SHARED_START,
   identityText:
-    "This is hockey as honest work. The Forge believes in shift after shift of north-south hockey — no shortcuts, no stars bigger than the line, just a machine that never stops grinding.",
-  foundingFlavor: "Lunch-pail hockey: every shift earned, every inch paid for.",
-  tagline: "Lunch-pail hockey, built shift by shift.",
-  accent: "#e2554b",
-  palette: { primary: "#3a0d10", secondary: "#d23b34", light: "#f0e6e2" },
+    "Born in iron and grit, Detroit Forge builds more than teams - it builds legacies. Its rinks rise from the smoke of industry, its rivers run cold, and infrastructure is the foundation of its game.",
+  foundingFlavor: "Dynasties are not discovered. They are forged.",
+  tagline: "Dynasties are not discovered. They are forged.",
+  accent: "#8b0e1a",
+  palette: { primary: "#111315", secondary: "#8b0e1a", light: "#e9edf2" },
   assetKey: "detroit",
 };
 
-export const stockholmAurora: ClubDef = {
-  id: "stockholm-aurora",
-  name: "Stockholm Aurora",
-  cityRegion: "Scandinavian Crown",
-  leaderArchetype: "The Crown Tactician",
-  philosophy: "Skating, structure, and clean puck movement",
+export const stockholmFrost: ClubDef = {
+  id: "stockholm-frost",
+  name: "Stockholm Frost",
+  cityRegion: "Scandinavia",
+  leaderArchetype: "The Elegant Architect",
+  philosophy: "Elegant systems, composure, and relentless development",
   ...SHARED_START,
   identityText:
-    "In the north the game is played like clockwork under the lights. The Aurora chase a cold, beautiful precision — perfect lanes, patient possession, and skating that never seems to tire.",
-  foundingFlavor: "Clockwork hockey under the northern lights.",
-  tagline: "Cold, beautiful precision.",
-  accent: "#6cc6e8",
-  palette: { primary: "#10324f", secondary: "#5bb6e0", light: "#eaf3f8" },
+    "On the edge of ice and water, Stockholm Frost turns precision into intention. Built on elegant systems, architectural vision, and relentless development, the club designs victories with discipline and composure.",
+  foundingFlavor: "Grace is a system.",
+  tagline: "Grace is a system.",
+  accent: "#ffc107",
+  palette: { primary: "#080e10", secondary: "#ffc107", light: "#e6e8eb" },
   assetKey: "stockholm",
 };
 
@@ -152,11 +152,11 @@ export const CLUB_LIST: ClubDef[] = [
   arizonaMonsoon,
   halifaxPrivateers,
   helsinkiIceCrown,
-  saskatoonIronHerd,
+  calgaryIronHerd,
   pragueLions,
   minnesotaNova,
   detroitForge,
-  stockholmAurora,
+  stockholmFrost,
 ];
 
 export const CLUBS: Record<string, ClubDef> = Object.fromEntries(
