@@ -67,10 +67,11 @@ export function targetSettlementCounts(
   height: number,
   clubDefCount: number,
 ): { majors: number; independents: number } {
-  const majors = Math.max(
-    2,
-    Math.min(clubDefCount, Math.round((width * height) / TILES_PER_MAJOR_CLUB)),
-  );
+  const desiredMajors = Math.round((width * height) / TILES_PER_MAJOR_CLUB);
+  const majors =
+    clubDefCount <= 1
+      ? Math.max(0, clubDefCount)
+      : Math.min(clubDefCount, Math.max(2, desiredMajors));
   const independents = Math.round(majors * INDEPENDENT_RATIO);
   return { majors, independents };
 }
@@ -435,7 +436,7 @@ function placeRivals(
         rivals.every((r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= min)
       );
     });
-    if (!chosen) continue; // degenerate map: skip rather than crowd
+    if (!chosen) break; // degenerate map: stop rather than crowd
     rivals.push({
       clubId: club.id,
       hqTile: { x: chosen.x, y: chosen.y },
@@ -560,7 +561,7 @@ function generateIndependents(
         orgs.every((o) => Math.hypot(t.x - o.x, t.y - o.y) >= fromIndep)
       );
     });
-    if (!chosen) continue; // degenerate map: stop rather than crowd
+    if (!chosen) break; // degenerate map: stop rather than crowd
     orgs.push({
       id: `hockey-org-${i + 1}`,
       name: namePool[i % namePool.length],

@@ -24,8 +24,8 @@ export function ClubSelectScreen({
           Found a Hockey Civilization
         </h1>
         <p className="subtitle" style={{ textAlign: "center" }}>
-          Six clubs, six ways into the hockey world. Pick the leader and identity
-          you want to build.
+          {CLUB_LIST.length} clubs, {CLUB_LIST.length} ways into the hockey
+          world. Pick the leader and identity you want to build.
         </p>
 
         <div className="club-grid">
