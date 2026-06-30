@@ -19,6 +19,7 @@ import type {
   WorldTile,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { cachedClubTexture } from "../data/clubTextures";
 import type { ClubDef } from "../types/game";
 import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
@@ -1449,8 +1450,14 @@ export function IsoWorldMap({
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
-  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
+  // Seed from Pixi's cache so a club whose art was warmed on the founding screen
+  // renders its crest/portrait on the first frame instead of flashing fallbacks.
+  const [logoTexture, setLogoTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "logo")) : null,
+  );
+  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "leader")) : null,
+  );
 
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
@@ -1802,14 +1809,22 @@ export function IsoWorldMap({
 
   useEffect(() => {
     let cancelled = false;
-    setLogoTexture(null);
-    setLeaderTexture(null);
-    if (!activeClub) return;
+    if (!activeClub) {
+      setLogoTexture(null);
+      setLeaderTexture(null);
+      return;
+    }
     // HQ logo + the Leader unit's portrait, loaded from the club's asset folder.
-    Assets.load<Texture>(clubAsset(activeClub, "logo"))
+    // Seed from cache first (instant when warmed on the founding screen) so we
+    // never blank a portrait we already have while a switch reloads.
+    const logoUrl = clubAsset(activeClub, "logo");
+    const leaderUrl = clubAsset(activeClub, "leader");
+    setLogoTexture(cachedClubTexture(logoUrl));
+    setLeaderTexture(cachedClubTexture(leaderUrl));
+    Assets.load<Texture>(logoUrl)
       .then((texture) => !cancelled && setLogoTexture(texture))
       .catch(() => !cancelled && setLogoTexture(null));
-    Assets.load<Texture>(clubAsset(activeClub, "leader"))
+    Assets.load<Texture>(leaderUrl)
       .then((texture) => !cancelled && setLeaderTexture(texture))
       .catch(() => !cancelled && setLeaderTexture(null));
     return () => {
