@@ -1,6 +1,12 @@
-import { useState } from "react";
-import type { Dispatch, ReactNode } from "react";
-import type { EventLogEntry, GameAction, GameState } from "../types/game";
+import { useEffect, useState } from "react";
+import type { Dispatch, ReactNode, SyntheticEvent } from "react";
+import type {
+  EventLogEntry,
+  GameAction,
+  GameState,
+  PendingEncounter,
+} from "../types/game";
+import { clubAsset } from "../data/clubs";
 import { DISCOVERY_BY_ID } from "../data/discovery";
 import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
 import { FACILITIES_BY_ID } from "../data/facilities";
@@ -9,8 +15,7 @@ import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
 import { IsoWorldMap } from "./IsoWorldMap";
 import { DiscoveryPanel } from "./DiscoveryPanel";
-import { ClubHQScreen } from "./ClubHQScreen";
-import { ProductionPanel } from "./ProductionPanel";
+import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
@@ -20,6 +25,7 @@ import {
   productionItemName,
   startableProductionCount,
 } from "../engine/productionSystem";
+import { activeScout, allScouts } from "../engine/scoutSystem";
 
 type OverlayView =
   | "build"
@@ -39,9 +45,28 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const [overlay, setOverlay] = useState<OverlayView>(null);
+  // Production now lives inside the Club HQ screen: the "build" task deep-links
+  // straight to its Production tab instead of opening a separate panel.
+  const [hqInitialTab, setHqInitialTab] = useState<HQTab>("overview");
+  const openView = (view: OverlayView) => {
+    if (view === "build") {
+      setHqInitialTab("production");
+      setOverlay("club");
+      return;
+    }
+    if (view === "club") setHqInitialTab("overview");
+    setOverlay(view);
+  };
   const [dismissedCompletions, setDismissedCompletions] = useState<Set<string>>(
     () => new Set(completionEvents(state).map((e) => e.id)),
   );
+  // Celebrate the founding moment over the live map (rather than on a separate
+  // screen), the first time the HQ is planted.
+  const founded = !!state.world?.hqTile;
+  const [showFoundingMoment, setShowFoundingMoment] = useState(false);
+  useEffect(() => {
+    if (founded) setShowFoundingMoment(true);
+  }, [founded]);
   const pastTwelve = state.month > state.maxMonths;
   const completion = completionEvents(state).find(
     (event) => !dismissedCompletions.has(event.id),
@@ -52,7 +77,7 @@ export function Dashboard({
       <TopBar
         state={state}
         dispatch={dispatch}
-        onOpenHQ={() => setOverlay("club")}
+        onOpenHQ={() => openView("club")}
       />
 
       {state.nextEraUnlocked && (
@@ -75,16 +100,15 @@ export function Dashboard({
         <IsoWorldMap
           state={state}
           dispatch={dispatch}
-          onOpenHQ={() => setOverlay("club")}
+          onOpenHQ={() => openView("club")}
         />
-        <CommandRail state={state} dispatch={dispatch} open={setOverlay} />
+        <CommandRail state={state} dispatch={dispatch} open={openView} />
       </div>
 
-      <InfoDock state={state} open={setOverlay} />
+      <InfoDock state={state} open={openView} />
 
       {overlay && overlay !== "club" && (
         <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
-          {overlay === "build" && <ProductionPanel state={state} dispatch={dispatch} />}
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "cards" && <CardsPanel state={state} />}
@@ -98,6 +122,14 @@ export function Dashboard({
           state={state}
           dispatch={dispatch}
           onClose={() => setOverlay(null)}
+          initialTab={hqInitialTab}
+        />
+      )}
+
+      {state.pendingEncounter && (
+        <EncounterOverlay
+          encounter={state.pendingEncounter}
+          onAcknowledge={() => dispatch({ type: "RESOLVE_ENCOUNTER" })}
         />
       )}
 
@@ -113,6 +145,72 @@ export function Dashboard({
           }
         />
       )}
+
+      {founded && showFoundingMoment && state.club && (
+        <FoundingMoment
+          state={state}
+          onClose={() => setShowFoundingMoment(false)}
+          onOpenHQ={() => {
+            setShowFoundingMoment(false);
+            setOverlay("club");
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
+  e.currentTarget.style.display = "none";
+}
+
+// The "club founded" beat, shown over the live map so the moment stays part of
+// the same map-oriented gameplay instead of a disconnected screen.
+function FoundingMoment({
+  state,
+  onClose,
+  onOpenHQ,
+}: {
+  state: GameState;
+  onClose: () => void;
+  onOpenHQ: () => void;
+}) {
+  const club = state.club!;
+  return (
+    <div
+      className="founding-moment"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${club.name} founded`}
+    >
+      <div className="founding-moment-scrim" />
+      <div className="founding-moment-card">
+        <div className="fmoment-rink-wrap">
+          <img
+            className="fmoment-rink"
+            src={clubAsset(club, "rink")}
+            alt={`${club.name} rink`}
+            onError={hideOnError}
+          />
+          <div className="fmoment-sweep" />
+        </div>
+        <div className="fmoment-body">
+          <div className="eyebrow">Club Founded · Month {state.month}</div>
+          <h2>{club.name}</h2>
+          <p>
+            The first home ice is claimed. Production opens — choose your first
+            build, then finish out the month.
+          </p>
+          <div className="fmoment-actions">
+            <button className="btn btn-primary" onClick={onClose}>
+              Continue
+            </button>
+            <button className="btn" onClick={onOpenHQ}>
+              Open Club HQ
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -126,23 +224,86 @@ function CommandRail({
   dispatch: Dispatch<GameAction>;
   open: (view: OverlayView) => void;
 }) {
+  const founded = !!state.world?.hqTile;
   const buildOptions = startableProductionCount(state);
   const researchOptions = getAvailableResearch(state).length;
   const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
   const discoveryReady = !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
-  const scout = state.world?.scout;
-  const scoutReady = !scout || scout.movesRemaining === 0;
-  const canEndMonth = buildReady && researchReady && discoveryReady && scoutReady;
+  const scouts = allScouts(state.world);
+  const selectedScout = activeScout(state.world);
+  const scoutMovesRemaining = scouts.reduce((sum, s) => sum + s.movesRemaining, 0);
+  const scoutMovesTotal = scouts.reduce((sum, s) => sum + s.movesPerTurn, 0);
+  const scoutReady = scouts.length === 0 || scoutMovesRemaining === 0;
 
+  const researchTask = (
+    <TaskButton
+      done={researchReady}
+      label={
+        state.activeResearch
+          ? "Research active"
+          : researchOptions === 0
+            ? "Research complete"
+            : "Choose research"
+      }
+      detail={activeResearchName(state)}
+      onClick={() => open("research")}
+    />
+  );
+  const discoveryTask = (
+    <TaskButton
+      done={discoveryReady}
+      label="Local search"
+      detail={DISCOVERY_BY_ID[state.discovery.activePriorityId]?.name}
+      onClick={() => open("search")}
+    />
+  );
+
+  // ---- The founding turn (Month 1, before the HQ is planted) ----
+  // Research is already in play; production stays locked until the club is
+  // founded, so the only gating action is planting the HQ.
+  if (!founded) {
+    const founder = state.world?.founder;
+    const club = state.club;
+    return (
+      <aside className="command-rail">
+        <div className="rail-title">Found Your Club · Month {state.month}</div>
+        {researchTask}
+        {discoveryTask}
+        <button
+          className="btn btn-gold btn-block rail-end"
+          disabled={!founder || !club}
+          onClick={() => club && dispatch({ type: "FOUND_CLUB", clubId: club.id })}
+        >
+          Found {club?.name ?? "Club"} Here
+        </button>
+        {founder && founder.movesRemaining === 0 && (
+          <button
+            className="btn btn-block"
+            style={{ marginTop: 8 }}
+            onClick={() => dispatch({ type: "END_FOUNDING_TURN" })}
+          >
+            Take another step (refill moves)
+          </button>
+        )}
+        <div className="rail-blocked">
+          Move the Founding Group on the map, then plant your HQ. Production opens
+          once you've founded.
+        </div>
+      </aside>
+    );
+  }
+
+  const canEndMonth = buildReady && researchReady && discoveryReady;
   const selectScout = () => {
-    if (!state.world?.scoutSelected) dispatch({ type: "SELECT_SCOUT" });
+    if (!selectedScout && scouts[0]?.id) {
+      dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });
+    }
   };
 
   const missing: string[] = [];
   if (!buildReady) missing.push("build");
   if (!researchReady) missing.push("research");
-  if (!scoutReady) missing.push("scout moves");
 
   return (
     <aside className="command-rail">
@@ -159,29 +320,13 @@ function CommandRail({
         detail={activeProductionName(state)}
         onClick={() => open("build")}
       />
-      <TaskButton
-        done={researchReady}
-        label={
-          state.activeResearch
-            ? "Research active"
-            : researchOptions === 0
-              ? "Research complete"
-              : "Choose research"
-        }
-        detail={activeResearchName(state)}
-        onClick={() => open("research")}
-      />
-      <TaskButton
-        done={discoveryReady}
-        label="Local search"
-        detail={DISCOVERY_BY_ID[state.discovery.activePriorityId]?.name}
-        onClick={() => open("search")}
-      />
-      {scout && (
+      {researchTask}
+      {discoveryTask}
+      {scouts.length > 0 && (
         <TaskButton
           done={scoutReady}
-          label={scoutReady ? "Scout moved" : "Move scout"}
-          detail={`${scout.movesRemaining}/${scout.movesPerTurn} moves`}
+          label={scoutReady ? "Scouts moved" : "Move scouts"}
+          detail={`${scoutMovesRemaining}/${scoutMovesTotal} moves remaining`}
           onClick={selectScout}
         />
       )}
@@ -294,6 +439,58 @@ function completionEvents(state: GameState): EventLogEntry[] {
       (event.type === "research" && event.title.endsWith(" complete")),
   );
 }
+
+// Goodie-hut pop-up: shown the moment a unit steps onto a marker. The player
+// reads the randomized event + its outcome, then "Continue" commits the effect.
+function EncounterOverlay({
+  encounter,
+  onAcknowledge,
+}: {
+  encounter: PendingEncounter;
+  onAcknowledge: () => void;
+}) {
+  const icon = ENCOUNTER_ICON[encounter.kind] ?? "❄️";
+  return (
+    <div
+      className="task-overlay completion-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={encounter.name}
+    >
+      <button
+        className="overlay-scrim"
+        aria-label="Acknowledge encounter"
+        onClick={onAcknowledge}
+      />
+      <div className="completion-sheet">
+        <div className={`completion-art encounter-${encounter.tone}`}>
+          <span className="completion-icon">{icon}</span>
+          <span className="completion-glow" />
+        </div>
+        <div className="completion-copy">
+          <div className="eyebrow">Goodie Hut · {encounter.kind.replace("-", " ")}</div>
+          <h2>{encounter.name}</h2>
+          <p>{encounter.description}</p>
+          <div className="completion-value">
+            <span>{encounter.tone === "bad" ? "Setback" : "Outcome"}</span>
+            <strong>{encounter.outcome}</strong>
+          </div>
+          <button className="btn btn-gold" onClick={onAcknowledge}>
+            Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const ENCOUNTER_ICON: Record<PendingEncounter["kind"], string> = {
+  wanderer: "🧍",
+  equipment: "🥅",
+  "local-believer": "🙌",
+  mishap: "💥",
+  rumor: "🗺️",
+};
 
 function CompletionOverlay({
   event,

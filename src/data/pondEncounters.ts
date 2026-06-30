@@ -1,15 +1,10 @@
 import type { PondEncounter } from "../types/game";
 
-// PLACEHOLDER DATA — not wired into any system yet. See PondEncounter in
-// types/game.ts. These are Civ-style "goodie huts": one-time early discoveries
-// the Scout / Pond Scout can stumble onto in the Pond Hockey Era. They are
-// deliberately distinct from the persistent, city-state-like Hockey Regions in
-// /data/regions.ts.
-//
-// NEXT ITERATION: roll one of these when an exploration unit reveals new ground,
-// weight outcomes by whether a Pond Scout / Rink Evangelist is owned, then apply
-// possibleEffects (grant a card, nudge a resource, etc.) via a new
-// encounterSystem.ts and log the result.
+// One-time early discoveries the Scout / Pond Scout can investigate in the Pond
+// Hockey Era. These are the Civ-style "goodie huts": they are generated with
+// the world, shown as small rink/barn markers, and disappear after investigation.
+// They are deliberately distinct from persistent Independent Hockey Associations
+// and from city-state-like Hockey Regions in /data/regions.ts.
 
 export const POND_ENCOUNTERS: PondEncounter[] = [
   {
@@ -39,7 +34,39 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
       "The stranger brought three sticks, two usable skates, and one deeply suspicious puck.",
     possibleEffects: [
       { type: "addResource", resource: "operations", amount: 2 },
-      { type: "setback", message: "The puck was, in fact, cursed." },
+      {
+        type: "setback",
+        message: "Half the gear was junk and the rest cost you to haul off.",
+        resource: "budget",
+        amount: 2,
+      },
+    ],
+  },
+  {
+    id: "abandoned-playbook",
+    name: "An Abandoned Playbook",
+    kind: "rumor",
+    description:
+      "Tucked in a warming hut: a weathered notebook of drills nobody around here recognizes.",
+    possibleEffects: [
+      { type: "grantTech", techId: "organized-practice" },
+      { type: "addResource", resource: "hockeyKnowledge", amount: 2 },
+    ],
+  },
+  {
+    id: "frozen-creditor",
+    name: "A Debt Comes Due",
+    kind: "mishap",
+    description:
+      "A man on the ice insists your club already owes him for last winter's ice time.",
+    possibleEffects: [
+      {
+        type: "setback",
+        message: "You quietly settle up to make him go away.",
+        resource: "budget",
+        amount: 3,
+      },
+      { type: "flavorOnly" },
     ],
   },
   {
@@ -55,6 +82,14 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     name: "The Tough Guy",
     kind: "mishap",
     description: "A local tough guy joins, then asks what offsides means.",
+    possibleEffects: [{ type: "flavorOnly" }],
+  },
+  {
+    id: "rink-map-rumor",
+    name: "The Rink Map Rumor",
+    kind: "rumor",
+    description:
+      "A smudged diner placemat claims there is playable ice three towns over.",
     possibleEffects: [{ type: "flavorOnly" }],
   },
 ];

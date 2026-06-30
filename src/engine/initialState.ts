@@ -32,14 +32,17 @@ export function createInitialState(): GameState {
     cards: [],
     eventLog: [],
     rngSeed: 0,
+    pendingEncounter: null,
     devRevealAll: false,
   };
 }
 
-// Apply club founding: seed resources, month 1, opening log entry. Does NOT
-// change phase — the founding map keeps the player on the tile until they
-// choose to begin the season (BEGIN_SEASON).
-export function foundClub(state: GameState, clubId: string): GameState {
+// Seed the chosen club at the START of the founding expedition: starting
+// resources, month 1, a stable RNG seed, and an opening log line. The club now
+// exists from turn 1 even though its HQ isn't planted yet, so the founding turn
+// is a real Month 1 — the player can choose research and act immediately, and
+// only plants the HQ (which unlocks production) when they're ready.
+export function beginFounding(state: GameState, clubId: string): GameState {
   const club = CLUBS[clubId];
   if (!club) return state;
 
@@ -52,10 +55,10 @@ export function foundClub(state: GameState, clubId: string): GameState {
     rngSeed: 1337 + club.id.length * 17,
     eventLog: [
       {
-        id: "founding",
+        id: "founding-expedition",
         month: 1,
-        title: `${club.name} founded`,
-        message: club.identityText,
+        title: `${club.name} founding expedition`,
+        message: club.foundingFlavor ?? club.identityText,
         type: "era",
       },
     ],

@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
 import type { GameAction, GameState } from "../types/game";
 import { CLUBS, arizonaMonsoon, clubAsset } from "../data/clubs";
+import { preloadClubTextures } from "../data/clubTextures";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
@@ -15,6 +17,12 @@ export function FoundingScreen({
 }) {
   const club =
     (state.selectedClubId && CLUBS[state.selectedClubId]) || arizonaMonsoon;
+
+  // Warm Pixi's texture cache while the player reads the founding screen, so the
+  // Leader portrait is decoded and ready the instant the iso map mounts.
+  useEffect(() => {
+    preloadClubTextures(club);
+  }, [club]);
 
   return (
     <div className="center-screen" style={{ paddingTop: 32, paddingBottom: 48 }}>

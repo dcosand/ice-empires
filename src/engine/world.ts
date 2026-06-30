@@ -2,11 +2,14 @@ import type {
   GameState,
   WorldState,
   WorldFeature,
+  WorldHockeyOrg,
+  WorldPondMarker,
   WorldTerrain,
   WorldTile,
   WorldUnit,
 } from "../types/game";
 import { REGIONS } from "../data/regions";
+import { POND_ENCOUNTERS } from "../data/pondEncounters";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
@@ -21,6 +24,123 @@ export const VISION_RADIUS = 2;
 // A club may only be founded on a landmass with at least this many connected
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
+const POND_MARKER_COUNT = 24;
+const HOCKEY_ORG_COUNT = 10;
+
+const HOCKEY_ORG_NAMES = [
+  "Moscow",
+  "Yaroslavl",
+  "Jokerit",
+  "Tampere",
+  "Lugano",
+  "Bratislava",
+  "Iserlohn",
+  "Linköping",
+  "Malmö",
+  "Anchorage",
+  "Baie-Comeau",
+  "Barrie",
+  "Blainville-Boisbriand",
+  "Brampton",
+  "Brandon",
+  "Brantford",
+  "Brookville",
+  "Burlington",
+  "Cape Breton",
+  "Cedar Rapids",
+  "Charlottetown",
+  "Chestnut Hill",
+  "Chicoutimi",
+  "Colorado Springs",
+  "Denver",
+  "Des Moines",
+  "Drummondville",
+  "Dubuque",
+  "Duluth",
+  "Durham",
+  "Easton",
+  "Edmonton",
+  "Erie",
+  "Everett",
+  "Fairbanks",
+  "Fargo",
+  "Flint",
+  "Gatineau",
+  "Grand Forks",
+  "Green Bay",
+  "Guelph",
+  "Kamloops",
+  "Kalamazoo",
+  "Kelowna",
+  "Kearney",
+  "Kennewick",
+  "Kingston",
+  "Kitchener",
+  "Lethbridge",
+  "Lincoln",
+  "London",
+  "Lowell",
+  "Madison",
+  "Medicine Hat",
+  "Moncton",
+  "Moose Jaw",
+  "Muskegon",
+  "Niagara",
+  "North Andover",
+  "North Bay",
+  "Omaha",
+  "Orono",
+  "Oshawa",
+  "Ottawa",
+  "Owen Sound",
+  "Oxford",
+  "Penticton",
+  "Peterborough",
+  "Plymouth",
+  "Portland",
+  "Prince Albert",
+  "Prince George",
+  "Providence",
+  "Québec City",
+  "Red Deer",
+  "Regina",
+  "Rimouski",
+  "Rouyn-Noranda",
+  "Saginaw",
+  "Saint John",
+  "Sarnia",
+  "Saskatoon",
+  "Sault Ste. Marie",
+  "Shawinigan",
+  "Sherbrooke",
+  "Sioux City",
+  "Sioux Falls",
+  "Spokane",
+  "St. Charles",
+  "St. Cloud",
+  "St. John’s",
+  "Sudbury",
+  "Swift Current",
+  "Tempe",
+  "Tri-City",
+  "Val-d’Or",
+  "Vancouver",
+  "Victoria",
+  "Victoriaville",
+  "Waterloo",
+  "Wenatchee",
+  "Windsor",
+];
+const HOCKEY_ORG_NAME_SET = new Set(HOCKEY_ORG_NAMES);
+
+export function hockeyOrgDisplayName(
+  org: Pick<WorldHockeyOrg, "id" | "name" | "x" | "y">,
+): string {
+  if (HOCKEY_ORG_NAME_SET.has(org.name)) return org.name;
+  const n = Number(org.id.replace(/\D/g, "")) || 0;
+  const idx = Math.floor(tileVisualRand(org.x + n, org.y - n, 44017) * HOCKEY_ORG_NAMES.length);
+  return HOCKEY_ORG_NAMES[idx] ?? "Independent";
+}
 
 export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
@@ -89,8 +209,12 @@ export function visibleTiles(world: WorldState): Set<string> {
     for (const k of diskKeys(s.x, s.y, VISION_RADIUS)) out.add(k);
   };
   add(world.hqTile);
-  add(world.scout);
   add(world.founder);
+  // Every active exploration unit grants vision. Mirror allScouts() without the
+  // import (scoutSystem depends on this module): prefer the scouts[] roster,
+  // falling back to the legacy single scout field.
+  const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
+  for (const s of scouts) add(s);
   return out;
 }
 
@@ -118,7 +242,7 @@ export function createWorld(seed = Date.now()): WorldState {
         variant,
         elevation,
         feature,
-        valid: terrain !== "water" && feature !== "lake",
+        valid: terrain !== "water" && terrain !== "mountain" && feature !== "lake",
       });
     }
   }
@@ -139,6 +263,8 @@ export function createWorld(seed = Date.now()): WorldState {
     };
   }
 
+  const hockeyOrgs = generateHockeyOrgs(tiles, start, seed);
+
   return {
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
@@ -152,9 +278,174 @@ export function createWorld(seed = Date.now()): WorldState {
       movesRemaining: FOUNDER_MOVES,
     },
     founderSelected: false,
+    scouts: [],
+    selectedScoutId: null,
+    pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs),
+    hockeyOrgs,
     scout: null,
     scoutSelected: false,
   };
+}
+
+export function createScoutUnit(
+  id: string,
+  x: number,
+  y: number,
+  name = "Pond Scout",
+): WorldUnit {
+  return {
+    id,
+    unitDefId: "pond-scout",
+    name,
+    x,
+    y,
+    movesPerTurn: SCOUT_MOVES,
+    movesRemaining: SCOUT_MOVES,
+  };
+}
+
+function generatePondMarkers(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+  hockeyOrgs: WorldHockeyOrg[],
+): WorldPondMarker[] {
+  const markers: WorldPondMarker[] = [];
+  const occupied = new Set<string>(hockeyOrgs.map((org) => tileKey(org.x, org.y)));
+  const addMarker = (x: number, y: number, n: number) => {
+    const tile = tiles[y * WORLD_WIDTH + x];
+    const key = tileKey(x, y);
+    if (!tile || occupied.has(key) || !canPlacePondMarker(tile)) return false;
+    const encounter = POND_ENCOUNTERS[n % POND_ENCOUNTERS.length];
+    markers.push({
+      id: `pond-marker-${x}-${y}`,
+      x,
+      y,
+      kind: encounter.kind,
+      encounterId: encounter.id,
+      investigated: false,
+    });
+    occupied.add(key);
+    return true;
+  };
+
+  // Always seed one early marker in the opening sightline when possible.
+  for (const [dx, dy] of [
+    [1, 0],
+    [0, 1],
+    [1, 1],
+    [-1, 0],
+    [0, -1],
+    [-1, -1],
+  ]) {
+    const x = start.x + dx;
+    const y = start.y + dy;
+    if (x >= 0 && y >= 0 && x < WORLD_WIDTH && y < WORLD_HEIGHT && addMarker(x, y, 0)) {
+      break;
+    }
+  }
+
+  const candidates = tiles
+    .filter(canPlacePondMarker)
+    .map((tile) => ({
+      tile,
+      score: noise2d(tile.x, tile.y, seed + 12091),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { tile } of candidates) {
+    if (markers.length >= POND_MARKER_COUNT) break;
+    const farEnoughFromStart = Math.hypot(tile.x - start.x, tile.y - start.y) > 4;
+    if (!farEnoughFromStart) continue;
+    addMarker(tile.x, tile.y, markers.length);
+  }
+
+  return markers;
+}
+
+function generateHockeyOrgs(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+): WorldHockeyOrg[] {
+  const orgs: WorldHockeyOrg[] = [];
+  const occupied = new Set<string>();
+  const archetypes: WorldHockeyOrg["archetype"][] = [
+    "minor-club",
+    "junior-league",
+    "rink-society",
+    "academy",
+  ];
+  const namePool = shuffledHockeyOrgNames(seed);
+
+  const candidates = tiles
+    .filter(canPlaceHockeyOrg)
+    .map((tile) => ({
+      tile,
+      score:
+        noise2d(tile.x, tile.y, seed + 24091) +
+        Math.min(0.35, Math.hypot(tile.x - start.x, tile.y - start.y) / 160),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  for (const { tile } of candidates) {
+    if (orgs.length >= HOCKEY_ORG_COUNT) break;
+    if (Math.hypot(tile.x - start.x, tile.y - start.y) < 7) continue;
+    const tooClose = orgs.some((org) => Math.hypot(tile.x - org.x, tile.y - org.y) < 9);
+    if (tooClose || occupied.has(tileKey(tile.x, tile.y))) continue;
+    const idx = orgs.length;
+    orgs.push({
+      id: `hockey-org-${idx + 1}`,
+      name: namePool[idx % namePool.length],
+      x: tile.x,
+      y: tile.y,
+      archetype: archetypes[idx % archetypes.length],
+      discovered: false,
+    });
+    occupied.add(tileKey(tile.x, tile.y));
+  }
+
+  return orgs;
+}
+
+function shuffledHockeyOrgNames(seed: number): string[] {
+  return HOCKEY_ORG_NAMES.map((name, i) => ({
+    name,
+    score: noise2d(i, HOCKEY_ORG_NAMES.length - i, seed + 33191),
+  }))
+    .sort((a, b) => a.score - b.score)
+    .map((entry) => entry.name);
+}
+
+function canPlacePondMarker(tile: WorldTile): boolean {
+  return (
+    tile.valid &&
+    tile.terrain !== "water" &&
+    tile.terrain !== "mountain" &&
+    tile.feature !== "river" &&
+    tile.feature !== "lake" &&
+    !hasMesaLandform(tile)
+  );
+}
+
+function canPlaceHockeyOrg(tile: WorldTile): boolean {
+  return (
+    tile.valid &&
+    tile.terrain !== "water" &&
+    tile.terrain !== "mountain" &&
+    tile.feature !== "lake" &&
+    !hasMesaLandform(tile)
+  );
+}
+
+export function tileVisualRand(x: number, y: number, salt: number): number {
+  let h = Math.imul((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791), 2654435761);
+  h = (h ^ (h >>> 15)) >>> 0;
+  return h / 4294967295;
+}
+
+export function hasMesaLandform(tile: WorldTile): boolean {
+  return tile.terrain === "high-desert" && tileVisualRand(tile.x, tile.y, 11) < 0.09;
 }
 
 // Flood-fill the passable (land) tiles into connected components, then choose a
@@ -509,6 +800,7 @@ export function foundOnTile(state: GameState): GameState {
   const world = state.world;
   if (!world || world.hqTile || !world.founder) return state;
   const hq = { x: world.founder.x, y: world.founder.y };
+  const scout = createScoutUnit("pond-scout-1", hq.x, hq.y);
   return {
     ...state,
     world: {
@@ -516,12 +808,9 @@ export function foundOnTile(state: GameState): GameState {
       hqTile: hq,
       founder: null,
       founderSelected: false,
-      scout: {
-        x: hq.x,
-        y: hq.y,
-        movesPerTurn: SCOUT_MOVES,
-        movesRemaining: SCOUT_MOVES,
-      },
+      scouts: [scout],
+      selectedScoutId: null,
+      scout,
       scoutSelected: false,
       revealed: addReveal(world.revealed, hq.x, hq.y),
     },

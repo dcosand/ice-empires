@@ -18,7 +18,6 @@ export type Phase =
   | "landing"
   | "clubSelect"
   | "founding"
-  | "foundingMap"
   | "playing"
   | "complete";
 
@@ -273,7 +272,12 @@ export type EncounterEffect =
   | { type: "addCard"; cardId: string }
   | { type: "addResource"; resource: ResourceKey; amount: number }
   | { type: "teamAttribute"; attribute: string; amount: number }
-  | { type: "setback"; message: string }
+  // A free, fully-completed technology (and its unlocks). The "discovery of a
+  // new tech" goodie-hut outcome.
+  | { type: "grantTech"; techId: string }
+  // A negative outcome. An optional resource/amount actually deducts from the
+  // club (budget/operations hits); message-only setbacks stay pure flavor.
+  | { type: "setback"; message: string; resource?: ResourceKey; amount?: number }
   | { type: "flavorOnly" };
 
 export type PondEncounter = {
@@ -282,6 +286,20 @@ export type PondEncounter = {
   kind: "wanderer" | "equipment" | "local-believer" | "mishap" | "rumor";
   description: string;
   possibleEffects: EncounterEffect[];
+};
+
+// A goodie-hut outcome that has been rolled (when a unit steps onto the marker)
+// but not yet applied — it waits for the player to acknowledge the pop-up, at
+// which point the effect is committed. See scoutSystem's trigger/resolve pair.
+export type PendingEncounter = {
+  markerId: string;
+  encounterId: string;
+  name: string;
+  kind: PondEncounter["kind"];
+  description: string; // flavor narrative
+  outcome: string; // human-readable result line shown in the pop-up
+  tone: "good" | "bad" | "neutral";
+  effect: EncounterEffect;
 };
 
 // ---------------------------------------------------------------------------
@@ -362,10 +380,31 @@ export type WorldTile = {
 // A movable unit on the world (the Founding Group before founding, the Scout
 // after it unlocks).
 export type WorldUnit = {
+  id?: string;
+  unitDefId?: string;
+  name?: string;
   x: number;
   y: number;
   movesPerTurn: number;
   movesRemaining: number;
+};
+
+export type WorldPondMarker = {
+  id: string;
+  x: number;
+  y: number;
+  kind: PondEncounter["kind"];
+  encounterId: string;
+  investigated: boolean;
+};
+
+export type WorldHockeyOrg = {
+  id: string;
+  name: string;
+  x: number;
+  y: number;
+  archetype: "minor-club" | "junior-league" | "rink-society" | "academy";
+  discovered: boolean;
 };
 
 export type WorldState = {
@@ -376,6 +415,10 @@ export type WorldState = {
   hqTile: { x: number; y: number } | null; // Club HQ tile, set at founding
   founder: WorldUnit | null; // Founding Group; null after founding
   founderSelected: boolean; // founding-phase selection
+  scouts: WorldUnit[]; // movable exploration units produced by HQ / founding
+  selectedScoutId: string | null;
+  pondMarkers: WorldPondMarker[]; // one-time "goodie hut" exploration markers
+  hockeyOrgs: WorldHockeyOrg[]; // persistent neutral hockey powers / city-state analogs
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
 };
@@ -403,6 +446,8 @@ export type GameState = {
   cards: CardDef[];
   eventLog: EventLogEntry[];
   rngSeed: number;
+  // A goodie-hut outcome awaiting the player's acknowledgement (pop-up open).
+  pendingEncounter: PendingEncounter | null;
   devRevealAll: boolean; // dev tool: render every tile regardless of fog of war
 };
 
@@ -418,13 +463,13 @@ export type GameAction =
   | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
-  | { type: "BEGIN_SEASON" }
   | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }
-  | { type: "SELECT_SCOUT" }
-  | { type: "MOVE_SCOUT"; x: number; y: number }
+  | { type: "SELECT_SCOUT"; scoutId?: string }
+  | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
+  | { type: "RESOLVE_ENCOUNTER" }
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
   | { type: "END_MONTH" }

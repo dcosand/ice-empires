@@ -143,6 +143,81 @@ const UNIT_SCENES: Record<string, Scene> = {
   ),
 };
 
+const RESEARCH_SCENES: Record<string, Scene> = {
+  "basic-skating": () => (
+    <g>
+      <path d="M22 22 l3 18" stroke="#cfe8f5" strokeWidth="3" strokeLinecap="round" />
+      <path d="M16 44 q9 4 18 0 l2 4 q-11 5 -22 0 z" fill="#9aa6b0" />
+      <path d="M16 48 h22" stroke="#7dd3fc" strokeWidth="2" strokeLinecap="round" />
+      <circle cx="22" cy="20" r="3" fill="#f2c14e" />
+      <path d="M38 22 l4 16" stroke="#cfe8f5" strokeWidth="3" strokeLinecap="round" />
+    </g>
+  ),
+  "organized-practice": () => (
+    <g>
+      <rect x="16" y="16" width="22" height="28" rx="2" fill="#eae4d2" stroke="#4a4636" strokeWidth="1.5" />
+      <line x1="20" y1="23" x2="34" y2="23" stroke="#9aa6b0" strokeWidth="2" />
+      <line x1="20" y1="29" x2="34" y2="29" stroke="#9aa6b0" strokeWidth="2" />
+      <path d="M22 36 q4 4 8 0" stroke="#ef6f6f" strokeWidth="2" fill="none" strokeDasharray="2 2" />
+      <circle cx="44" cy="22" r="4" fill="#f2c14e" />
+      <line x1="41" y1="25" x2="38" y2="30" stroke="#b8923a" strokeWidth="2" strokeLinecap="round" />
+    </g>
+  ),
+  "scouting-reports": () => (
+    <g>
+      <rect x="16" y="18" width="24" height="30" rx="2" fill="#eae4d2" stroke="#4a4636" strokeWidth="1.5" />
+      <line x1="20" y1="25" x2="36" y2="25" stroke="#9aa6b0" strokeWidth="2" />
+      <line x1="20" y1="31" x2="36" y2="31" stroke="#9aa6b0" strokeWidth="2" />
+      <circle cx="42" cy="40" r="9" fill="#7fc7e3" opacity="0.35" stroke="#38bdf8" strokeWidth="2.5" />
+      <line x1="48" y1="46" x2="54" y2="52" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
+    </g>
+  ),
+  "youth-development": () => (
+    <g>
+      <circle cx="26" cy="24" r="6" fill="#cfd8e0" stroke="#7d8c98" strokeWidth="2" />
+      <path d="M20 50 v-10 a6 6 0 0 1 12 0 v10 z" fill="#5fd08a" />
+      <path d="M40 30 l4 14" stroke="#cfe8f5" strokeWidth="2.5" strokeLinecap="round" />
+      <path d="M36 46 q5 3 10 0" stroke="#9aa6b0" strokeWidth="2" fill="none" />
+      <path d="M44 18 l1.5 4 4 0 -3 3 1 4 -3.5 -2.5 -3.5 2.5 1 -4 -3 -3 4 0 z" fill="#f2c14e" />
+    </g>
+  ),
+  "goaltending-theory": () => (
+    <g>
+      <rect x="22" y="20" width="20" height="26" rx="3" fill="#3a5a7d" stroke="#22384f" strokeWidth="1.5" />
+      <line x1="32" y1="20" x2="32" y2="46" stroke="#22384f" strokeWidth="1.2" />
+      <line x1="22" y1="33" x2="42" y2="33" stroke="#22384f" strokeWidth="1.2" />
+      <circle cx="32" cy="16" r="5" fill="#cfd8e0" stroke="#7d8c98" strokeWidth="2" />
+      <path d="M16 30 q-3 8 4 16" fill="none" stroke="#f2c14e" strokeWidth="3" strokeLinecap="round" />
+    </g>
+  ),
+  "local-recruitment": () => (
+    <g>
+      <rect x="14" y="30" width="18" height="9" rx="4.5" fill="#e7b48b" transform="rotate(-12 23 34)" />
+      <rect x="32" y="30" width="18" height="9" rx="4.5" fill="#c8946a" transform="rotate(12 41 34)" />
+      <circle cx="32" cy="34" r="5" fill="#f2c14e" />
+      <path d="M44 18 l4 4 l8 -9" fill="none" stroke="#5fd08a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </g>
+  ),
+  "regional-scouting-office": () => (
+    <g>
+      <polygon points="12,24 26,20 40,24 52,20 52,46 40,50 26,46 12,50" fill="#cdb98a" stroke="#8a6a3c" strokeWidth="1.5" />
+      <line x1="26" y1="20" x2="26" y2="46" stroke="#8a6a3c" strokeWidth="1.5" />
+      <line x1="40" y1="24" x2="40" y2="50" stroke="#8a6a3c" strokeWidth="1.5" />
+      <path d="M36 26 a6 6 0 1 1 -0.01 0 z" fill="#ef6f6f" />
+      <circle cx="36" cy="30" r="2.4" fill="#fff" />
+    </g>
+  ),
+  "development-partnerships": () => (
+    <g>
+      <path d="M16 48 L30 34 L38 42 L52 26" fill="none" stroke="#5fd08a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+      <polygon points="52,26 52,36 44,28" fill="#5fd08a" />
+      <circle cx="22" cy="40" r="5" fill="#7fc7e3" />
+      <circle cx="42" cy="40" r="5" fill="#f2c14e" />
+      <path d="M27 40 h10" stroke="#cfe8f5" strokeWidth="2" />
+    </g>
+  ),
+};
+
 const FALLBACK: Scene = () => (
   <g>
     <circle cx="32" cy="34" r="13" fill="none" stroke="#38bdf8" strokeWidth="2.5" />
@@ -157,12 +232,17 @@ export function ItemArt({
   id,
   className,
 }: {
-  kind: ProductionKind;
+  kind: ProductionKind | "research";
   id: string;
   className?: string;
 }) {
-  const scene =
-    (kind === "facility" ? FACILITY_SCENES[id] : UNIT_SCENES[id]) ?? FALLBACK;
+  const sceneMap =
+    kind === "facility"
+      ? FACILITY_SCENES
+      : kind === "research"
+        ? RESEARCH_SCENES
+        : UNIT_SCENES;
+  const scene = sceneMap[id] ?? FALLBACK;
   return (
     <svg
       className={className ? `item-art ${className}` : "item-art"}

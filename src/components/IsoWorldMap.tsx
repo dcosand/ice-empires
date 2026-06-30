@@ -19,16 +19,25 @@ import type {
   WorldTile,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { cachedClubTexture } from "../data/clubTextures";
 import type { ClubDef } from "../types/game";
+import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
 import {
+  hasMesaLandform,
+  hockeyOrgDisplayName,
   moveableTilesFor,
   regionIdAtTile,
   tileAt,
   tileKey,
+  tileVisualRand,
   visibleTiles,
 } from "../engine/world";
-import { surveyableRegionId } from "../engine/scoutSystem";
+import {
+  activeScout,
+  allScouts,
+  surveyableRegionId,
+} from "../engine/scoutSystem";
 import {
   canEstablishConnection,
   CONNECTION_MONTHS,
@@ -118,13 +127,14 @@ function drawScene(
   const activeClub = getActiveClub(state);
   const accent = accentNumber(activeClub?.accent);
   const clubLabel = activeClub ? shortClubLabel(activeClub) : "";
-  const scout = world.scout;
+  const scouts = allScouts(world);
+  const selectedScout = activeScout(world);
   const founder = world.founder;
   const moveable =
     world.founderSelected && !world.hqTile
       ? moveableTilesFor(world, founder)
-      : world.scoutSelected
-        ? moveableTilesFor(world, scout)
+      : selectedScout
+        ? moveableTilesFor(world, selectedScout)
         : new Set<string>();
   const revealedSet = new Set(world.revealed);
   const visibleSet = visibleTiles(world);
@@ -234,6 +244,24 @@ function drawScene(
         layer.addChild(pin);
       }
 
+      const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
+      if (explored && org) {
+        const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
+        mk.position.y -= rise;
+        applyMemory(mk, memory);
+        layer.addChild(mk);
+      }
+
+      const pond = world.pondMarkers.find(
+        (m) => !m.investigated && m.x === gx && m.y === gy,
+      );
+      if (explored && pond) {
+        const mk = pondMarker(gx, gy, c, pond.kind);
+        mk.position.y -= rise;
+        applyMemory(mk, memory);
+        layer.addChild(mk);
+      }
+
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
       if (isHQ) {
         const mk = hqMarker(gx, gy, c, accent, clubLabel, logoTexture);
@@ -247,17 +275,149 @@ function drawScene(
         layer.addChild(mk);
       }
 
-      if (scout && scout.x === gx && scout.y === gy) {
-        const mk = scoutMarker(gx, gy, c, world.scoutSelected, accent);
+      const scoutsHere = scouts.filter((s) => s.x === gx && s.y === gy);
+      for (let i = 0; i < scoutsHere.length; i++) {
+        const scout = scoutsHere[i];
+        const mk = scoutMarker(
+          gx,
+          gy,
+          c,
+          !!scout.id && scout.id === world.selectedScoutId,
+          accent,
+        );
+        mk.position.x += (i - (scoutsHere.length - 1) / 2) * 10;
         mk.position.y -= rise;
-        // When the Scout shares the HQ tile, draw him in front of the HQ pin so
+        // When a Scout shares the HQ tile, draw him in front of the HQ pin so
         // the player can see he's there and ready to be moved.
-        if (isHQ) mk.zIndex = gx + gy + 51;
+        if (isHQ) mk.zIndex = gx + gy + 51 + i;
         layer.addChild(mk);
-        registerScout(mk, mk.position.y);
+        if (scout.id === world.selectedScoutId || (!world.selectedScoutId && i === 0)) {
+          registerScout(mk, mk.position.y);
+        }
       }
     }
   }
+}
+
+function hockeyOrgMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  archetype: string,
+  label: string,
+) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 12;
+  const g = new Graphics();
+  const accent =
+    archetype === "academy"
+      ? 0x7cc4e8
+      : archetype === "junior-league"
+        ? 0xc94b4b
+        : archetype === "rink-society"
+          ? 0x74b66d
+          : 0xf0c65c;
+
+  // Persistent neutral hockey organization: an isometric mini-district with a
+  // plaza, low arena, and a few stacked civic buildings. This reads as "place"
+  // on the terrain instead of a collectible icon.
+  g.ellipse(0, 7, 24, 8).fill({ color: 0x000000, alpha: 0.24 });
+  g.poly([-26, 2, -6, -8, 24, 2, 4, 12]).fill({ color: 0x31465b, alpha: 0.5 });
+  g.poly([-21, 1, -5, -7, 19, 1, 3, 9]).fill({ color: 0xc7dce3, alpha: 0.88 }).stroke({
+    width: 1,
+    color: 0x203141,
+    alpha: 0.5,
+  });
+  g.poly([-15, 0, -5, -5, 12, 0, 2, 5]).fill({ color: 0x9fc2d0, alpha: 0.75 });
+  drawIsoBlock(g, -14, 3, 9, 12, 0x60747c, accent);
+  drawIsoBlock(g, -5, -2, 8, 21, 0x52656d, accent);
+  drawIsoBlock(g, 4, 1, 10, 16, 0x6a7d84, accent);
+  drawIsoBlock(g, 13, 4, 7, 10, 0x5d7078, accent);
+  // Arena roof / civic rink.
+  g.ellipse(6, 2, 15, 6).fill(0xdce8ec).stroke({ width: 1.2, color: 0x263746, alpha: 0.75 });
+  g.arc(6, 2, 13, Math.PI, 0).stroke({ width: 1.1, color: accent, alpha: 0.9 });
+  g.rect(-23, 5, 45, 3).fill({ color: accent, alpha: 0.65 });
+  m.addChild(g);
+
+  const text = new Text({
+    text: label,
+    style: {
+      fontFamily: "Inter, Arial, sans-serif",
+      fontSize: label.length > 16 ? 9 : 10,
+      fontWeight: "800",
+      fill: 0xe6eef6,
+      stroke: { color: 0x07111c, width: 4 },
+    },
+  });
+  text.anchor.set(0.5, 0);
+  text.position.set(0, 10);
+  m.addChild(text);
+  return m;
+}
+
+function drawIsoBlock(g: Graphics, x: number, y: number, w: number, h: number, body: number, accent: number) {
+  const d = 4;
+  const roof = lighten(body, 0.18);
+  const side = darkenBy(body, 0.18);
+  g.poly([x, y - h, x + w, y - h - d, x + w + d, y - h, x + d, y + d - h]).fill(roof);
+  g.poly([x, y - h, x + d, y + d - h, x + d, y, x, y]).fill(body);
+  g.poly([x + d, y + d - h, x + w + d, y - h, x + w + d, y, x + d, y]).fill(side);
+  g.poly([x, y - h, x + w, y - h - d, x + w + d, y - h, x + w + d, y, x + d, y, x, y]).stroke({
+    width: 0.8,
+    color: 0x24303a,
+    alpha: 0.55,
+  });
+  for (let yy = y - h + 4; yy < y - 1; yy += 5) {
+    g.rect(x + 2, yy, 2, 2).fill({ color: 0xe8d68a, alpha: 0.72 });
+    if (w > 8) g.rect(x + 6, yy, 2, 2).fill({ color: 0xe8d68a, alpha: 0.55 });
+  }
+  g.rect(x + 1, y - h + 1, Math.max(3, w - 2), 1).fill({ color: accent, alpha: 0.75 });
+}
+
+function pondMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  kind: string,
+) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 0.45;
+  const g = new Graphics();
+  const accent =
+    kind === "equipment"
+      ? 0x8fb2c8
+      : kind === "local-believer"
+        ? 0x74b66d
+        : kind === "mishap"
+          ? 0xb65f4b
+          : kind === "rumor"
+            ? 0xd8c46d
+            : 0xb98655;
+
+  // Goodie hut as human activity: campfire, logs, smoke, bedroll/crate. It is
+  // deliberately simpler than a rink because the tile footprint is tiny.
+  g.ellipse(0, 5, 17, 6).fill({ color: 0x000000, alpha: 0.22 });
+  g.poly([-13, 4, -4, 0, 10, 4, 1, 8]).fill({ color: 0x2a3b42, alpha: 0.28 });
+  g.roundRect(7, 1, 9, 5, 1.5).fill(darkenBy(accent, 0.12)).stroke({ width: 1, color: 0x1b2b3b, alpha: 0.55 });
+  g.poly([7, 1, 11, -2, 16, 1]).fill(lighten(accent, 0.12)).stroke({ width: 0.8, color: 0x1b2b3b, alpha: 0.45 });
+  // Crossed logs.
+  g.roundRect(-9, 3, 16, 3, 1.5).fill(0x6e4a2c);
+  g.roundRect(-7, -1, 15, 3, 1.5).fill(0x815833);
+  g.poly([-8, 2, 7, 6]).stroke({ width: 3, color: 0x4d321d, alpha: 0.75 });
+  g.poly([7, 2, -8, 6]).stroke({ width: 3, color: 0x4d321d, alpha: 0.75 });
+  // Flame with type-colored outer glow and hot core.
+  g.circle(0, 2, 8).fill({ color: accent, alpha: 0.18 });
+  g.poly([-5, 3, -2, -7, 1, -2, 4, -10, 6, 3]).fill(0xd85d2f);
+  g.poly([-3, 3, 0, -4, 3, 3]).fill(0xffc857);
+  g.poly([-1, 2, 1, -1, 2, 2]).fill(0xfff2b0);
+  // Smoke curls, light enough to stay subtle over any terrain.
+  g.poly([-1, -10, -4, -16, -1, -21, 2, -25]).stroke({ width: 1.4, color: 0xc5d0d2, alpha: 0.48 });
+  g.poly([3, -9, 7, -15, 5, -20, 9, -24]).stroke({ width: 1.1, color: 0xc5d0d2, alpha: 0.32 });
+  g.poly([-12, 6, -8, 9, -3, 8]).stroke({ width: 1.2, color: 0xa7d8e8, alpha: 0.55 });
+  m.addChild(g);
+  return m;
 }
 
 // The Leader: the club's chosen figure, shown as their actual leader.png portrait
@@ -388,10 +548,15 @@ function variantTopColor(tile: WorldTile, base: number): number {
   return amt >= 0 ? lighten(base, amt) : darkenBy(base, Math.abs(amt));
 }
 
+// A tile the selected unit can step to: a soft inset diamond that traces the
+// tile shape (echoing the white selection outline) instead of busy arrows.
 function drawMoveHint(g: Graphics) {
-  g.poly([-24, -12, -12, -16, -8, -14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
-  g.poly([24, 12, 12, 16, 8, 14]).stroke({ width: 2, color: 0x7dd3fc, alpha: 0.9 });
-  g.circle(0, 0, 3).fill({ color: 0x7dd3fc, alpha: 0.72 });
+  const w = TILE_W * 0.6;
+  const h = TILE_H * 0.6;
+  const ring = [0, -h / 2, w / 2, 0, 0, h / 2, -w / 2, 0];
+  g.poly(ring)
+    .fill({ color: 0x7dd3fc, alpha: 0.1 })
+    .stroke({ width: 1.5, color: 0x7dd3fc, alpha: 0.7 });
 }
 
 // Per-tile deterministic randomness. Lets every tile pick a stable variant and
@@ -399,9 +564,7 @@ function drawMoveHint(g: Graphics) {
 // Two same-terrain tiles still differ because they seed different variants and
 // mirroring. salt selects an independent stream (variant / mirror / jitter).
 function tileRand(x: number, y: number, salt: number): number {
-  let h = Math.imul((x * 73856093) ^ (y * 19349663) ^ (salt * 83492791), 2654435761);
-  h = (h ^ (h >>> 15)) >>> 0;
-  return h / 4294967295;
+  return tileVisualRand(x, y, salt);
 }
 
 type TileLook = { v: number; mirror: boolean; jx: number };
@@ -855,7 +1018,7 @@ function landformSprite(tile: WorldTile): Sprite | null {
   if (tile.terrain === "high-desert") {
     // Mesas are rare landmarks; desert hills are intermittent so high-desert
     // doesn't become a repeating field of rounded bubbles.
-    const isMesa = tileRand(tile.x, tile.y, 11) < 0.09;
+    const isMesa = hasMesaLandform(tile);
     const hasHill = tileRand(tile.x, tile.y, 18) < 0.34;
     if (!isMesa && !hasHill) return null;
     const variant = look.v % 3;
@@ -1147,16 +1310,23 @@ function drawPond(g: Graphics, v: number, lake: boolean) {
   });
 }
 
-// The Scout: a hockey exec bundled for the field in a team-colored, fur-trimmed
-// parka, glassing the horizon through binoculars. Drawn billboard-style (facing
-// camera) as vector art so it stays crisp at any zoom. `accent` is the club
-// color, so the parka matches the team.
+// The Scout: a standard-bearer for the club's expedition. He's bundled in a
+// team-colored, fur-trimmed parka, one mittened hand shading his brow as he
+// scans the horizon while the other grips a tall banner pole planted in the
+// snow. Team identity is carried by the parka + flag colors (a crest is too
+// small to read at map zoom). Drawn billboard-style (facing camera) as vector
+// art so it stays crisp at any zoom; `accent` is the club color.
 const SKIN = 0xe7b48b;
 const SKIN_SHADE = 0xc8946a;
 const FUR = 0xe9ddc6;
 const FUR_SHADE = 0xc9bca0;
 const BOOT = 0x20242c;
 const SNOWPANT = 0x3a4654;
+const POLE = 0x6b4a2c;
+const POLE_LT = 0x9a7240;
+const BRASS_DK = 0x8c6d2c;
+const BRASS_LT = 0xe6cf86;
+const EYE = 0x23201d;
 
 function scoutMarker(
   gx: number,
@@ -1171,13 +1341,19 @@ function scoutMarker(
 
   const parka = accent;
   const parkaDark = darkenBy(accent, 0.3);
-  const parkaLight = lighten(accent, 0.28);
+  const parkaLight = lighten(accent, 0.34);
 
   // selected ground ring + contact shadow
   if (selected) {
     s.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
   }
   s.ellipse(0, 1, 11, 4).fill({ color: 0x000000, alpha: 0.35 });
+
+  // --- banner pole planted in the snow (drawn first, behind the scout) ---
+  s.roundRect(12.6, -53, 2.4, 56, 1).fill(POLE);
+  s.roundRect(12.6, -53, 1, 56, 1).fill({ color: POLE_LT, alpha: 0.8 }); // pole highlight
+  s.circle(13.8, -54, 2).fill(BRASS_LT).stroke({ width: 0.8, color: BRASS_DK }); // finial
+  s.ellipse(13.8, 1, 6.5, 2.6).fill({ color: 0xeaf2fb, alpha: 0.85 }); // snow heaped at the base
 
   // chunky snow boots + insulated legs
   s.roundRect(-6.5, -4, 6.5, 4, 1.5).fill(BOOT);
@@ -1191,40 +1367,46 @@ function scoutMarker(
   s.roundRect(3, -30, 6, 18, 4).fill({ color: parkaDark, alpha: 0.5 }); // right-side shade
   s.roundRect(-9.5, -16, 19, 4, 2).fill(FUR); // fur hem
   s.roundRect(-9.5, -16, 19, 1.6, 2).fill({ color: FUR_SHADE, alpha: 0.7 });
-  // center zip + a pocket flap
-  s.roundRect(-0.8, -30, 1.6, 16, 0.6).fill({ color: parkaDark, alpha: 0.85 });
-  s.roundRect(-7, -21, 5, 3.5, 1).fill({ color: parkaDark, alpha: 0.4 });
+  // team identity via color: a lighter sweater band across the chest + zip.
+  s.roundRect(-9.5, -25.5, 19, 4, 1.5).fill({ color: parkaLight, alpha: 0.9 });
+  s.roundRect(-9.5, -25.5, 19, 1.3, 1.5).fill({ color: 0xffffff, alpha: 0.25 });
+  s.roundRect(-0.8, -31, 1.6, 9, 0.6).fill({ color: parkaDark, alpha: 0.8 }); // center zip
 
-  // raised sleeves (arms up to hold the binoculars at the eyes)
+  // right arm reaches across to grip the banner pole
+  s.roundRect(7, -31, 6, 10, 3).fill(parka);
+  s.roundRect(10.6, -31, 2.4, 10, 2).fill({ color: parkaDark, alpha: 0.45 });
+  s.poly([8, -30.5, 11, -30.5, 13.8, -25, 11, -23.5]).fill(parka); // forearm out to pole
+  s.circle(13.4, -24.5, 2.4).fill(parkaDark); // mitten gripping the pole
+
+  // left arm raised, hand shading the brow as he scans the horizon
   s.roundRect(-13, -31, 6, 11, 3).fill(parka);
   s.roundRect(-13, -31, 2.4, 11, 2).fill({ color: parkaLight, alpha: 0.4 });
-  s.roundRect(7, -31, 6, 11, 3).fill(parka);
-  s.roundRect(10.6, -31, 2.4, 11, 2).fill({ color: parkaDark, alpha: 0.45 });
-  // forearms angling up toward the face
-  s.poly([-11.5, -30, -8, -31, -4.5, -37, -7.5, -38]).fill(parka);
-  s.poly([11.5, -30, 8, -31, 4.5, -37, 7.5, -38]).fill(parka);
-  // mittened hands gripping the binoculars
-  s.circle(-5.5, -37.5, 2.4).fill(parkaDark);
-  s.circle(5.5, -37.5, 2.4).fill(parkaDark);
+  s.poly([-11.5, -30, -8, -31, -4, -40.5, -7.3, -41.5]).fill(parka); // forearm up to the brow
 
   // hood: fur ruff ringing the face
   s.circle(0, -39, 8.4).fill(FUR);
   s.arc(0, -39, 8.4, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 2.4, color: FUR_SHADE, alpha: 0.6 });
   s.circle(0, -39, 5.9).fill(parkaDark); // hood interior shadow
-  // face peeking out of the hood
+  // face peeking out of the hood, with a simple two-eye gaze
   s.circle(0, -38.4, 5).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
+  s.circle(-1.9, -38.6, 0.85).fill(EYE);
+  s.circle(2, -38.6, 0.85).fill(EYE);
 
-  // binoculars raised to the eyes
-  s.roundRect(-5, -40.5, 10, 4, 1.8).fill(0x171b22);
-  s.roundRect(-1.2, -40, 2.4, 3, 0.8).fill(0x2a2f38); // bridge
-  s.circle(-3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
-  s.circle(3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
-  s.circle(-4.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 }); // lens glints
-  s.circle(3.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 });
+  // mittened hand held flat across the brow, shading the eyes
+  s.roundRect(-6.6, -42, 9, 2.6, 1.3).fill(parka);
+  s.roundRect(-6.6, -42, 9, 1, 1).fill({ color: parkaLight, alpha: 0.5 });
+  s.roundRect(-6.6, -39.9, 9, 0.9, 0.4).fill({ color: parkaDark, alpha: 0.45 }); // shadow cast on the brow
 
   // faint puff of cold breath
-  s.circle(7, -36, 1.6).fill({ color: 0xffffff, alpha: 0.16 });
-  s.circle(9, -35, 1.1).fill({ color: 0xffffff, alpha: 0.1 });
+  s.circle(5, -35, 1.3).fill({ color: 0xffffff, alpha: 0.16 });
+  s.circle(6.8, -34, 0.9).fill({ color: 0xffffff, alpha: 0.1 });
+
+  // --- banner flag at the top of the pole, rippling away from the scout ---
+  s.poly([14, -52.5, 31, -51, 28.5, -47, 31, -43.5, 14, -42]).fill(parka);
+  s.poly([14, -52.5, 18, -52, 18, -42, 14, -42]).fill({ color: parkaDark, alpha: 0.4 }); // fold shadow at the pole
+  s.poly([14, -48.4, 30.6, -47, 28.8, -46, 14, -46]).fill({ color: parkaLight, alpha: 0.75 }); // team stripe
+  s.poly([14, -52.5, 31, -51, 28.5, -47, 31, -43.5, 14, -42]).stroke({ width: 1, color: parkaDark, alpha: 0.7 });
+
   return s;
 }
 
@@ -1287,8 +1469,14 @@ export function IsoWorldMap({
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
-  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
+  // Seed from Pixi's cache so a club whose art was warmed on the founding screen
+  // renders its crest/portrait on the first frame instead of flashing fallbacks.
+  const [logoTexture, setLogoTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "logo")) : null,
+  );
+  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "leader")) : null,
+  );
 
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
@@ -1350,15 +1538,15 @@ export function IsoWorldMap({
       return;
     }
 
-    const scout = w.scout;
-    const moveable = w.scoutSelected ? moveableTilesFor(w, scout) : new Set<string>();
-    if (scout && w.scoutSelected && moveable.has(key)) {
-      dispatch({ type: "MOVE_SCOUT", x: gx, y: gy });
+    const scout = activeScout(w);
+    const moveable = scout ? moveableTilesFor(w, scout) : new Set<string>();
+    if (scout && moveable.has(key)) {
+      dispatch({ type: "MOVE_SCOUT", x: gx, y: gy, scoutId: scout.id });
       setSelectedKey(key);
       return;
     }
 
-    const scoutHere = !!scout && scout.x === gx && scout.y === gy;
+    const scoutsHere = allScouts(w).filter((s) => s.x === gx && s.y === gy);
     const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
 
     // Civ-style tile cycling: a unit standing on the tile takes selection
@@ -1366,8 +1554,23 @@ export function IsoWorldMap({
     // there rather than jumping straight to the Club HQ screen. Clicking again
     // (once the Scout is already selected) falls through to open HQ. Right-click
     // opens HQ directly without disturbing the unit (see endDrag).
-    if (scoutHere && !w.scoutSelected) {
-      dispatch({ type: "SELECT_SCOUT" });
+    if (scoutsHere.length > 0) {
+      const selectedIdx = scoutsHere.findIndex((s) => s.id === w.selectedScoutId);
+      const nextScout =
+        selectedIdx >= 0 && scoutsHere.length > 1
+          ? scoutsHere[(selectedIdx + 1) % scoutsHere.length]
+          : scoutsHere[0];
+      if (nextScout?.id && (scoutsHere.length > 1 || nextScout.id !== w.selectedScoutId)) {
+        dispatch({ type: "SELECT_SCOUT", scoutId: nextScout.id });
+        setSelectedKey(key);
+        return;
+      }
+    }
+
+    const scoutHere = scoutsHere[0] ?? null;
+
+    if (scoutHere && scoutHere.id !== w.selectedScoutId) {
+      dispatch({ type: "SELECT_SCOUT", scoutId: scoutHere.id });
       setSelectedKey(key);
       return;
     }
@@ -1379,7 +1582,7 @@ export function IsoWorldMap({
     }
 
     if (scoutHere) {
-      dispatch({ type: "SELECT_SCOUT" });
+      dispatch({ type: "SELECT_SCOUT", scoutId: scoutHere.id });
       setSelectedKey(key);
       return;
     }
@@ -1413,12 +1616,12 @@ export function IsoWorldMap({
       }
       return;
     }
-    const scout = w.scout;
-    if (scout && w.scoutSelected) {
+    const scout = activeScout(w);
+    if (scout) {
       const x = scout.x + dx;
       const y = scout.y + dy;
       if (moveableTilesFor(w, scout).has(tileKey(x, y))) {
-        dispatch({ type: "MOVE_SCOUT", x, y });
+        dispatch({ type: "MOVE_SCOUT", x, y, scoutId: scout.id });
         setSelectedKey(tileKey(x, y));
       }
     }
@@ -1625,14 +1828,22 @@ export function IsoWorldMap({
 
   useEffect(() => {
     let cancelled = false;
-    setLogoTexture(null);
-    setLeaderTexture(null);
-    if (!activeClub) return;
+    if (!activeClub) {
+      setLogoTexture(null);
+      setLeaderTexture(null);
+      return;
+    }
     // HQ logo + the Leader unit's portrait, loaded from the club's asset folder.
-    Assets.load<Texture>(clubAsset(activeClub, "logo"))
+    // Seed from cache first (instant when warmed on the founding screen) so we
+    // never blank a portrait we already have while a switch reloads.
+    const logoUrl = clubAsset(activeClub, "logo");
+    const leaderUrl = clubAsset(activeClub, "leader");
+    setLogoTexture(cachedClubTexture(logoUrl));
+    setLeaderTexture(cachedClubTexture(leaderUrl));
+    Assets.load<Texture>(logoUrl)
       .then((texture) => !cancelled && setLogoTexture(texture))
       .catch(() => !cancelled && setLogoTexture(null));
-    Assets.load<Texture>(clubAsset(activeClub, "leader"))
+    Assets.load<Texture>(leaderUrl)
       .then((texture) => !cancelled && setLeaderTexture(texture))
       .catch(() => !cancelled && setLeaderTexture(null));
     return () => {
@@ -1658,8 +1869,9 @@ export function IsoWorldMap({
           </div>
         </div>
       </div>
-      <div className="iso-canvas-wrap">
+      <div className="iso-stage">
         <div ref={hostRef} className="iso-canvas" />
+        <UnitOverlay state={state} dispatch={dispatch} />
         <MiniMap state={state} cameraRef={cameraRef} />
       </div>
       <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
@@ -1840,6 +2052,122 @@ function MiniMap({
   );
 }
 
+// ---- Selected-unit overlay (floats over the lower-right of the map) -------
+// Civ-style: when a unit is active, its portrait, movement, and contextual
+// orders sit on the map itself rather than only in a panel beneath it.
+function UnitOverlay({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const world = state.world;
+  if (!world) return null;
+
+  const leaderSelected = world.founderSelected && !!world.founder && !world.hqTile;
+  const selectedScout = activeScout(world);
+  const scoutSelected = !!selectedScout;
+  if (!leaderSelected && !scoutSelected) return null;
+
+  const isLeader = leaderSelected;
+  const unit = isLeader ? world.founder! : selectedScout!;
+  const club = getActiveClub(state);
+  const name = isLeader ? "Leader" : unit.name ?? "Pond Scout";
+  const role = isLeader ? "Founding Group" : "Exploration";
+  const outOfMoves = unit.movesRemaining <= 0;
+
+  // Scout field orders are tied to the tile the unit is standing on. Goodie huts
+  // are no longer a manual order — they auto-resolve into a pop-up on arrival.
+  const surveyId = !isLeader ? surveyableRegionId(state) : null;
+  const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
+  const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
+  const connecting =
+    !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
+  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
+
+  return (
+    <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
+      <div className={`unit-portrait ${isLeader ? "is-leader" : "is-scout"}`}>
+        {isLeader && club ? (
+          <img
+            src={clubAsset(club, "leader")}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <ItemArt kind="unit" id="pond-scout" />
+        )}
+      </div>
+      <div className="unit-body">
+        <div className="unit-head">
+          <span className="unit-name">{name}</span>
+          <span className="unit-role">{role}</span>
+        </div>
+        <div className={`unit-moves${outOfMoves ? " spent" : ""}`}>
+          <span className="um-pip" aria-hidden="true" />
+          <strong>
+            {unit.movesRemaining}/{unit.movesPerTurn}
+          </strong>
+          <span className="um-label">Moves</span>
+        </div>
+        <div className="unit-orders">
+          {isLeader && club && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
+            >
+              Found {shortClubLabel(club)} Here
+            </button>
+          )}
+          {surveyId && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
+            >
+              Survey Region
+            </button>
+          )}
+          {canConnect && scoutRegionId && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "ESTABLISH_CONNECTION", regionId: scoutRegionId })
+              }
+            >
+              Establish Connection ({CONNECTION_MONTHS} mo)
+            </button>
+          )}
+          {!isLeader && (
+            <button
+              className="btn btn-block"
+              onClick={() => dispatch({ type: "SELECT_SCOUT", scoutId: unit.id })}
+            >
+              Deselect
+            </button>
+          )}
+        </div>
+        {connecting ? (
+          <div className="unit-hint muted">
+            Building local ties — {state.discovery.connection?.monthsRemaining} mo to
+            go.
+          </div>
+        ) : (
+          !hasOrder && (
+            <div className="unit-hint faint">
+              {outOfMoves
+                ? "Out of moves this month."
+                : "Click a highlighted tile or use the arrow keys to move."}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---- Side controls (scout + selected-tile detail) ------------------------
 function MapControls({
   state,
@@ -1850,7 +2178,8 @@ function MapControls({
   dispatch: Dispatch<GameAction>;
   selectedKey: string | null;
 }) {
-  const scout = state.world?.scout;
+  const scouts = allScouts(state.world);
+  const selectedScout = activeScout(state.world);
   const founder = state.world?.founder;
   const sel = selectedKey ? selectedKey.split(",").map(Number) : null;
   const regionId = sel ? regionIdAtTile(sel[0], sel[1]) : null;
@@ -1861,7 +2190,15 @@ function MapControls({
     sel && state.world
       ? state.devRevealAll || visibleTiles(state.world).has(`${sel[0]},${sel[1]}`)
       : false;
+  const org = sel
+    ? state.world?.hockeyOrgs.find((o) => o.x === sel[0] && o.y === sel[1])
+    : null;
 
+  const marker = sel
+    ? state.world?.pondMarkers.find(
+        (m) => !m.investigated && m.x === sel[0] && m.y === sel[1],
+      )
+    : null;
   const canSurvey = region ? surveyableRegionId(state) === region.id : false;
   const canConnect = region ? canEstablishConnection(state, region.id) : false;
   const connecting = region ? state.discovery.connection?.regionId === region.id : false;
@@ -1883,16 +2220,24 @@ function MapControls({
         </div>
       )}
 
-      {scout && (
+      {scouts.length > 0 && (
         <div className="scout-bar">
           <span>
-            🔍 <strong>Scout</strong> · {scout.movesRemaining}/{scout.movesPerTurn} moves
+            🔍 <strong>{selectedScout?.name ?? "Pond Scouts"}</strong> ·{" "}
+            {selectedScout
+              ? `${selectedScout.movesRemaining}/${selectedScout.movesPerTurn} moves`
+              : `${scouts.length} units`}
           </span>
           <button
-            className={`btn${state.world?.scoutSelected ? " btn-primary" : ""}`}
-            onClick={() => dispatch({ type: "SELECT_SCOUT" })}
+            className={`btn${selectedScout ? " btn-primary" : ""}`}
+            onClick={() =>
+              dispatch({
+                type: "SELECT_SCOUT",
+                scoutId: selectedScout?.id ?? scouts[0]?.id,
+              })
+            }
           >
-            {state.world?.scoutSelected ? "Selected — click a tile" : "Select Scout"}
+            {selectedScout ? "Selected — click a tile" : "Select Scout"}
           </button>
         </div>
       )}
@@ -1904,9 +2249,28 @@ function MapControls({
         </div>
       )}
 
-      {sel && !(region && revealed && rState !== "hidden") && (
+      {sel && revealed && org && (
         <div className="map-detail">
-          {revealed ? (
+          <div className="detail-head">
+            <strong>{hockeyOrgDisplayName(org)}</strong>
+            <span className="region-resource">Independent Hockey Association</span>
+          </div>
+          <div className="region-report">
+            A persistent neutral hockey power. Later, scouts and envoys will build
+            relationships here instead of consuming it like a goodie hut.
+          </div>
+          <div className="state-tag">{org.archetype.replace("-", " ")}</div>
+        </div>
+      )}
+
+      {sel && !(org && revealed) && !(region && revealed && rState !== "hidden") && (
+        <div className="map-detail">
+          {revealed && marker ? (
+            <span className="muted">
+              Goodie hut · {marker.kind.replace("-", " ")} — move a scout onto it
+              to investigate. It resolves on arrival, then disappears.
+            </span>
+          ) : revealed ? (
             selVisible ? (
               <span className="muted">Open terrain — nothing of hockey interest here yet.</span>
             ) : (
@@ -1932,23 +2296,18 @@ function MapControls({
           </div>
           <div className="detail-actions">
             {canSurvey && (
-              <button
-                className="btn btn-primary btn-block"
-                onClick={() => dispatch({ type: "SURVEY_REGION", regionId: region.id })}
-              >
-                Survey Region (Scout is here)
-              </button>
+              <div className="faint">
+                Scout is here — use <strong>Survey Region</strong> on the unit
+                panel.
+              </div>
             )}
             {rState === "discovered" && !canSurvey && (
               <div className="faint">Move your Scout onto this tile to survey it.</div>
             )}
-            {canConnect && (
-              <button
-                className="btn btn-gold btn-block"
-                onClick={() => dispatch({ type: "ESTABLISH_CONNECTION", regionId: region.id })}
-              >
-                Establish Local Connection ({CONNECTION_MONTHS} mo)
-              </button>
+            {rState === "surveyed" && !canConnect && !connecting && (
+              <div className="faint">
+                Surveyed — establish a local connection from the Scout's panel.
+              </div>
             )}
             {connecting && (
               <div className="muted">
