@@ -30,18 +30,64 @@ export const VISION_RADIUS = 2;
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
 const POND_MARKER_COUNT = 24;
-const HOCKEY_ORG_COUNT = 10;
-// Minimum-separation tiers for AI HQ placement, tried strictest-first. Each AI
-// club founds well clear of the human start, every other club HQ, and every
-// independent; if a tight map offers no spot, we relax step-by-step (never below
-// the last, still clearly-separated tier) so all clubs still get a home.
-const RIVAL_SEP_TIERS: { start: number; org: number; rival: number }[] = [
-  { start: 16, org: 13, rival: 16 },
-  { start: 13, org: 11, rival: 13 },
-  { start: 11, org: 9, rival: 11 },
-  { start: 9, org: 7, rival: 9 },
-  { start: 7, org: 6, rival: 7 },
-];
+
+// --- Settlement placement (Civ VI-inspired) -------------------------------
+// Civ VI scales the number of major civs and city-states to map size and keeps
+// them spaced apart, with the ordering major↔major > major↔minor > minor↔minor.
+// We mirror that: counts derive from map area (so the 120×75 map yields 8 major
+// clubs and 12 independents — a 1.5 ratio, exactly Civ VI's Standard map), and
+// the separation distances derive from how far apart the majors would sit if
+// evenly spread, so everything scales together when the map size changes.
+//
+// One major club (human + AI) per this many map tiles. 120*75/1125 = 8 majors.
+const TILES_PER_MAJOR_CLUB = 1125;
+// Independents per major club (Civ VI Standard is 12:8). 8 * 1.5 = 12.
+const INDEPENDENT_RATIO = 1.5;
+// Separation distances as fractions of the even-spread unit U = sqrt(area/majors)
+// (≈ 33.5 tiles on the current map): majors spread the widest, independents tuck
+// into the gaps between and around them. Preserves Civ VI's distance ordering.
+const SEP_MAJOR_MAJOR = 0.62; // ≈ 21 tiles between major club HQs
+const SEP_MAJOR_INDEP = 0.34; // ≈ 11 tiles from any major HQ to an independent
+const SEP_INDEP_INDEP = 0.3; // ≈ 10 tiles between independents
+// Tried strictest-first; if a tight/fragmented map offers no spot at the ideal
+// distance, relax step-by-step so the target counts still fill (Civ VI likewise
+// relaxes its minimums rather than dropping civs).
+const SEP_RELAX_TIERS = [1, 0.82, 0.66, 0.5, 0.38];
+
+export type SettlementSeparation = {
+  majorMajor: number;
+  majorIndep: number;
+  indepIndep: number;
+};
+
+// Opinionated, map-size-aware target counts. Majors are capped by how many club
+// definitions exist; the human is one of them, so AI rivals = majors - 1.
+export function targetSettlementCounts(
+  width: number,
+  height: number,
+  clubDefCount: number,
+): { majors: number; independents: number } {
+  const desiredMajors = Math.round((width * height) / TILES_PER_MAJOR_CLUB);
+  const majors =
+    clubDefCount <= 1
+      ? Math.max(0, clubDefCount)
+      : Math.min(clubDefCount, Math.max(2, desiredMajors));
+  const independents = Math.round(majors * INDEPENDENT_RATIO);
+  return { majors, independents };
+}
+
+function settlementSeparation(
+  width: number,
+  height: number,
+  majors: number,
+): SettlementSeparation {
+  const unit = Math.sqrt((width * height) / Math.max(1, majors));
+  return {
+    majorMajor: unit * SEP_MAJOR_MAJOR,
+    majorIndep: unit * SEP_MAJOR_INDEP,
+    indepIndep: unit * SEP_INDEP_INDEP,
+  };
+}
 
 const HOCKEY_ORG_NAMES = [
   "Moscow",
@@ -286,8 +332,18 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
     };
   }
 
-  const hockeyOrgs = generateHockeyOrgs(tiles, start, seed);
-  const rivals = placeRivals(tiles, start, seed, playerClubId ?? null, hockeyOrgs);
+  // Major clubs first (the human start counts as one major), then independents
+  // tuck into the gaps respecting their distance to every major. Civ VI places
+  // civs, then city-states around them — same order here.
+  const { majors, independents } = targetSettlementCounts(
+    WORLD_WIDTH,
+    WORLD_HEIGHT,
+    CLUB_LIST.length,
+  );
+  const sep = settlementSeparation(WORLD_WIDTH, WORLD_HEIGHT, majors);
+  const rivals = placeRivals(tiles, start, seed, playerClubId ?? null, majors - 1, sep);
+  const majorPts = [start, ...rivals.map((r) => r.hqTile)];
+  const hockeyOrgs = generateIndependents(tiles, start, majorPts, seed, independents, sep);
 
   return {
     width: WORLD_WIDTH,
@@ -304,12 +360,46 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
     founderSelected: false,
     scouts: [],
     selectedScoutId: null,
-    pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs),
+    pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs, majorPts),
     hockeyOrgs,
     rivals,
     scout: null,
     scoutSelected: false,
   };
+}
+
+// Land tiles ranked for settlement placement: a noise term scatters them, plus
+// an optional bias toward tiles far from the human start (used to spread the AI
+// majors away from the player; independents use little/no bias so they also
+// appear near-ish the start for early discovery). Distance constraints do the
+// real spacing work; the score just orders the search.
+function scoredCandidates(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  salt: number,
+  startBias: number,
+): { tile: WorldTile }[] {
+  return tiles
+    .filter(canPlaceHockeyOrg)
+    .map((tile) => ({
+      tile,
+      score:
+        noise2d(tile.x, tile.y, salt) * (1 - startBias) +
+        Math.min(startBias, Math.hypot(tile.x - start.x, tile.y - start.y) / 120),
+    }))
+    .sort((a, b) => b.score - a.score);
+}
+
+// First candidate that satisfies `ok` at the strictest relaxation tier possible.
+function findSettlementSpot(
+  candidates: { tile: WorldTile }[],
+  ok: (tile: WorldTile, relax: number) => boolean,
+): WorldTile | null {
+  for (const relax of SEP_RELAX_TIERS) {
+    const spot = candidates.find(({ tile }) => ok(tile, relax));
+    if (spot) return spot.tile;
+  }
+  return null;
 }
 
 // A movable rival unit (rival scouts wander to create "bump into" moments).
@@ -328,55 +418,32 @@ export function createRivalUnit(
   };
 }
 
-// Found every club the human did NOT select on turn 1, spread evenly across the
-// continent and kept clear of the player start and each other. Each rival starts
-// with one scout at its HQ so there's something to discover under the fog from
-// the first month. Mirrors generateHockeyOrgs' candidate-scoring approach.
+// Found the AI major clubs on turn 1 — every club the human did NOT select, up
+// to `count` (= majors - 1). Each is spread wide from the human start and from
+// the other majors (the largest separation tier), and starts with one scout at
+// its HQ so there's something to discover under the fog from the first month.
 function placeRivals(
   tiles: WorldTile[],
   start: { x: number; y: number },
   seed: number,
   playerClubId: string | null,
-  hockeyOrgs: WorldHockeyOrg[],
+  count: number,
+  sep: SettlementSeparation,
 ): RivalClub[] {
-  const rivalClubs = CLUB_LIST.filter((c) => c.id !== playerClubId);
+  const rivalClubs = CLUB_LIST.filter((c) => c.id !== playerClubId).slice(0, Math.max(0, count));
   const rivals: RivalClub[] = [];
-  const orgPts = hockeyOrgs.map((o) => ({ x: o.x, y: o.y }));
-
-  // Score land tiles far from the player start the highest so rivals settle out
-  // across the rest of the map; a noise term keeps placement from clumping.
-  const candidates = tiles
-    .filter(canPlaceHockeyOrg)
-    .map((tile) => ({
-      tile,
-      score:
-        noise2d(tile.x, tile.y, seed + 54091) * 0.5 +
-        Math.min(0.5, Math.hypot(tile.x - start.x, tile.y - start.y) / 120),
-    }))
-    .sort((a, b) => b.score - a.score);
-
-  // A tile is acceptable for this tier if it clears the human start, every
-  // already-placed rival HQ, and every independent by the tier's distances.
-  const farEnough = (
-    t: { x: number; y: number },
-    sep: { start: number; org: number; rival: number },
-  ): boolean =>
-    Math.hypot(t.x - start.x, t.y - start.y) >= sep.start &&
-    orgPts.every((o) => Math.hypot(t.x - o.x, t.y - o.y) >= sep.org) &&
-    rivals.every(
-      (r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= sep.rival,
-    );
+  // Bias toward tiles far from the human so the AI majors fan out across the map.
+  const candidates = scoredCandidates(tiles, start, seed + 54091, 0.5);
 
   for (const club of rivalClubs) {
-    let chosen: WorldTile | null = null;
-    for (const sep of RIVAL_SEP_TIERS) {
-      const spot = candidates.find(({ tile }) => farEnough(tile, sep));
-      if (spot) {
-        chosen = spot.tile;
-        break;
-      }
-    }
-    if (!chosen) continue; // degenerate map: skip rather than crowd
+    const chosen = findSettlementSpot(candidates, (t, relax) => {
+      const min = sep.majorMajor * relax;
+      return (
+        Math.hypot(t.x - start.x, t.y - start.y) >= min &&
+        rivals.every((r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= min)
+      );
+    });
+    if (!chosen) break; // degenerate map: stop rather than crowd
     rivals.push({
       clubId: club.id,
       hqTile: { x: chosen.x, y: chosen.y },
@@ -411,9 +478,14 @@ function generatePondMarkers(
   start: { x: number; y: number },
   seed: number,
   hockeyOrgs: WorldHockeyOrg[],
+  majorPts: { x: number; y: number }[],
 ): WorldPondMarker[] {
   const markers: WorldPondMarker[] = [];
-  const occupied = new Set<string>(hockeyOrgs.map((org) => tileKey(org.x, org.y)));
+  // Don't drop a goodie hut on top of an independent or a major club HQ.
+  const occupied = new Set<string>([
+    ...hockeyOrgs.map((org) => tileKey(org.x, org.y)),
+    ...majorPts.map((p) => tileKey(p.x, p.y)),
+  ]);
   const addMarker = (x: number, y: number, n: number) => {
     const tile = tiles[y * WORLD_WIDTH + x];
     const key = tileKey(x, y);
@@ -465,13 +537,19 @@ function generatePondMarkers(
   return markers;
 }
 
-function generateHockeyOrgs(
+// Place the independents (neutral hockey orgs) into the gaps between the majors:
+// each one keeps clear of every major HQ (human + AI) and of the other
+// independents. Little start-bias so they scatter across the whole map — some
+// near-ish the human for early-game discovery, some out among the rival clubs.
+function generateIndependents(
   tiles: WorldTile[],
   start: { x: number; y: number },
+  majorPts: { x: number; y: number }[],
   seed: number,
+  count: number,
+  sep: SettlementSeparation,
 ): WorldHockeyOrg[] {
   const orgs: WorldHockeyOrg[] = [];
-  const occupied = new Set<string>();
   const archetypes: WorldHockeyOrg["archetype"][] = [
     "minor-club",
     "junior-league",
@@ -479,32 +557,26 @@ function generateHockeyOrgs(
     "academy",
   ];
   const namePool = shuffledHockeyOrgNames(seed);
+  const candidates = scoredCandidates(tiles, start, seed + 24091, 0.15);
 
-  const candidates = tiles
-    .filter(canPlaceHockeyOrg)
-    .map((tile) => ({
-      tile,
-      score:
-        noise2d(tile.x, tile.y, seed + 24091) +
-        Math.min(0.35, Math.hypot(tile.x - start.x, tile.y - start.y) / 160),
-    }))
-    .sort((a, b) => b.score - a.score);
-
-  for (const { tile } of candidates) {
-    if (orgs.length >= HOCKEY_ORG_COUNT) break;
-    if (Math.hypot(tile.x - start.x, tile.y - start.y) < 7) continue;
-    const tooClose = orgs.some((org) => Math.hypot(tile.x - org.x, tile.y - org.y) < 9);
-    if (tooClose || occupied.has(tileKey(tile.x, tile.y))) continue;
-    const idx = orgs.length;
+  for (let i = 0; i < count; i++) {
+    const chosen = findSettlementSpot(candidates, (t, relax) => {
+      const fromMajor = sep.majorIndep * relax;
+      const fromIndep = sep.indepIndep * relax;
+      return (
+        majorPts.every((p) => Math.hypot(t.x - p.x, t.y - p.y) >= fromMajor) &&
+        orgs.every((o) => Math.hypot(t.x - o.x, t.y - o.y) >= fromIndep)
+      );
+    });
+    if (!chosen) break; // degenerate map: stop rather than crowd
     orgs.push({
-      id: `hockey-org-${idx + 1}`,
-      name: namePool[idx % namePool.length],
-      x: tile.x,
-      y: tile.y,
-      archetype: archetypes[idx % archetypes.length],
+      id: `hockey-org-${i + 1}`,
+      name: namePool[i % namePool.length],
+      x: chosen.x,
+      y: chosen.y,
+      archetype: archetypes[i % archetypes.length],
       discovered: false,
     });
-    occupied.add(tileKey(tile.x, tile.y));
   }
 
   return orgs;
