@@ -225,9 +225,12 @@ export function visibleTiles(world: WorldState): Set<string> {
     for (const k of diskKeys(s.x, s.y, VISION_RADIUS)) out.add(k);
   };
   add(world.hqTile);
-  const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
-  for (const scout of scouts) add(scout);
   add(world.founder);
+  // Every active exploration unit grants vision. Mirror allScouts() without the
+  // import (scoutSystem depends on this module): prefer the scouts[] roster,
+  // falling back to the legacy single scout field.
+  const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
+  for (const s of scouts) add(s);
   return out;
 }
 

@@ -19,6 +19,7 @@ import type {
   WorldTile,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { cachedClubTexture } from "../data/clubTextures";
 import type { ClubDef } from "../types/game";
 import { ItemArt } from "./ItemArt";
 import { REGIONS_BY_ID } from "../data/regions";
@@ -90,6 +91,21 @@ function getActiveClub(state: GameState): ClubDef | null {
 
 function shortClubLabel(club: ClubDef): string {
   return club.name.replace(/\s+HC$/, "").split(/\s+/)[0] ?? club.cityRegion;
+}
+
+// Synchronously read any rival-club crests already in Pixi's cache, so rival HQs
+// can render their logo on the first frame instead of waiting for a load.
+function seedRivalLogos(
+  rivals: { clubId: string }[] | undefined,
+): Record<string, Texture> {
+  const map: Record<string, Texture> = {};
+  for (const r of rivals ?? []) {
+    const club = CLUBS[r.clubId];
+    if (!club) continue;
+    const tex = cachedClubTexture(clubAsset(club, "logo"));
+    if (tex) map[r.clubId] = tex;
+  }
+  return map;
 }
 
 const diamond = (h = TILE_H): number[] => [0, -h / 2, TILE_W / 2, 0, 0, h / 2, -TILE_W / 2, 0];
@@ -269,12 +285,11 @@ function drawScene(
         layer.addChild(mk);
       }
 
-      // Rival clubs, fog-gated to the three-tier model and drawn with the SAME
-      // art as the human player (club-colored): the HQ banner marker and the
-      // parka scout sprite. A rival HQ is a fixed landmark (like a hockey org):
-      // shown on any EXPLORED tile, dimmed to "memory" when out of sightline.
-      // Rival units MOVE every month, so they only render where the player has
-      // CURRENT vision — otherwise they'd leak live positions from stale memory.
+      // Rival clubs, drawn with the SAME art as the human (club-colored): the HQ
+      // banner marker and the parka scout sprite. A rival HQ is a fixed landmark
+      // (like a hockey org): shown on any EXPLORED tile, dimmed to "memory" when
+      // out of sightline. Rival units MOVE every month, so they only render where
+      // the player has CURRENT vision — never leaking live positions from memory.
       if (explored) {
         for (const rival of world.rivals) {
           const rClub = CLUBS[rival.clubId];
@@ -1344,16 +1359,23 @@ function drawPond(g: Graphics, v: number, lake: boolean) {
   });
 }
 
-// The Scout: a hockey exec bundled for the field in a team-colored, fur-trimmed
-// parka, glassing the horizon through binoculars. Drawn billboard-style (facing
-// camera) as vector art so it stays crisp at any zoom. `accent` is the club
-// color, so the parka matches the team.
+// The Scout: a standard-bearer for the club's expedition. He's bundled in a
+// team-colored, fur-trimmed parka, one mittened hand shading his brow as he
+// scans the horizon while the other grips a tall banner pole planted in the
+// snow. Team identity is carried by the parka + flag colors (a crest is too
+// small to read at map zoom). Drawn billboard-style (facing camera) as vector
+// art so it stays crisp at any zoom; `accent` is the club color.
 const SKIN = 0xe7b48b;
 const SKIN_SHADE = 0xc8946a;
 const FUR = 0xe9ddc6;
 const FUR_SHADE = 0xc9bca0;
 const BOOT = 0x20242c;
 const SNOWPANT = 0x3a4654;
+const POLE = 0x6b4a2c;
+const POLE_LT = 0x9a7240;
+const BRASS_DK = 0x8c6d2c;
+const BRASS_LT = 0xe6cf86;
+const EYE = 0x23201d;
 
 function scoutMarker(
   gx: number,
@@ -1368,13 +1390,19 @@ function scoutMarker(
 
   const parka = accent;
   const parkaDark = darkenBy(accent, 0.3);
-  const parkaLight = lighten(accent, 0.28);
+  const parkaLight = lighten(accent, 0.34);
 
   // selected ground ring + contact shadow
   if (selected) {
     s.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
   }
   s.ellipse(0, 1, 11, 4).fill({ color: 0x000000, alpha: 0.35 });
+
+  // --- banner pole planted in the snow (drawn first, behind the scout) ---
+  s.roundRect(12.6, -53, 2.4, 56, 1).fill(POLE);
+  s.roundRect(12.6, -53, 1, 56, 1).fill({ color: POLE_LT, alpha: 0.8 }); // pole highlight
+  s.circle(13.8, -54, 2).fill(BRASS_LT).stroke({ width: 0.8, color: BRASS_DK }); // finial
+  s.ellipse(13.8, 1, 6.5, 2.6).fill({ color: 0xeaf2fb, alpha: 0.85 }); // snow heaped at the base
 
   // chunky snow boots + insulated legs
   s.roundRect(-6.5, -4, 6.5, 4, 1.5).fill(BOOT);
@@ -1388,40 +1416,46 @@ function scoutMarker(
   s.roundRect(3, -30, 6, 18, 4).fill({ color: parkaDark, alpha: 0.5 }); // right-side shade
   s.roundRect(-9.5, -16, 19, 4, 2).fill(FUR); // fur hem
   s.roundRect(-9.5, -16, 19, 1.6, 2).fill({ color: FUR_SHADE, alpha: 0.7 });
-  // center zip + a pocket flap
-  s.roundRect(-0.8, -30, 1.6, 16, 0.6).fill({ color: parkaDark, alpha: 0.85 });
-  s.roundRect(-7, -21, 5, 3.5, 1).fill({ color: parkaDark, alpha: 0.4 });
+  // team identity via color: a lighter sweater band across the chest + zip.
+  s.roundRect(-9.5, -25.5, 19, 4, 1.5).fill({ color: parkaLight, alpha: 0.9 });
+  s.roundRect(-9.5, -25.5, 19, 1.3, 1.5).fill({ color: 0xffffff, alpha: 0.25 });
+  s.roundRect(-0.8, -31, 1.6, 9, 0.6).fill({ color: parkaDark, alpha: 0.8 }); // center zip
 
-  // raised sleeves (arms up to hold the binoculars at the eyes)
+  // right arm reaches across to grip the banner pole
+  s.roundRect(7, -31, 6, 10, 3).fill(parka);
+  s.roundRect(10.6, -31, 2.4, 10, 2).fill({ color: parkaDark, alpha: 0.45 });
+  s.poly([8, -30.5, 11, -30.5, 13.8, -25, 11, -23.5]).fill(parka); // forearm out to pole
+  s.circle(13.4, -24.5, 2.4).fill(parkaDark); // mitten gripping the pole
+
+  // left arm raised, hand shading the brow as he scans the horizon
   s.roundRect(-13, -31, 6, 11, 3).fill(parka);
   s.roundRect(-13, -31, 2.4, 11, 2).fill({ color: parkaLight, alpha: 0.4 });
-  s.roundRect(7, -31, 6, 11, 3).fill(parka);
-  s.roundRect(10.6, -31, 2.4, 11, 2).fill({ color: parkaDark, alpha: 0.45 });
-  // forearms angling up toward the face
-  s.poly([-11.5, -30, -8, -31, -4.5, -37, -7.5, -38]).fill(parka);
-  s.poly([11.5, -30, 8, -31, 4.5, -37, 7.5, -38]).fill(parka);
-  // mittened hands gripping the binoculars
-  s.circle(-5.5, -37.5, 2.4).fill(parkaDark);
-  s.circle(5.5, -37.5, 2.4).fill(parkaDark);
+  s.poly([-11.5, -30, -8, -31, -4, -40.5, -7.3, -41.5]).fill(parka); // forearm up to the brow
 
   // hood: fur ruff ringing the face
   s.circle(0, -39, 8.4).fill(FUR);
   s.arc(0, -39, 8.4, Math.PI * 0.15, Math.PI * 0.85).stroke({ width: 2.4, color: FUR_SHADE, alpha: 0.6 });
   s.circle(0, -39, 5.9).fill(parkaDark); // hood interior shadow
-  // face peeking out of the hood
+  // face peeking out of the hood, with a simple two-eye gaze
   s.circle(0, -38.4, 5).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
+  s.circle(-1.9, -38.6, 0.85).fill(EYE);
+  s.circle(2, -38.6, 0.85).fill(EYE);
 
-  // binoculars raised to the eyes
-  s.roundRect(-5, -40.5, 10, 4, 1.8).fill(0x171b22);
-  s.roundRect(-1.2, -40, 2.4, 3, 0.8).fill(0x2a2f38); // bridge
-  s.circle(-3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
-  s.circle(3.6, -38.7, 2.1).fill(0x10141a).stroke({ width: 0.8, color: 0x3a4150 });
-  s.circle(-4.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 }); // lens glints
-  s.circle(3.1, -39.3, 0.7).fill({ color: 0x7fc7e3, alpha: 0.8 });
+  // mittened hand held flat across the brow, shading the eyes
+  s.roundRect(-6.6, -42, 9, 2.6, 1.3).fill(parka);
+  s.roundRect(-6.6, -42, 9, 1, 1).fill({ color: parkaLight, alpha: 0.5 });
+  s.roundRect(-6.6, -39.9, 9, 0.9, 0.4).fill({ color: parkaDark, alpha: 0.45 }); // shadow cast on the brow
 
   // faint puff of cold breath
-  s.circle(7, -36, 1.6).fill({ color: 0xffffff, alpha: 0.16 });
-  s.circle(9, -35, 1.1).fill({ color: 0xffffff, alpha: 0.1 });
+  s.circle(5, -35, 1.3).fill({ color: 0xffffff, alpha: 0.16 });
+  s.circle(6.8, -34, 0.9).fill({ color: 0xffffff, alpha: 0.1 });
+
+  // --- banner flag at the top of the pole, rippling away from the scout ---
+  s.poly([14, -52.5, 31, -51, 28.5, -47, 31, -43.5, 14, -42]).fill(parka);
+  s.poly([14, -52.5, 18, -52, 18, -42, 14, -42]).fill({ color: parkaDark, alpha: 0.4 }); // fold shadow at the pole
+  s.poly([14, -48.4, 30.6, -47, 28.8, -46, 14, -46]).fill({ color: parkaLight, alpha: 0.75 }); // team stripe
+  s.poly([14, -52.5, 31, -51, 28.5, -47, 31, -43.5, 14, -42]).stroke({ width: 1, color: parkaDark, alpha: 0.7 });
+
   return s;
 }
 
@@ -1484,11 +1518,19 @@ export function IsoWorldMap({
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
-  const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
-  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
-  // Rival HQ logos, keyed by club id, so rival HQs render with their own crest
-  // exactly like the player's HQ marker.
-  const [rivalLogos, setRivalLogos] = useState<Record<string, Texture>>({});
+  // Seed from Pixi's cache so a club whose art was warmed on the founding screen
+  // renders its crest/portrait on the first frame instead of flashing fallbacks.
+  const [logoTexture, setLogoTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "logo")) : null,
+  );
+  const [leaderTexture, setLeaderTexture] = useState<Texture | null>(() =>
+    activeClub ? cachedClubTexture(clubAsset(activeClub, "leader")) : null,
+  );
+  // Rival HQ logos, keyed by club id, so rival HQs render their own crest just
+  // like the player's HQ marker. Seeded from Pixi's cache where already warmed.
+  const [rivalLogos, setRivalLogos] = useState<Record<string, Texture>>(() =>
+    seedRivalLogos(state.world?.rivals),
+  );
 
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
@@ -1840,14 +1882,22 @@ export function IsoWorldMap({
 
   useEffect(() => {
     let cancelled = false;
-    setLogoTexture(null);
-    setLeaderTexture(null);
-    if (!activeClub) return;
+    if (!activeClub) {
+      setLogoTexture(null);
+      setLeaderTexture(null);
+      return;
+    }
     // HQ logo + the Leader unit's portrait, loaded from the club's asset folder.
-    Assets.load<Texture>(clubAsset(activeClub, "logo"))
+    // Seed from cache first (instant when warmed on the founding screen) so we
+    // never blank a portrait we already have while a switch reloads.
+    const logoUrl = clubAsset(activeClub, "logo");
+    const leaderUrl = clubAsset(activeClub, "leader");
+    setLogoTexture(cachedClubTexture(logoUrl));
+    setLeaderTexture(cachedClubTexture(leaderUrl));
+    Assets.load<Texture>(logoUrl)
       .then((texture) => !cancelled && setLogoTexture(texture))
       .catch(() => !cancelled && setLogoTexture(null));
-    Assets.load<Texture>(clubAsset(activeClub, "leader"))
+    Assets.load<Texture>(leaderUrl)
       .then((texture) => !cancelled && setLeaderTexture(texture))
       .catch(() => !cancelled && setLeaderTexture(null));
     return () => {
@@ -1855,9 +1905,9 @@ export function IsoWorldMap({
     };
   }, [activeClub?.assetKey]);
 
-  // Load each rival club's logo so rival HQs render their own crest, just like
-  // the player's HQ marker. Rival rosters are fixed once the world is generated,
-  // so this runs once per set of rival club ids.
+  // Load each rival club's logo so rival HQs render their own crest, like the
+  // player's HQ marker. Rival rosters are fixed once the world is generated, so
+  // this runs once per set of rival club ids.
   const rivalClubKey = (state.world?.rivals ?? [])
     .map((r) => r.clubId)
     .join(",");
@@ -1868,6 +1918,7 @@ export function IsoWorldMap({
       return;
     }
     let cancelled = false;
+    setRivalLogos(seedRivalLogos(rivals)); // instant for any already-warmed crests
     Promise.all(
       rivals.map((r) => {
         const club = CLUBS[r.clubId];
@@ -1920,122 +1971,6 @@ export function IsoWorldMap({
         <MiniMap state={state} cameraRef={cameraRef} />
       </div>
       <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
-    </div>
-  );
-}
-
-// ---- Selected-unit overlay (floats over the lower-right of the map) -------
-// Civ-style: when a unit is active, its portrait, movement, and contextual
-// orders sit on the map itself rather than only in a panel beneath it.
-function UnitOverlay({
-  state,
-  dispatch,
-}: {
-  state: GameState;
-  dispatch: Dispatch<GameAction>;
-}) {
-  const world = state.world;
-  if (!world) return null;
-
-  const leaderSelected = world.founderSelected && !!world.founder && !world.hqTile;
-  const selectedScout = activeScout(world);
-  const scoutSelected = !!selectedScout;
-  if (!leaderSelected && !scoutSelected) return null;
-
-  const isLeader = leaderSelected;
-  const unit = isLeader ? world.founder! : selectedScout!;
-  const club = getActiveClub(state);
-  const name = isLeader ? "Leader" : unit.name ?? "Pond Scout";
-  const role = isLeader ? "Founding Group" : "Exploration";
-  const outOfMoves = unit.movesRemaining <= 0;
-
-  // Scout field orders are tied to the tile the unit is standing on. Goodie huts
-  // are no longer a manual order — they auto-resolve into a pop-up on arrival.
-  const surveyId = !isLeader ? surveyableRegionId(state) : null;
-  const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
-  const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
-  const connecting =
-    !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
-  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
-
-  return (
-    <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
-      <div className={`unit-portrait ${isLeader ? "is-leader" : "is-scout"}`}>
-        {isLeader && club ? (
-          <img
-            src={clubAsset(club, "leader")}
-            alt=""
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
-        ) : (
-          <ItemArt kind="unit" id="pond-scout" />
-        )}
-      </div>
-      <div className="unit-body">
-        <div className="unit-head">
-          <span className="unit-name">{name}</span>
-          <span className="unit-role">{role}</span>
-        </div>
-        <div className={`unit-moves${outOfMoves ? " spent" : ""}`}>
-          <span className="um-pip" aria-hidden="true" />
-          <strong>
-            {unit.movesRemaining}/{unit.movesPerTurn}
-          </strong>
-          <span className="um-label">Moves</span>
-        </div>
-        <div className="unit-orders">
-          {isLeader && club && (
-            <button
-              className="btn btn-gold btn-block"
-              onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
-            >
-              Found {shortClubLabel(club)} Here
-            </button>
-          )}
-          {surveyId && (
-            <button
-              className="btn btn-primary btn-block"
-              onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
-            >
-              Survey Region
-            </button>
-          )}
-          {canConnect && scoutRegionId && (
-            <button
-              className="btn btn-gold btn-block"
-              onClick={() =>
-                dispatch({ type: "ESTABLISH_CONNECTION", regionId: scoutRegionId })
-              }
-            >
-              Establish Connection ({CONNECTION_MONTHS} mo)
-            </button>
-          )}
-          {!isLeader && (
-            <button
-              className="btn btn-block"
-              onClick={() => dispatch({ type: "SELECT_SCOUT", scoutId: unit.id })}
-            >
-              Deselect
-            </button>
-          )}
-        </div>
-        {connecting ? (
-          <div className="unit-hint muted">
-            Building local ties — {state.discovery.connection?.monthsRemaining} mo to
-            go.
-          </div>
-        ) : (
-          !hasOrder && (
-            <div className="unit-hint faint">
-              {outOfMoves
-                ? "Out of moves this month."
-                : "Click a highlighted tile or use the arrow keys to move."}
-            </div>
-          )
-        )}
-      </div>
     </div>
   );
 }
@@ -2233,6 +2168,122 @@ function MiniMap({
   );
 }
 
+// ---- Selected-unit overlay (floats over the lower-right of the map) -------
+// Civ-style: when a unit is active, its portrait, movement, and contextual
+// orders sit on the map itself rather than only in a panel beneath it.
+function UnitOverlay({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const world = state.world;
+  if (!world) return null;
+
+  const leaderSelected = world.founderSelected && !!world.founder && !world.hqTile;
+  const selectedScout = activeScout(world);
+  const scoutSelected = !!selectedScout;
+  if (!leaderSelected && !scoutSelected) return null;
+
+  const isLeader = leaderSelected;
+  const unit = isLeader ? world.founder! : selectedScout!;
+  const club = getActiveClub(state);
+  const name = isLeader ? "Leader" : unit.name ?? "Pond Scout";
+  const role = isLeader ? "Founding Group" : "Exploration";
+  const outOfMoves = unit.movesRemaining <= 0;
+
+  // Scout field orders are tied to the tile the unit is standing on. Goodie huts
+  // are no longer a manual order — they auto-resolve into a pop-up on arrival.
+  const surveyId = !isLeader ? surveyableRegionId(state) : null;
+  const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
+  const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
+  const connecting =
+    !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
+  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
+
+  return (
+    <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
+      <div className={`unit-portrait ${isLeader ? "is-leader" : "is-scout"}`}>
+        {isLeader && club ? (
+          <img
+            src={clubAsset(club, "leader")}
+            alt=""
+            onError={(e) => {
+              e.currentTarget.style.display = "none";
+            }}
+          />
+        ) : (
+          <ItemArt kind="unit" id="pond-scout" />
+        )}
+      </div>
+      <div className="unit-body">
+        <div className="unit-head">
+          <span className="unit-name">{name}</span>
+          <span className="unit-role">{role}</span>
+        </div>
+        <div className={`unit-moves${outOfMoves ? " spent" : ""}`}>
+          <span className="um-pip" aria-hidden="true" />
+          <strong>
+            {unit.movesRemaining}/{unit.movesPerTurn}
+          </strong>
+          <span className="um-label">Moves</span>
+        </div>
+        <div className="unit-orders">
+          {isLeader && club && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() => dispatch({ type: "FOUND_CLUB", clubId: club.id })}
+            >
+              Found {shortClubLabel(club)} Here
+            </button>
+          )}
+          {surveyId && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
+            >
+              Survey Region
+            </button>
+          )}
+          {canConnect && scoutRegionId && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "ESTABLISH_CONNECTION", regionId: scoutRegionId })
+              }
+            >
+              Establish Connection ({CONNECTION_MONTHS} mo)
+            </button>
+          )}
+          {!isLeader && (
+            <button
+              className="btn btn-block"
+              onClick={() => dispatch({ type: "SELECT_SCOUT", scoutId: unit.id })}
+            >
+              Deselect
+            </button>
+          )}
+        </div>
+        {connecting ? (
+          <div className="unit-hint muted">
+            Building local ties — {state.discovery.connection?.monthsRemaining} mo to
+            go.
+          </div>
+        ) : (
+          !hasOrder && (
+            <div className="unit-hint faint">
+              {outOfMoves
+                ? "Out of moves this month."
+                : "Click a highlighted tile or use the arrow keys to move."}
+            </div>
+          )
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ---- Side controls (scout + selected-tile detail) ------------------------
 function MapControls({
   state,
@@ -2251,13 +2302,13 @@ function MapControls({
   const region = regionId ? REGIONS_BY_ID[regionId] : null;
   const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : null;
   const revealed = sel ? state.world?.revealed.includes(`${sel[0]},${sel[1]}`) : false;
-  const org = sel
-    ? state.world?.hockeyOrgs.find((o) => o.x === sel[0] && o.y === sel[1])
-    : null;
   const selVisible =
     sel && state.world
       ? state.devRevealAll || visibleTiles(state.world).has(`${sel[0]},${sel[1]}`)
       : false;
+  const org = sel
+    ? state.world?.hockeyOrgs.find((o) => o.x === sel[0] && o.y === sel[1])
+    : null;
 
   const marker = sel
     ? state.world?.pondMarkers.find(
