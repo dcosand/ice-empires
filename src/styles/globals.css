@@ -1324,88 +1324,361 @@ button {
   color: var(--gold);
 }
 
-/* ---------- Founding reveal (prominent club hero) ---------- */
-.founding-reveal {
-  max-width: 820px;
-  width: 100%;
-  background: linear-gradient(180deg, var(--panel) 0%, var(--bg-2) 100%);
-  border: 1px solid var(--border);
-  border-top: 3px solid var(--club-accent, var(--gold));
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
-  text-align: left;
-}
-.fr-banner {
+/* ---------- Founding confirmation: full-screen club dossier ---------- */
+.founding-stage {
   position: relative;
-  height: 230px;
-  background-size: cover;
-  background-position: center;
+  min-height: 100%;
+  overflow: hidden;
   display: flex;
-  align-items: flex-end;
-  padding: 16px 22px;
+  align-items: center;
+  padding: clamp(20px, 3vw, 44px);
+  text-align: left;
+  background: var(--bg);
 }
-.fr-banner-scrim {
+.founding-stage::before,
+.founding-stage::after {
+  content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(
-    180deg,
-    rgba(8, 14, 22, 0.15) 0%,
-    rgba(8, 14, 22, 0.05) 45%,
-    rgba(10, 16, 24, 0.85) 100%
-  );
+  pointer-events: none;
+}
+.founding-stage::before {
+  background-image: var(--founding-bg);
+  background-size: cover;
+  background-position: center;
+  opacity: 0.5;
+  transform: scale(1.04);
+  filter: saturate(0.95) contrast(1.08);
+}
+.founding-stage::after {
+  background:
+    radial-gradient(80% 72% at 43% 46%, rgba(10, 16, 24, 0.02) 0%, rgba(10, 16, 24, 0.64) 70%, rgba(10, 16, 24, 0.94) 100%),
+    linear-gradient(90deg, rgba(10, 16, 24, 0.94) 0%, rgba(10, 16, 24, 0.48) 44%, rgba(10, 16, 24, 0.9) 100%),
+    linear-gradient(180deg, rgba(10, 16, 24, 0.7) 0%, rgba(10, 16, 24, 0.18) 42%, rgba(10, 16, 24, 0.86) 100%);
+}
+.founding-shell {
+  position: relative;
+  z-index: 1;
+  width: min(1500px, 100%);
+  min-height: min(860px, calc(100vh - 64px));
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(250px, 360px) minmax(340px, 500px) minmax(390px, 540px);
+  gap: clamp(24px, 3.2vw, 54px);
+  align-items: center;
+}
+.fr-brand {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+  max-width: 100%;
 }
 .fr-eyebrow {
-  position: absolute;
-  top: 14px;
-  left: 22px;
-  z-index: 2;
-  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.8);
+  margin-bottom: clamp(18px, 2.8vh, 30px);
+  color: var(--accent-2);
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.85);
 }
 .fr-logo {
-  position: relative;
-  z-index: 2;
-  height: 116px;
-  width: auto;
-  max-width: 80%;
+  width: min(300px, 86%);
+  height: auto;
+  max-height: 300px;
   object-fit: contain;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.8));
+  margin: 0 0 clamp(18px, 3vh, 34px) -10px;
+  filter:
+    drop-shadow(0 18px 26px rgba(0, 0, 0, 0.78))
+    drop-shadow(0 0 18px color-mix(in srgb, var(--club-accent, var(--gold)) 30%, transparent));
 }
-.fr-body {
-  display: grid;
-  grid-template-columns: 220px 1fr;
-  gap: 22px;
-  padding: 22px;
+.fr-club-name {
+  font-family: var(--font-display);
+  max-width: 100%;
+  font-size: clamp(40px, 4.2vw, 58px);
+  line-height: 0.98;
+  font-weight: 800;
+  color: #f5fbff;
+  text-wrap: balance;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.86);
 }
-@media (max-width: 720px) {
-  .fr-body {
-    grid-template-columns: 1fr;
-  }
+.fr-club-region {
+  margin: 14px 0 0;
+  text-transform: uppercase;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: var(--club-accent, var(--gold));
+}
+.fr-club-line {
+  max-width: 320px;
+  margin: 14px 0 0;
+  color: #b7c5d4;
+  font-size: 17px;
+  line-height: 1.45;
+  font-style: italic;
 }
 .fr-leader {
+  position: relative;
   margin: 0;
+  align-self: center;
 }
 .fr-leader-img {
+  display: block;
   width: 100%;
-  aspect-ratio: 3 / 4;
+  height: min(72vh, 720px);
+  min-height: 520px;
   object-fit: cover;
-  border-radius: 10px;
-  border: 1px solid var(--border-bright);
-  box-shadow: var(--shadow);
+  object-position: 50% 16%;
+  border-radius: 8px;
+  border: 1px solid color-mix(in srgb, var(--club-accent, var(--gold)) 58%, var(--border-bright));
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.06),
+    0 28px 60px rgba(0, 0, 0, 0.58),
+    0 0 42px color-mix(in srgb, var(--club-accent, var(--gold)) 14%, transparent);
   background: var(--panel-2);
 }
 .fr-leader-cap {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 8px;
+  padding: 16px 18px;
+  border-left: 3px solid var(--club-accent, var(--gold));
+  background: linear-gradient(90deg, rgba(5, 12, 19, 0.86) 0%, rgba(5, 12, 19, 0.36) 100%);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.34);
+}
+.fr-leader-kicker {
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
 }
 .fr-leader-title {
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: clamp(24px, 2vw, 33px);
+  font-weight: 800;
+  line-height: 1.05;
   color: var(--club-accent, var(--gold));
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.82);
 }
 .fr-info {
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: clamp(24px, 3vw, 38px);
+  border: 1px solid color-mix(in srgb, var(--club-secondary, var(--accent)) 24%, var(--border));
+  border-top: 3px solid var(--club-accent, var(--gold));
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(19, 31, 46, 0.86) 0%, rgba(10, 16, 24, 0.9) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 22px 50px rgba(0, 0, 0, 0.46);
+  backdrop-filter: blur(3px);
+}
+.fr-info-main {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+}
+.fr-info-head {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+.fr-decision-title {
+  font-family: var(--font-display);
+  font-size: clamp(35px, 3.6vw, 54px);
+  line-height: 1;
+  margin: 0;
+  color: #f5fbff;
+}
+.fr-identity {
+  margin: 0;
+  padding-left: 18px;
+  border-left: 4px solid var(--club-accent, var(--gold));
+  color: #bcc9d8;
+  font-size: clamp(18px, 1.5vw, 23px);
+  line-height: 1.48;
+  font-style: italic;
+}
+.fr-resources {
+  gap: 10px;
+  margin: 0;
+}
+.fr-resources .resource {
+  position: relative;
+  overflow: hidden;
+  min-height: 92px;
+  padding: 15px 14px 13px;
+  border-color: color-mix(in srgb, var(--club-secondary, var(--accent)) 26%, var(--border));
+  border-radius: 7px;
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--club-accent, var(--gold)) 18%, transparent) 0 3px, transparent 3px),
+    linear-gradient(180deg, rgba(24, 41, 59, 0.86) 0%, rgba(12, 21, 32, 0.86) 100%);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 8px 18px rgba(0, 0, 0, 0.22);
+}
+.fr-resources .resource::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0%, transparent 36%);
+  opacity: 0.45;
+  pointer-events: none;
+}
+.fr-resources .resource .label {
+  position: relative;
+  z-index: 1;
+  max-width: 9ch;
+  min-height: 30px;
+  color: #91a6ba;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.09em;
+  line-height: 1.22;
+}
+.fr-resources .resource .value {
+  position: relative;
+  z-index: 1;
+  margin-top: 8px;
+  color: #f5fbff;
+  font-size: 35px;
+  line-height: 0.9;
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.65);
+}
+.fr-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.btn.fr-primary-action {
+  position: relative;
+  min-height: 66px;
+  border-radius: 7px;
+  border-color: color-mix(in srgb, var(--club-accent, var(--gold)) 86%, #ffffff);
+  background:
+    linear-gradient(90deg, transparent 0 20px, rgba(255, 255, 255, 0.22) 20px 21px, transparent 21px calc(100% - 20px), rgba(255, 255, 255, 0.22) calc(100% - 21px) calc(100% - 20px), transparent calc(100% - 20px)),
+    linear-gradient(180deg, #f3d574 0%, #d1aa45 100%);
+  color: #160f03;
+  font-size: clamp(18px, 1.5vw, 22px);
+  font-weight: 800;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.54),
+    inset 0 -2px 0 rgba(67, 44, 6, 0.28),
+    0 14px 26px rgba(0, 0, 0, 0.34),
+    0 0 24px color-mix(in srgb, var(--club-accent, var(--gold)) 16%, transparent);
+}
+.btn.fr-primary-action:hover:not(:disabled) {
+  background:
+    linear-gradient(90deg, transparent 0 20px, rgba(255, 255, 255, 0.26) 20px 21px, transparent 21px calc(100% - 20px), rgba(255, 255, 255, 0.26) calc(100% - 21px) calc(100% - 20px), transparent calc(100% - 20px)),
+    linear-gradient(180deg, #ffe28a 0%, #dfb64e 100%);
+}
+.fr-action-note {
+  margin: -2px 0 0;
+  color: var(--text-dim);
+  font-size: 14px;
+}
+.btn.fr-secondary-action {
+  min-height: 50px;
+  border-radius: 7px;
+  border-color: color-mix(in srgb, var(--club-secondary, var(--accent)) 30%, var(--border));
+  background: rgba(24, 41, 59, 0.7);
+  color: #d8e4ef;
+  font-weight: 700;
+}
+.btn.fr-secondary-action:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--club-secondary, var(--accent)) 52%, var(--border-bright));
+  background: rgba(31, 49, 70, 0.86);
+}
+@media (max-width: 1180px) {
+  .founding-stage {
+    align-items: flex-start;
+    overflow: auto;
+  }
+  .founding-shell {
+    min-height: 0;
+    grid-template-columns: minmax(260px, 0.72fr) minmax(360px, 1fr);
+    grid-template-areas:
+      "brand info"
+      "leader info";
+    align-items: start;
+  }
+  .fr-brand {
+    grid-area: brand;
+  }
+  .fr-logo {
+    width: min(220px, 70%);
+    margin-bottom: 14px;
+  }
+  .fr-club-name {
+    font-size: clamp(38px, 6vw, 58px);
+  }
+  .fr-club-line {
+    display: none;
+  }
+  .fr-leader {
+    grid-area: leader;
+  }
+  .fr-leader-img {
+    height: min(58vh, 520px);
+    min-height: 380px;
+  }
+  .fr-info {
+    grid-area: info;
+    align-self: stretch;
+  }
+}
+@media (max-width: 760px) {
+  .founding-stage {
+    padding: 18px;
+  }
+  .founding-shell {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+  }
+  .fr-brand {
+    align-items: center;
+    text-align: center;
+    width: 100%;
+  }
+  .fr-eyebrow {
+    margin-bottom: 12px;
+  }
+  .fr-logo {
+    width: min(210px, 66vw);
+    margin: 0 0 10px;
+  }
+  .fr-club-region {
+    margin-top: 8px;
+  }
+  .fr-leader {
+    width: 100%;
+  }
+  .fr-leader-img {
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 4 / 5;
+  }
+  .fr-info {
+    width: 100%;
+    padding: 22px;
+  }
+  .fr-decision-title {
+    font-size: 34px;
+  }
+  .fr-identity {
+    font-size: 17px;
+  }
 }
 
 /* =========================================================================

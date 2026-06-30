@@ -67,39 +67,45 @@ export function FoundingScreen({
         </figure>
 
         <section className="fr-info">
-          <div className="fr-info-head">
-            <span className="pill">Pond Hockey Era</span>
-            <span className="pill pill-era">Month 1</span>
-          </div>
-          <h2 className="fr-decision-title">Confirm the Dynasty</h2>
-          <p className="fr-identity">{club.identityText}</p>
+          <div className="fr-info-main">
+            <h2 className="fr-decision-title">Confirm the Dynasty</h2>
+            <p className="fr-identity">{club.identityText}</p>
 
-          <div className="resource-bar fr-resources">
-            <Stat label="Budget" value={club.startingResources.budget} />
-            <Stat label="Operations" value={club.startingResources.operations} />
-            <Stat
-              label="Hockey Knowledge"
-              value={club.startingResources.hockeyKnowledge}
-            />
-            <Stat label="Reputation" value={club.startingResources.reputation} />
+            <div className="resource-bar fr-resources">
+              <Stat label="Budget" value={club.startingResources.budget} />
+              <Stat
+                label="Operations"
+                value={club.startingResources.operations}
+              />
+              <Stat
+                label="Hockey Knowledge"
+                value={club.startingResources.hockeyKnowledge}
+              />
+              <Stat
+                label="Reputation"
+                value={club.startingResources.reputation}
+              />
+            </div>
           </div>
 
-          <button
-            className="btn btn-gold btn-lg btn-block fr-primary-action"
-            onClick={() => dispatch({ type: "START_FOUNDING" })}
-          >
-            Begin the Founding Expedition →
-          </button>
-          <p className="fr-action-note">
-            You'll lead your Leader across the ice and choose where to plant the
-            club.
-          </p>
-          <button
-            className="btn btn-block fr-secondary-action"
-            onClick={() => dispatch({ type: "START_GAME" })}
-          >
-            ← Choose a different club
-          </button>
+          <div className="fr-actions">
+            <button
+              className="btn btn-gold btn-lg btn-block fr-primary-action"
+              onClick={() => dispatch({ type: "START_FOUNDING" })}
+            >
+              Begin the Founding Expedition →
+            </button>
+            <p className="fr-action-note">
+              You'll lead your Leader across the ice and choose where to plant
+              the club.
+            </p>
+            <button
+              className="btn btn-block fr-secondary-action"
+              onClick={() => dispatch({ type: "START_GAME" })}
+            >
+              ← Choose a different club
+            </button>
+          </div>
         </section>
       </div>
     </main>
