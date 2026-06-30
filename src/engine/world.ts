@@ -231,18 +231,25 @@ export function createWorld(seed = Date.now()): WorldState {
   const tiles: WorldTile[] = [];
   for (let y = 0; y < WORLD_HEIGHT; y++) {
     for (let x = 0; x < WORLD_WIDTH; x++) {
-      const terrain = generatedTerrain(x, y, seed);
-      const feature = generatedFeature(x, y, terrain, seed);
+      const baseTerrain = generatedTerrain(x, y, seed);
+      const feature = generatedFeature(x, y, baseTerrain, seed);
       const variant = Math.floor(noise2d(x, y, seed + 4049) * 4);
-      const elevation = generatedElevation(x, y, terrain, feature, seed);
+      const elevation = generatedElevation(x, y, baseTerrain, feature, seed);
+      // Promote a pond basin from its underlying wet terrain to a first-class
+      // `pond` terrain. The water body itself is the tile (skateable /
+      // buildable / future rink site); its frozen-ness lives on surfaceState
+      // so thaw mechanics can flip it later without a terrain migration. New
+      // ponds default to frozen.
+      const pond = isPondTile(x, y, baseTerrain, seed);
       tiles.push({
         x,
         y,
-        terrain,
+        terrain: pond ? "pond" : baseTerrain,
         variant,
         elevation,
         feature,
-        valid: terrain !== "water" && terrain !== "mountain" && feature !== "lake",
+        surfaceState: pond ? "frozen" : undefined,
+        valid: baseTerrain !== "water" && baseTerrain !== "mountain" && feature !== "lake",
       });
     }
   }
@@ -665,11 +672,34 @@ function generatedElevation(
       break;
   }
 
-  // Standing water sits in basins, below the surrounding land.
+  // Standing water sits in basins, below the surrounding land. Ponds are a
+  // terrain (see isPondTile) rather than a feature, so detect them directly.
   if (feature === "lake") e = Math.min(e, 0.04);
-  else if (feature === "pond") e *= 0.6;
+  else if (isPondTile(x, y, terrain, seed)) e *= 0.6;
 
   return Math.max(0, Math.min(1.12, e));
+}
+
+// Wet terrains can cradle standing water in low basins.
+function isWetTerrain(terrain: WorldTerrain): boolean {
+  return (
+    terrain === "coastal" ||
+    terrain === "tropical" ||
+    terrain === "ice" ||
+    terrain === "plains"
+  );
+}
+
+// A pond is a small basin pool on wet ground. It's promoted to a first-class
+// `pond` terrain (skateable / buildable / future rink site) in createWorld,
+// rather than living as a feature overlay. Rivers take precedence (a river
+// tile is never a pond), and the larger/deeper basins (basin > 0.89) become
+// impassable lakes instead.
+function isPondTile(x: number, y: number, terrain: WorldTerrain, seed: number): boolean {
+  if (!isWetTerrain(terrain)) return false;
+  if (isRiverTile(x, y, terrain, seed)) return false;
+  const basin = smoothNoise(x / 4, y / 4, seed + 1701);
+  return basin > 0.82 && basin <= 0.89;
 }
 
 function generatedFeature(
@@ -682,13 +712,7 @@ function generatedFeature(
   if (isRiverTile(x, y, terrain, seed)) return "river";
 
   const basin = smoothNoise(x / 4, y / 4, seed + 1701);
-  const wet =
-    terrain === "coastal" ||
-    terrain === "tropical" ||
-    terrain === "ice" ||
-    terrain === "plains";
-  if (wet && basin > 0.89) return "lake";
-  if (wet && basin > 0.82) return "pond";
+  if (isWetTerrain(terrain) && basin > 0.89) return "lake";
   return undefined;
 }
 

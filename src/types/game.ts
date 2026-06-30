@@ -359,13 +359,22 @@ export type WorldTerrain =
   | "coastal"
   | "desert"
   | "high-desert"
-  | "ice"
+  | "ice" // snowfield / glacial / frozen *ground*
   | "mountain"
   | "plains"
+  | "pond" // a small skateable / buildable water body — a future rink site
   | "tropical"
   | "water";
 
-export type WorldFeature = "lake" | "pond" | "river";
+// The condition of a pond's surface, independent of it being a pond. Today
+// generated ponds default to "frozen"; later, thaw/seasonal mechanics can flip
+// this without changing the terrain type. Only meaningful for "pond" terrain
+// for now (room to extend to lakes/rivers later).
+export type PondSurfaceState = "frozen" | "thin-ice" | "open-water";
+
+// Lakes (impassable inland water) and rivers (connective overlay) remain
+// features. Ponds were promoted to a first-class WorldTerrain (see above).
+export type WorldFeature = "lake" | "river";
 
 export type WorldTile = {
   x: number;
@@ -374,6 +383,7 @@ export type WorldTile = {
   variant: number; // 0-3 art variation within the terrain family
   elevation: number; // 0..~1.1 height field; drives how tall the iso tile rises
   feature?: WorldFeature;
+  surfaceState?: PondSurfaceState; // pond surface condition; pond tiles default to "frozen"
   valid: boolean; // can be entered / founded on (water is not)
 };
 

@@ -14,6 +14,7 @@ import type {
   GameAction,
   GameState,
   DiscoveryStateValue,
+  PondSurfaceState,
   WorldState,
   WorldTerrain,
   WorldTile,
@@ -61,6 +62,7 @@ const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number 
   ice: { top: 0xcfe8f5, side: 0xa3cadd, detail: 0x83c7e3 },
   mountain: { top: 0x7d8c8d, side: 0x59696d, detail: 0xd7e5e7 },
   plains: { top: 0x6f9350, side: 0x52703b, detail: 0x9dbb70 },
+  pond: { top: 0x8fc9e8, side: 0x5a93b4, detail: 0xeaf7ff },
   tropical: { top: 0x3f9862, side: 0x2d7048, detail: 0x88c96d },
   water: { top: 0x153f5e, side: 0x0d2942, detail: 0x356f95 },
 };
@@ -541,8 +543,10 @@ function tileRise(_tile: WorldTile): number {
 function variantTopColor(tile: WorldTile, base: number): number {
   const v = tile.variant ?? 0;
   // Open ocean stays a single uniform deep blue — no per-tile variation.
-  if (tile.terrain === "water") return base;
-  if (tile.feature === "river" || tile.feature === "pond") return mixColor(base, 0x7dd3fc, 0.1);
+  // Open ocean and frozen ponds read as a single clean sheet — no per-tile
+  // brightness jitter.
+  if (tile.terrain === "water" || tile.terrain === "pond") return base;
+  if (tile.feature === "river") return mixColor(base, 0x7dd3fc, 0.1);
   if (tile.feature === "lake") return mixColor(base, 0x2f6f9e, 0.38);
   const amt = [-0.08, 0.04, 0.1, -0.03][v] ?? 0;
   return amt >= 0 ? lighten(base, amt) : darkenBy(base, Math.abs(amt));
@@ -607,11 +611,16 @@ function drawGroundTexture(
   topColor: number,
 ) {
   const { v } = tileLook(tile);
-  // Multi-tone dapple on solid land (not open water, not bare rock).
-  if (tile.terrain !== "water" && tile.terrain !== "mountain") dapple(g, topColor, v);
+  // Multi-tone dapple on solid land (not open water, not a glassy pond, not
+  // bare rock).
+  if (tile.terrain !== "water" && tile.terrain !== "mountain" && tile.terrain !== "pond")
+    dapple(g, topColor, v);
   switch (tile.terrain) {
     case "water":
       groundWater(g, v, pal.detail);
+      break;
+    case "pond":
+      groundPond(g, v, pal.side, tile.surfaceState ?? "frozen");
       break;
     case "ice":
       groundIce(g, v, pal.detail);
@@ -638,7 +647,6 @@ function drawGroundTexture(
   }
 
   if (tile.feature === "river") drawRiver(g, v);
-  if (tile.feature === "pond") drawPond(g, v, false);
   if (tile.feature === "lake") drawPond(g, v, true);
 }
 
@@ -663,6 +671,23 @@ function groundIce(g: Graphics, v: number, color: number) {
   g.poly([-20, -4 + v, -8, -2, 0, -8, 9, -5]).stroke({ width: 1.5, color, alpha: 0.55 });
   g.poly([-5, 7, 3, 1, 15, 2]).stroke({ width: 1.2, color: 0xffffff, alpha: 0.45 });
   if (v % 2 === 0) g.circle(11, -4, 3).fill({ color: 0xffffff, alpha: 0.22 });
+}
+
+// A pond's frozen sheet: a glassy sheen, a couple of hairline stress cracks,
+// and a faint skate scuff — distinct from the snowfield `ice` ground cover.
+// `crack` is the pond's mid-tone (pal.side). thin-ice reads a touch wetter;
+// open-water (future) falls back to rippling like open ocean.
+function groundPond(g: Graphics, v: number, crack: number, surface: PondSurfaceState) {
+  if (surface === "open-water") {
+    groundWater(g, v, crack);
+    return;
+  }
+  const wet = surface === "thin-ice";
+  g.ellipse(-2, 0, 17, 8).fill({ color: 0xffffff, alpha: wet ? 0.06 : 0.12 }); // broad sheen
+  g.poly([-13, -2, -5, -4, 1, -1, 9, -4]).stroke({ width: 1, color: crack, alpha: wet ? 0.35 : 0.5 });
+  if (v % 2 === 0) g.poly([-3, -6, -1, 0, -4, 6]).stroke({ width: 0.8, color: crack, alpha: 0.4 });
+  g.poly([3, 5, 8, 2, 14, 5]).stroke({ width: 0.8, color: 0xffffff, alpha: 0.4 }); // skate scuff
+  g.circle(9, -4, 2.3).fill({ color: 0xffffff, alpha: wet ? 0.12 : 0.22 }); // glint
 }
 
 function groundDesert(g: Graphics, v: number, color: number) {
@@ -696,6 +721,8 @@ function drawStandingFeatures(g: Graphics, tile: WorldTile): boolean {
   switch (tile.terrain) {
     case "water":
       return false; // open ocean — nothing stands on it (waves are ground cover)
+    case "pond":
+      return false; // a clean skating sheet — nothing stands on it
     case "mountain":
     case "high-desert":
       return false; // drawn as raster landform sprites (see landformSprite)
