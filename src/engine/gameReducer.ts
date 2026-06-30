@@ -19,7 +19,9 @@ import {
 } from "./scoutSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
+import { triggerRivalContact } from "./rivalAI";
 import {
+  devMeetRival,
   devRegenMap,
   devResetTurn1,
   devSetRevealAll,
@@ -27,10 +29,11 @@ import {
   devToggleResearch,
 } from "./devSystem";
 
-// TODO (future design pass): Rival GMs / Rival AI and any human multiplayer
-// (hotseat or async) are intentionally NOT implemented. Rivals currently exist
-// only as lightweight RUMORS (see rivalSystem.ts). Full opponent turns,
-// contact/diplomacy, and a networking model all need their own design pass.
+// Rival clubs now exist as a FOUNDATION-level AI: each non-player club founds an
+// HQ on turn 1 (world.placeRivals), produces + wanders scouts each month
+// (rivalAI.runRivalTurns), and triggers a leader meeting on first contact. Full
+// strategic AI, diplomacy/negotiation, and any human multiplayer (hotseat or
+// async networking) still need their own design pass.
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
@@ -48,7 +51,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const withWorld: GameState = {
         ...state,
         phase: "playing",
-        world: createWorld(Date.now()),
+        world: createWorld(Date.now(), state.selectedClubId),
       };
       return beginFounding(withWorld, state.selectedClubId);
     }
@@ -109,14 +112,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return selectScout(state, action.scoutId);
 
     case "MOVE_SCOUT":
-      return triggerPondEncounter(
-        moveScout(state, action.x, action.y, action.scoutId),
+      // After the move: a pond goodie hut takes priority (sets pendingEncounter),
+      // then a rival first-contact check (sets pendingMeeting, but bails if an
+      // encounter is already open) so the player only ever sees one pop-up.
+      return triggerRivalContact(
+        triggerPondEncounter(
+          moveScout(state, action.x, action.y, action.scoutId),
+          action.x,
+          action.y,
+        ),
         action.x,
         action.y,
       );
 
     case "RESOLVE_ENCOUNTER":
       return resolvePendingEncounter(state);
+
+    case "ACKNOWLEDGE_MEETING":
+      return { ...state, pendingMeeting: null };
 
     case "SURVEY_REGION":
       return surveyRegion(state, action.regionId);
@@ -144,6 +157,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_SET_REVEAL_ALL":
       return devSetRevealAll(state, action.value);
+
+    case "DEV_MEET_RIVAL":
+      return devMeetRival(state);
 
     default:
       return state;

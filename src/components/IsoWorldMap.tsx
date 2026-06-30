@@ -95,6 +95,21 @@ function shortClubLabel(club: ClubDef): string {
   return club.name.replace(/\s+HC$/, "").split(/\s+/)[0] ?? club.cityRegion;
 }
 
+// Synchronously read any rival-club Leader portraits already in Pixi's cache, so
+// rival HQs can render their portrait on the first frame instead of waiting.
+function seedRivalPortraits(
+  rivals: { clubId: string }[] | undefined,
+): Record<string, Texture> {
+  const map: Record<string, Texture> = {};
+  for (const r of rivals ?? []) {
+    const club = CLUBS[r.clubId];
+    if (!club) continue;
+    const tex = cachedClubTexture(clubAsset(club, "leader"));
+    if (tex) map[r.clubId] = tex;
+  }
+  return map;
+}
+
 const diamond = (h = TILE_H): number[] => [0, -h / 2, TILE_W / 2, 0, 0, h / 2, -TILE_W / 2, 0];
 
 // Dim a display object to "explored memory": a cool, dark multiply tint plus a
@@ -117,8 +132,8 @@ function drawScene(
   layer: Container,
   state: GameState,
   selectedKey: string | null,
-  logoTexture: Texture | null,
   leaderTexture: Texture | null,
+  rivalPortraits: Record<string, Texture>,
   registerScout: (node: Container | null, baseY: number) => void,
 ) {
   layer.removeChildren().forEach((c) => c.destroy());
@@ -266,9 +281,42 @@ function drawScene(
 
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
       if (isHQ) {
-        const mk = hqMarker(gx, gy, c, accent, clubLabel, logoTexture);
+        const mk = hqMarker(gx, gy, c, accent, clubLabel, leaderTexture);
         mk.position.y -= rise;
         layer.addChild(mk);
+      }
+
+      // Rival clubs, drawn with the SAME art as the human (club-colored): the HQ
+      // banner marker and the parka scout sprite. A rival HQ is a fixed landmark
+      // (like a hockey org): shown on any EXPLORED tile, dimmed to "memory" when
+      // out of sightline. Rival units MOVE every month, so they only render where
+      // the player has CURRENT vision — never leaking live positions from memory.
+      if (explored) {
+        for (const rival of world.rivals) {
+          const rClub = CLUBS[rival.clubId];
+          const rAccent = accentNumber(rClub?.accent);
+          if (rival.hqTile.x === gx && rival.hqTile.y === gy) {
+            const mk = hqMarker(
+              gx,
+              gy,
+              c,
+              rAccent,
+              rClub ? shortClubLabel(rClub) : "Rival",
+              rivalPortraits[rival.clubId] ?? null,
+            );
+            mk.position.y -= rise;
+            applyMemory(mk, memory);
+            layer.addChild(mk);
+          }
+          if (!visible) continue; // live units: current sightline only
+          const unitsHere = rival.units.filter((u) => u.x === gx && u.y === gy);
+          for (let i = 0; i < unitsHere.length; i++) {
+            const mk = scoutMarker(gx, gy, c, false, rAccent);
+            mk.position.x += (i - (unitsHere.length - 1) / 2) * 10;
+            mk.position.y -= rise;
+            layer.addChild(mk);
+          }
+        }
       }
 
       if (founder && founder.x === gx && founder.y === gy) {
@@ -483,7 +531,7 @@ function hqMarker(
   c: { x: number; y: number },
   accent: number,
   label: string,
-  logoTexture: Texture | null,
+  portraitTexture: Texture | null,
 ) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
@@ -492,25 +540,38 @@ function hqMarker(
   // paint over the lower half of the label).
   m.zIndex = gx + gy + 50;
 
+  const cy = -23; // medallion centre height above the tile
+  const R = 13; // portrait radius (sits inside the 17px disc backing)
+
   const base = new Graphics();
   base.ellipse(0, 1, 20, 7).fill({ color: 0x000000, alpha: 0.35 });
   base.poly([-18, 0, 0, 9, 18, 0, 0, -9]).fill(0x05121c).stroke({ width: 2, color: accent });
-  base.circle(0, -23, 17).fill(0x0f1824).stroke({ width: 3, color: accent });
-  base.circle(0, -23, 12).fill(0xe6eef6);
+  base.circle(0, cy, 17).fill(0x0f1824).stroke({ width: 3, color: accent });
   base.rect(16, -45, 2, 23).fill(0xe6eef6);
   base.poly([18, -45, 34, -40, 18, -35]).fill(accent).stroke({ width: 1.5, color: 0x05121c });
   m.addChild(base);
 
-  if (logoTexture) {
-    const logo = new Sprite(logoTexture);
-    logo.anchor.set(0.5);
-    logo.position.set(0, -23);
-    const scale = Math.min(22 / logoTexture.width, 22 / logoTexture.height);
-    logo.scale.set(scale);
-    m.addChild(logo);
+  // The club's Leader portrait sits in the HQ medallion (same image shown at
+  // founding), masked into the disc and biased to the face.
+  if (portraitTexture) {
+    const sp = new Sprite(portraitTexture);
+    sp.anchor.set(0.5, 0.42);
+    const s = (R * 2) / Math.min(portraitTexture.width, portraitTexture.height); // cover
+    sp.scale.set(s);
+    sp.position.set(0, cy);
+    const mask = new Graphics();
+    mask.circle(0, cy, R).fill(0xffffff);
+    m.addChild(mask);
+    sp.mask = mask;
+    m.addChild(sp);
+    const rim = new Graphics();
+    rim.circle(0, cy, R).stroke({ width: 2, color: accent });
+    m.addChild(rim);
   } else {
     const fallback = new Graphics();
-    fallback.poly([-7, -30, 7, -30, 9, -18, 0, -12, -9, -18]).fill(accent);
+    fallback.circle(0, cy, R).fill(0xe7b48b).stroke({ width: 1.5, color: accent });
+    fallback.circle(-4, cy - 1, 1.4).fill(0x2a2320);
+    fallback.circle(4, cy - 1, 1.4).fill(0x2a2320);
     m.addChild(fallback);
   }
 
@@ -1497,12 +1558,16 @@ export function IsoWorldMap({
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   // Seed from Pixi's cache so a club whose art was warmed on the founding screen
-  // renders its crest/portrait on the first frame instead of flashing fallbacks.
-  const [logoTexture, setLogoTexture] = useState<Texture | null>(() =>
-    activeClub ? cachedClubTexture(clubAsset(activeClub, "logo")) : null,
-  );
+  // renders its portrait on the first frame instead of flashing a fallback. The
+  // Leader portrait is the on-map indicator for both the Founding Group and the
+  // HQ medallion, so it's the only club texture the map needs.
   const [leaderTexture, setLeaderTexture] = useState<Texture | null>(() =>
     activeClub ? cachedClubTexture(clubAsset(activeClub, "leader")) : null,
+  );
+  // Rival HQ portraits, keyed by club id, so rival HQ medallions show each
+  // rival's Leader just like the player's. Seeded from cache where warmed.
+  const [rivalPortraits, setRivalPortraits] = useState<Record<string, Texture>>(() =>
+    seedRivalPortraits(state.world?.rivals),
   );
 
   // drawScene hands the live Scout node here so the ticker can animate it.
@@ -1833,7 +1898,7 @@ export function IsoWorldMap({
           sa.node.rotation = Math.sin(t * 1.7) * 0.03;
         });
 
-        drawScene(layer, state, selectedKey, logoTexture, leaderTexture, registerScout);
+        drawScene(layer, state, selectedKey, leaderTexture, rivalPortraits, registerScout);
       });
 
     return () => {
@@ -1856,20 +1921,14 @@ export function IsoWorldMap({
   useEffect(() => {
     let cancelled = false;
     if (!activeClub) {
-      setLogoTexture(null);
       setLeaderTexture(null);
       return;
     }
-    // HQ logo + the Leader unit's portrait, loaded from the club's asset folder.
-    // Seed from cache first (instant when warmed on the founding screen) so we
-    // never blank a portrait we already have while a switch reloads.
-    const logoUrl = clubAsset(activeClub, "logo");
+    // The Leader portrait (on-map indicator for the Founding Group + HQ medallion),
+    // loaded from the club's asset folder. Seed from cache first (instant when
+    // warmed on the founding screen) so we never blank a portrait we already have.
     const leaderUrl = clubAsset(activeClub, "leader");
-    setLogoTexture(cachedClubTexture(logoUrl));
     setLeaderTexture(cachedClubTexture(leaderUrl));
-    Assets.load<Texture>(logoUrl)
-      .then((texture) => !cancelled && setLogoTexture(texture))
-      .catch(() => !cancelled && setLogoTexture(null));
     Assets.load<Texture>(leaderUrl)
       .then((texture) => !cancelled && setLeaderTexture(texture))
       .catch(() => !cancelled && setLeaderTexture(null));
@@ -1878,12 +1937,53 @@ export function IsoWorldMap({
     };
   }, [activeClub?.assetKey]);
 
+  // Load each rival club's Leader portrait so rival HQ medallions show their
+  // leader, like the player's HQ. Rival rosters are fixed once the world is
+  // generated, so this runs once per set of rival club ids.
+  const rivalClubKey = (state.world?.rivals ?? [])
+    .map((r) => r.clubId)
+    .join(",");
+  useEffect(() => {
+    const rivals = state.world?.rivals ?? [];
+    if (rivals.length === 0) {
+      setRivalPortraits({});
+      return;
+    }
+    let cancelled = false;
+    setRivalPortraits(seedRivalPortraits(rivals)); // instant for already-warmed art
+    Promise.all(
+      rivals.map((r) => {
+        const club = CLUBS[r.clubId];
+        if (!club) return Promise.resolve([r.clubId, null] as const);
+        return Assets.load<Texture>(clubAsset(club, "leader"))
+          .then((tex) => [r.clubId, tex] as const)
+          .catch(() => [r.clubId, null] as const);
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const map: Record<string, Texture> = {};
+      for (const [id, tex] of entries) if (tex) map[id] = tex;
+      setRivalPortraits(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rivalClubKey]);
+
   // Redraw whenever the world, selection, or a texture changes.
   useEffect(() => {
     if (readyRef.current && layerRef.current) {
-      drawScene(layerRef.current, state, selectedKey, logoTexture, leaderTexture, registerScout);
+      drawScene(
+        layerRef.current,
+        state,
+        selectedKey,
+        leaderTexture,
+        rivalPortraits,
+        registerScout,
+      );
     }
-  }, [state, selectedKey, logoTexture, leaderTexture]);
+  }, [state, selectedKey, leaderTexture, rivalPortraits]);
 
   return (
     <div className="panel iso-panel">
@@ -2000,6 +2100,15 @@ function MiniMap({
     for (const org of world.hockeyOrgs) {
       if (!state.devRevealAll && !revealedSet.has(`${org.x},${org.y}`)) continue;
       dot(org.x, org.y, 0xf2c14e, 2.2, true);
+    }
+    // Rival HQs are fixed landmarks, so they sit on the minimap like hockey orgs
+    // once explored, in the rival's club color. Rival UNITS move, so — like on
+    // the main map — they're never plotted here from stale memory.
+    for (const rival of world.rivals) {
+      if (!state.devRevealAll && !revealedSet.has(`${rival.hqTile.x},${rival.hqTile.y}`)) {
+        continue;
+      }
+      dot(rival.hqTile.x, rival.hqTile.y, accentNumber(CLUBS[rival.clubId]?.accent), 2.6, true);
     }
     for (const pond of world.pondMarkers) {
       if (pond.investigated) continue;

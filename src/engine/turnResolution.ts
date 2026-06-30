@@ -7,6 +7,7 @@ import { progressResearch } from "./researchSystem";
 import { resolveDiscovery } from "./discoverySystem";
 import { progressConnection } from "./regionDevelopment";
 import { maybeRivalRumor } from "./rivalSystem";
+import { runRivalTurns } from "./rivalAI";
 import { refreshScoutMoves } from "./scoutSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress } from "./eraSystem";
@@ -44,6 +45,7 @@ export function endMonth(state: GameState): GameState {
   progressConnection(draft, push); // Establish Local Connection -> influenced
   maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
+  runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);
 

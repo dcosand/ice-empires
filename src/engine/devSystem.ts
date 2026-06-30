@@ -1,6 +1,7 @@
 import type { GameState } from "../types/game";
 import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
 import { createWorld } from "./world";
+import { nearestRivalClubId } from "./rivalAI";
 
 // Dev tools — reachable only from the in-app dev panel, never from normal play.
 // They mutate state directly (bypassing costs / prerequisites) so a developer
@@ -58,5 +59,28 @@ export function devSetRevealAll(state: GameState, value: boolean): GameState {
 // landmass needs a new starting position); other game state is left untouched.
 export function devRegenMap(state: GameState): GameState {
   const seed = (Math.random() * 0x7fffffff) | 0;
-  return { ...state, world: createWorld(seed) };
+  return { ...state, world: createWorld(seed, state.club?.id ?? state.selectedClubId) };
+}
+
+// Open the leader meeting screen for the nearest rival on demand. Because rivals
+// are fog-gated and evenly spread, natural first contact is unlikely inside a
+// 12-month game — this lets a developer exercise the meeting flow immediately.
+export function devMeetRival(state: GameState): GameState {
+  const world = state.world;
+  // Prefer a rival not yet met (so the button surfaces a fresh meeting); fall
+  // back to the nearest once every rival has already been contacted.
+  const clubId =
+    nearestRivalClubId(state, { uncontactedOnly: true }) ??
+    nearestRivalClubId(state);
+  if (!world || !clubId) return state;
+  return {
+    ...state,
+    world: {
+      ...world,
+      rivals: world.rivals.map((r) =>
+        r.clubId === clubId ? { ...r, contacted: true } : r,
+      ),
+    },
+    pendingMeeting: { clubId },
+  };
 }

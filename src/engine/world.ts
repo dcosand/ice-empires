@@ -1,5 +1,7 @@
 import type {
   GameState,
+  RivalClub,
+  RivalUnit,
   WorldState,
   WorldFeature,
   WorldHockeyOrg,
@@ -10,6 +12,7 @@ import type {
 } from "../types/game";
 import { REGIONS } from "../data/regions";
 import { POND_ENCOUNTERS } from "../data/pondEncounters";
+import { CLUB_LIST } from "../data/clubs";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
@@ -17,6 +20,8 @@ export const WORLD_WIDTH = 120;
 export const WORLD_HEIGHT = 75;
 export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
+// Rival scouts wander at the same pace as the player's Pond Scout.
+export const RIVAL_SCOUT_MOVES = 3;
 // How far HQ and a unit can currently SEE (and permanently reveal) around them.
 // Drives both the rolling "currently visible" bubble and the explored set, so a
 // tile that has ever been seen stays explored forever (never reverts to fog).
@@ -26,6 +31,17 @@ export const VISION_RADIUS = 2;
 const MIN_START_LAND = 60;
 const POND_MARKER_COUNT = 24;
 const HOCKEY_ORG_COUNT = 10;
+// Minimum-separation tiers for AI HQ placement, tried strictest-first. Each AI
+// club founds well clear of the human start, every other club HQ, and every
+// independent; if a tight map offers no spot, we relax step-by-step (never below
+// the last, still clearly-separated tier) so all clubs still get a home.
+const RIVAL_SEP_TIERS: { start: number; org: number; rival: number }[] = [
+  { start: 16, org: 13, rival: 16 },
+  { start: 13, org: 11, rival: 13 },
+  { start: 11, org: 9, rival: 11 },
+  { start: 9, org: 7, rival: 9 },
+  { start: 7, org: 6, rival: 7 },
+];
 
 const HOCKEY_ORG_NAMES = [
   "Moscow",
@@ -227,7 +243,7 @@ export function regionIdAtTile(x: number, y: number): string | null {
   return REGION_BY_TILE[tileKey(x, y)] ?? null;
 }
 
-export function createWorld(seed = Date.now()): WorldState {
+export function createWorld(seed = Date.now(), playerClubId?: string | null): WorldState {
   const tiles: WorldTile[] = [];
   for (let y = 0; y < WORLD_HEIGHT; y++) {
     for (let x = 0; x < WORLD_WIDTH; x++) {
@@ -271,6 +287,7 @@ export function createWorld(seed = Date.now()): WorldState {
   }
 
   const hockeyOrgs = generateHockeyOrgs(tiles, start, seed);
+  const rivals = placeRivals(tiles, start, seed, playerClubId ?? null, hockeyOrgs);
 
   return {
     width: WORLD_WIDTH,
@@ -289,9 +306,87 @@ export function createWorld(seed = Date.now()): WorldState {
     selectedScoutId: null,
     pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs),
     hockeyOrgs,
+    rivals,
     scout: null,
     scoutSelected: false,
   };
+}
+
+// A movable rival unit (rival scouts wander to create "bump into" moments).
+export function createRivalUnit(
+  id: string,
+  x: number,
+  y: number,
+): RivalUnit {
+  return {
+    id,
+    x,
+    y,
+    movesPerTurn: RIVAL_SCOUT_MOVES,
+    movesRemaining: RIVAL_SCOUT_MOVES,
+    kind: "scout",
+  };
+}
+
+// Found every club the human did NOT select on turn 1, spread evenly across the
+// continent and kept clear of the player start and each other. Each rival starts
+// with one scout at its HQ so there's something to discover under the fog from
+// the first month. Mirrors generateHockeyOrgs' candidate-scoring approach.
+function placeRivals(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+  playerClubId: string | null,
+  hockeyOrgs: WorldHockeyOrg[],
+): RivalClub[] {
+  const rivalClubs = CLUB_LIST.filter((c) => c.id !== playerClubId);
+  const rivals: RivalClub[] = [];
+  const orgPts = hockeyOrgs.map((o) => ({ x: o.x, y: o.y }));
+
+  // Score land tiles far from the player start the highest so rivals settle out
+  // across the rest of the map; a noise term keeps placement from clumping.
+  const candidates = tiles
+    .filter(canPlaceHockeyOrg)
+    .map((tile) => ({
+      tile,
+      score:
+        noise2d(tile.x, tile.y, seed + 54091) * 0.5 +
+        Math.min(0.5, Math.hypot(tile.x - start.x, tile.y - start.y) / 120),
+    }))
+    .sort((a, b) => b.score - a.score);
+
+  // A tile is acceptable for this tier if it clears the human start, every
+  // already-placed rival HQ, and every independent by the tier's distances.
+  const farEnough = (
+    t: { x: number; y: number },
+    sep: { start: number; org: number; rival: number },
+  ): boolean =>
+    Math.hypot(t.x - start.x, t.y - start.y) >= sep.start &&
+    orgPts.every((o) => Math.hypot(t.x - o.x, t.y - o.y) >= sep.org) &&
+    rivals.every(
+      (r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= sep.rival,
+    );
+
+  for (const club of rivalClubs) {
+    let chosen: WorldTile | null = null;
+    for (const sep of RIVAL_SEP_TIERS) {
+      const spot = candidates.find(({ tile }) => farEnough(tile, sep));
+      if (spot) {
+        chosen = spot.tile;
+        break;
+      }
+    }
+    if (!chosen) continue; // degenerate map: skip rather than crowd
+    rivals.push({
+      clubId: club.id,
+      hqTile: { x: chosen.x, y: chosen.y },
+      productionPoints: 0,
+      contacted: false,
+      units: [createRivalUnit(`rival-${club.id}-scout-1`, chosen.x, chosen.y)],
+    });
+  }
+
+  return rivals;
 }
 
 export function createScoutUnit(
