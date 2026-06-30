@@ -115,6 +115,38 @@ export const minnesotaNova: ClubDef = {
   assetKey: "minnesota", // folder is "minnesota", not the club id
 };
 
+export const detroitForge: ClubDef = {
+  id: "detroit-forge",
+  name: "Detroit Forge",
+  cityRegion: "Great Lakes",
+  leaderArchetype: "The Assembly-Line Foreman",
+  philosophy: "Blue-collar depth and relentless forecheck",
+  ...SHARED_START,
+  identityText:
+    "This is hockey as honest work. The Forge believes in shift after shift of north-south hockey — no shortcuts, no stars bigger than the line, just a machine that never stops grinding.",
+  foundingFlavor: "Lunch-pail hockey: every shift earned, every inch paid for.",
+  tagline: "Lunch-pail hockey, built shift by shift.",
+  accent: "#e2554b",
+  palette: { primary: "#3a0d10", secondary: "#d23b34", light: "#f0e6e2" },
+  assetKey: "detroit",
+};
+
+export const stockholmAurora: ClubDef = {
+  id: "stockholm-aurora",
+  name: "Stockholm Aurora",
+  cityRegion: "Scandinavian Crown",
+  leaderArchetype: "The Crown Tactician",
+  philosophy: "Skating, structure, and clean puck movement",
+  ...SHARED_START,
+  identityText:
+    "In the north the game is played like clockwork under the lights. The Aurora chase a cold, beautiful precision — perfect lanes, patient possession, and skating that never seems to tire.",
+  foundingFlavor: "Clockwork hockey under the northern lights.",
+  tagline: "Cold, beautiful precision.",
+  accent: "#6cc6e8",
+  palette: { primary: "#10324f", secondary: "#5bb6e0", light: "#eaf3f8" },
+  assetKey: "stockholm",
+};
+
 // Display order for the selection screen (Arizona first as the default).
 export const CLUB_LIST: ClubDef[] = [
   arizonaMonsoon,
@@ -123,6 +155,8 @@ export const CLUB_LIST: ClubDef[] = [
   saskatoonIronHerd,
   pragueLions,
   minnesotaNova,
+  detroitForge,
+  stockholmAurora,
 ];
 
 export const CLUBS: Record<string, ClubDef> = Object.fromEntries(
