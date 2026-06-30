@@ -67,7 +67,11 @@ export function devRegenMap(state: GameState): GameState {
 // 12-month game — this lets a developer exercise the meeting flow immediately.
 export function devMeetRival(state: GameState): GameState {
   const world = state.world;
-  const clubId = nearestRivalClubId(state);
+  // Prefer a rival not yet met (so the button surfaces a fresh meeting); fall
+  // back to the nearest once every rival has already been contacted.
+  const clubId =
+    nearestRivalClubId(state, { uncontactedOnly: true }) ??
+    nearestRivalClubId(state);
   if (!world || !clubId) return state;
   return {
     ...state,

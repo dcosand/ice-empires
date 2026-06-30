@@ -51,6 +51,41 @@ export const RESEARCH: ResearchDef[] = [
     flavor: "Nobody understands goalies. This is your first attempt.",
     eraId: "pond-hockey",
   },
+
+  // ---- Club Formation era: aspirational, gated behind Pond Hockey techs.
+  // These open the formal front-office units that already reference them
+  // (Recruiter, Regional Scout, Development Envoy) and give the research tier
+  // view a real "next era" to grow toward.
+  {
+    id: "local-recruitment",
+    name: "Local Recruitment",
+    description: "Turn handshakes and rink gossip into actual commitments.",
+    cost: 10,
+    requiredTechIds: ["organized-practice"],
+    unlocks: [],
+    flavor: "A signature on a napkin still counts, technically.",
+    eraId: "club-formation",
+  },
+  {
+    id: "regional-scouting-office",
+    name: "Regional Scouting Office",
+    description: "A desk, a map, and a mandate to cover whole regions.",
+    cost: 12,
+    requiredTechIds: ["scouting-reports"],
+    unlocks: [],
+    flavor: "Now the rumors have a filing system.",
+    eraId: "club-formation",
+  },
+  {
+    id: "development-partnerships",
+    name: "Development Partnerships",
+    description: "Formal ties with hockey regions, before anyone says 'pipeline'.",
+    cost: 12,
+    requiredTechIds: ["youth-development"],
+    unlocks: [],
+    flavor: "Relationships, carefully not called transactions.",
+    eraId: "club-formation",
+  },
 ];
 
 export const RESEARCH_BY_ID: Record<string, ResearchDef> = Object.fromEntries(

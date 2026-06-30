@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Dispatch } from "react";
+import type { Dispatch, ReactNode } from "react";
 import type {
   GameAction,
   GameState,
@@ -21,12 +21,12 @@ const RESOURCE_SHORT: Record<ResourceKey, string> = {
   reputation: "Rep",
 };
 
-// Buildable first, then locked, then in-progress, then already-built.
+// Buildable first, then in-progress, then already-built, then locked (ghosted).
 const STATUS_RANK: Record<ProductionStatus, number> = {
   available: 0,
-  locked: 1,
-  active: 2,
-  built: 3,
+  active: 1,
+  built: 2,
+  locked: 3,
 };
 
 function upfrontChips(cost: Partial<ResourceSet>): string {
@@ -36,6 +36,15 @@ function upfrontChips(cost: Partial<ResourceSet>): string {
 }
 
 const keyOf = (o: ProductionOption) => `${o.kind}-${o.id}`;
+
+const sortOptions = (arr: ProductionOption[]): ProductionOption[] =>
+  [...arr].sort((a, b) => {
+    const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
+    if (r !== 0) return r;
+    if (a.status === "available")
+      return (a.affordable ? 0 : 1) - (b.affordable ? 0 : 1);
+    return 0;
+  });
 
 export function ProductionPanel({
   state,
@@ -51,24 +60,22 @@ export function ProductionPanel({
   const monthsFor = (cost: number) =>
     opsPerMonth > 0 ? Math.max(1, Math.ceil(cost / opsPerMonth)) : Infinity;
 
-  // One combined view — facilities and units together, no tabs.
-  const allOptions = useMemo(
-    () =>
-      [...opts.facilities, ...opts.units].sort((a, b) => {
-        const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
-        if (r !== 0) return r;
-        if (a.status === "available")
-          return (a.affordable ? 0 : 1) - (b.affordable ? 0 : 1);
-        return 0;
-      }),
-    [opts],
+  // Two grouped sections — Units first, then Facilities — each sorted with
+  // buildable items ahead of ghosted/locked ones.
+  const unitOptions = useMemo(() => sortOptions(opts.units), [opts]);
+  const facilityOptions = useMemo(() => sortOptions(opts.facilities), [opts]);
+  const lookup = useMemo(
+    () => [...unitOptions, ...facilityOptions],
+    [unitOptions, facilityOptions],
   );
 
+  const [openUnits, setOpenUnits] = useState(true);
+  const [openFacilities, setOpenFacilities] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailKey, setDetailKey] = useState<string | null>(null);
 
-  const selected = allOptions.find((o) => keyOf(o) === selectedKey) ?? null;
-  const detail = allOptions.find((o) => keyOf(o) === detailKey) ?? null;
+  const selected = lookup.find((o) => keyOf(o) === selectedKey) ?? null;
+  const detail = lookup.find((o) => keyOf(o) === detailKey) ?? null;
 
   // A card can be picked only when the HQ slot is free and it's buildable.
   const selectable = (o: ProductionOption) => o.status === "available" && !slotBusy;
@@ -94,6 +101,19 @@ export function ProductionPanel({
     setSelectedKey(null);
   };
 
+  const renderCards = (options: ProductionOption[]) =>
+    options.map((opt) => (
+      <ProductionCard
+        key={keyOf(opt)}
+        opt={opt}
+        selected={keyOf(opt) === selectedKey}
+        selectable={selectable(opt)}
+        estMonths={monthsFor(opt.opsCost)}
+        onClick={() => onCardClick(opt)}
+        onDetails={() => setDetailKey(keyOf(opt))}
+      />
+    ));
+
   return (
     <div className="panel production-panel">
       <div className="panel-sub">
@@ -102,20 +122,31 @@ export function ProductionPanel({
         select, then confirm — or right-click (or tap ⓘ) for full details.
       </div>
 
-      <div className="prod-gallery">
-        {allOptions.map((opt) => (
-          <ProductionCard
-            key={keyOf(opt)}
-            opt={opt}
-            selected={keyOf(opt) === selectedKey}
-            selectable={selectable(opt)}
-            estMonths={monthsFor(opt.opsCost)}
-            onClick={() => onCardClick(opt)}
-            onDetails={() => setDetailKey(keyOf(opt))}
-          />
-        ))}
-        {allOptions.length === 0 && <div className="faint">Nothing here yet.</div>}
-      </div>
+      <ProductionSection
+        title="Units"
+        count={unitOptions.length}
+        open={openUnits}
+        onToggle={() => setOpenUnits((v) => !v)}
+      >
+        {unitOptions.length > 0 ? (
+          renderCards(unitOptions)
+        ) : (
+          <div className="faint">No units available.</div>
+        )}
+      </ProductionSection>
+
+      <ProductionSection
+        title="Facilities"
+        count={facilityOptions.length}
+        open={openFacilities}
+        onToggle={() => setOpenFacilities((v) => !v)}
+      >
+        {facilityOptions.length > 0 ? (
+          renderCards(facilityOptions)
+        ) : (
+          <div className="faint">No facilities available.</div>
+        )}
+      </ProductionSection>
 
       <ConfirmBar
         selected={selected}
@@ -136,10 +167,42 @@ export function ProductionPanel({
   );
 }
 
+function ProductionSection({
+  title,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  title: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <section className="prod-section">
+      <button
+        type="button"
+        className="prod-section-head"
+        aria-expanded={open}
+        onClick={onToggle}
+      >
+        <span className={`prod-section-chevron${open ? " open" : ""}`} aria-hidden>
+          ▸
+        </span>
+        <span className="prod-section-title">{title}</span>
+        <span className="prod-section-count">{count}</span>
+      </button>
+      {open && <div className="prod-gallery">{children}</div>}
+    </section>
+  );
+}
+
+// Locked items are ghosted/disabled (no badge); only built & in-progress get one.
 function statusBadge(status: ProductionStatus): string | null {
   if (status === "built") return "✓ Built";
   if (status === "active") return "Building…";
-  if (status === "locked") return "🔒 Locked";
   return null;
 }
 
@@ -187,6 +250,7 @@ function ProductionCard({
       role="button"
       tabIndex={0}
       aria-pressed={selected}
+      aria-disabled={!selectable}
       onClick={onClick}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
@@ -223,7 +287,7 @@ function ProductionCard({
         <span>{opt.opsCost} Ops</span>
         {upfront && <span className="prod-card-upfront">+ {upfront}</span>}
       </div>
-      <div className={`prod-card-foot${unaffordable || opt.status === "locked" ? " warn" : ""}`}>
+      <div className={`prod-card-foot${unaffordable ? " warn" : ""}`}>
         {unaffordable ? `Need ${upfront} upfront` : foot}
       </div>
     </div>

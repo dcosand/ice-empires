@@ -34,6 +34,9 @@ export function runRivalTurns(draft: GameState, push: PushLog): void {
 // unit cost. Only log expansion for rivals the player has already met, so the
 // log never spoils the location of a still-undiscovered club.
 function advanceRivalEconomy(draft: GameState, rival: RivalClub, push: PushLog): void {
+  // Stop banking once the roster is capped — otherwise points climb forever with
+  // nothing to spend them on. Resumes if a unit slot ever frees up.
+  if (rival.units.length >= MAX_RIVAL_UNITS) return;
   rival.productionPoints += RIVAL_OPS_PER_MONTH;
   while (
     rival.productionPoints >= RIVAL_UNIT_COST &&
@@ -183,17 +186,25 @@ function contactMessage(clubId: string): string {
 }
 
 // The rival nearest the player's HQ (or founding group), for the dev "Meet
-// nearest rival" tool and for sourcing rumor flavor from a real club.
-export function nearestRivalClubId(state: GameState): string | null {
+// nearest rival" tool. With { uncontactedOnly }, ignores rivals already met so
+// the dev button surfaces a fresh meeting rather than re-opening a known one.
+export function nearestRivalClubId(
+  state: GameState,
+  opts: { uncontactedOnly?: boolean } = {},
+): string | null {
   const world = state.world;
-  if (!world || world.rivals.length === 0) return null;
+  if (!world) return null;
+  const pool = opts.uncontactedOnly
+    ? world.rivals.filter((r) => !r.contacted)
+    : world.rivals;
+  if (pool.length === 0) return null;
   const origin =
     world.hqTile ??
     (world.founder ? { x: world.founder.x, y: world.founder.y } : null);
-  if (!origin) return world.rivals[0].clubId;
-  let best = world.rivals[0];
+  if (!origin) return pool[0].clubId;
+  let best = pool[0];
   let bestD = Infinity;
-  for (const r of world.rivals) {
+  for (const r of pool) {
     const d = Math.hypot(r.hqTile.x - origin.x, r.hqTile.y - origin.y);
     if (d < bestD) {
       bestD = d;

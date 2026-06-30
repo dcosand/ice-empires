@@ -22,6 +22,10 @@ export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
 // Rival scouts wander at the same pace as the player's Pond Scout.
 export const RIVAL_SCOUT_MOVES = 3;
+// How far HQ and a unit can currently SEE (and permanently reveal) around them.
+// Drives both the rolling "currently visible" bubble and the explored set, so a
+// tile that has ever been seen stays explored forever (never reverts to fog).
+export const VISION_RADIUS = 2;
 // A club may only be founded on a landmass with at least this many connected
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
@@ -169,11 +173,14 @@ export function isAdjacent(
   return dx <= 1 && dy <= 1 && !(dx === 0 && dy === 0);
 }
 
-// Keys for a tile and its 8 in-bounds neighbors.
-function revealKeys(cx: number, cy: number): string[] {
+// In-bounds tile keys within a (slightly rounded) radius-r disk of (cx,cy).
+function diskKeys(cx: number, cy: number, r: number): string[] {
   const keys: string[] = [];
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
+  const rr = r * r + r; // round the corners so the disk reads as an octagon, not a square
+  const ri = Math.ceil(r);
+  for (let dy = -ri; dy <= ri; dy++) {
+    for (let dx = -ri; dx <= ri; dx++) {
+      if (dx * dx + dy * dy > rr) continue;
       const x = cx + dx;
       const y = cy + dy;
       if (x >= 0 && y >= 0 && x < WORLD_WIDTH && y < WORLD_HEIGHT) {
@@ -184,13 +191,37 @@ function revealKeys(cx: number, cy: number): string[] {
   return keys;
 }
 
-// Union the existing revealed set with the fog around (x,y).
+// Keys revealed by standing at (cx,cy): the vision disk around it.
+function revealKeys(cx: number, cy: number): string[] {
+  return diskKeys(cx, cy, VISION_RADIUS);
+}
+
+// Union the existing revealed (explored) set with the fog around (x,y).
 export function addReveal(revealed: string[], x: number, y: number): string[] {
   return Array.from(new Set([...revealed, ...revealKeys(x, y)]));
 }
 
 export function isRevealed(world: WorldState, x: number, y: number): boolean {
   return world.revealed.includes(tileKey(x, y));
+}
+
+// The set of tiles a player can CURRENTLY see (live terrain, units, markers),
+// derived fresh from where their vision sources stand right now: the Club HQ
+// (a permanent bubble once founded), every active Scout, and the pre-founding
+// Founding Group. Tiles that are revealed but not in this set are "explored" —
+// remembered terrain, but no live information. Recomputed on demand (cheap: at
+// most a few sources), so no extra persistent state to keep in sync.
+export function visibleTiles(world: WorldState): Set<string> {
+  const out = new Set<string>();
+  const add = (s: { x: number; y: number } | null | undefined) => {
+    if (!s) return;
+    for (const k of diskKeys(s.x, s.y, VISION_RADIUS)) out.add(k);
+  };
+  add(world.hqTile);
+  const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
+  for (const scout of scouts) add(scout);
+  add(world.founder);
+  return out;
 }
 
 // Which region (if any) sits on a tile.
