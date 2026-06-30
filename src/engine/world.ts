@@ -31,10 +31,17 @@ export const VISION_RADIUS = 2;
 const MIN_START_LAND = 60;
 const POND_MARKER_COUNT = 24;
 const HOCKEY_ORG_COUNT = 10;
-// Rival HQs keep this far from the player start and from each other so the AI
-// clubs spread evenly across the continent rather than crowding the human.
-const RIVAL_MIN_FROM_START = 10;
-const RIVAL_MIN_SPACING = 12;
+// Minimum-separation tiers for AI HQ placement, tried strictest-first. Each AI
+// club founds well clear of the human start, every other club HQ, and every
+// independent; if a tight map offers no spot, we relax step-by-step (never below
+// the last, still clearly-separated tier) so all clubs still get a home.
+const RIVAL_SEP_TIERS: { start: number; org: number; rival: number }[] = [
+  { start: 16, org: 13, rival: 16 },
+  { start: 13, org: 11, rival: 13 },
+  { start: 11, org: 9, rival: 11 },
+  { start: 9, org: 7, rival: 9 },
+  { start: 7, org: 6, rival: 7 },
+];
 
 const HOCKEY_ORG_NAMES = [
   "Moscow",
@@ -324,7 +331,7 @@ function placeRivals(
 ): RivalClub[] {
   const rivalClubs = CLUB_LIST.filter((c) => c.id !== playerClubId);
   const rivals: RivalClub[] = [];
-  const occupied = new Set<string>(hockeyOrgs.map((o) => tileKey(o.x, o.y)));
+  const orgPts = hockeyOrgs.map((o) => ({ x: o.x, y: o.y }));
 
   // Score land tiles far from the player start the highest so rivals settle out
   // across the rest of the map; a noise term keeps placement from clumping.
@@ -338,26 +345,34 @@ function placeRivals(
     }))
     .sort((a, b) => b.score - a.score);
 
+  // A tile is acceptable for this tier if it clears the human start, every
+  // already-placed rival HQ, and every independent by the tier's distances.
+  const farEnough = (
+    t: { x: number; y: number },
+    sep: { start: number; org: number; rival: number },
+  ): boolean =>
+    Math.hypot(t.x - start.x, t.y - start.y) >= sep.start &&
+    orgPts.every((o) => Math.hypot(t.x - o.x, t.y - o.y) >= sep.org) &&
+    rivals.every(
+      (r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= sep.rival,
+    );
+
   for (const club of rivalClubs) {
-    const spot = candidates.find(({ tile }) => {
-      const key = tileKey(tile.x, tile.y);
-      if (occupied.has(key)) return false;
-      if (Math.hypot(tile.x - start.x, tile.y - start.y) < RIVAL_MIN_FROM_START) {
-        return false;
+    let chosen: WorldTile | null = null;
+    for (const sep of RIVAL_SEP_TIERS) {
+      const spot = candidates.find(({ tile }) => farEnough(tile, sep));
+      if (spot) {
+        chosen = spot.tile;
+        break;
       }
-      return !rivals.some(
-        (r) => Math.hypot(tile.x - r.hqTile.x, tile.y - r.hqTile.y) < RIVAL_MIN_SPACING,
-      );
-    });
-    if (!spot) continue; // degenerate map: skip rather than crowd
-    const { tile } = spot;
-    occupied.add(tileKey(tile.x, tile.y));
+    }
+    if (!chosen) continue; // degenerate map: skip rather than crowd
     rivals.push({
       clubId: club.id,
-      hqTile: { x: tile.x, y: tile.y },
+      hqTile: { x: chosen.x, y: chosen.y },
       productionPoints: 0,
       contacted: false,
-      units: [createRivalUnit(`rival-${club.id}-scout-1`, tile.x, tile.y)],
+      units: [createRivalUnit(`rival-${club.id}-scout-1`, chosen.x, chosen.y)],
     });
   }
 

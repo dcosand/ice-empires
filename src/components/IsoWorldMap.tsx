@@ -116,6 +116,7 @@ function drawScene(
   selectedKey: string | null,
   logoTexture: Texture | null,
   leaderTexture: Texture | null,
+  rivalLogos: Record<string, Texture>,
   registerScout: (node: Container | null, baseY: number) => void,
 ) {
   layer.removeChildren().forEach((c) => c.destroy());
@@ -268,22 +269,24 @@ function drawScene(
         layer.addChild(mk);
       }
 
-      // Rival clubs, fog-gated to the three-tier model. A rival HQ is a fixed
-      // landmark (like a hockey org): shown on any EXPLORED tile, dimmed to
-      // "memory" when not currently in sightline. Rival units MOVE every month,
-      // so they only render where the player has CURRENT vision — otherwise the
-      // player would see live enemy positions on tiles they explored long ago.
+      // Rival clubs, fog-gated to the three-tier model and drawn with the SAME
+      // art as the human player (club-colored): the HQ banner marker and the
+      // parka scout sprite. A rival HQ is a fixed landmark (like a hockey org):
+      // shown on any EXPLORED tile, dimmed to "memory" when out of sightline.
+      // Rival units MOVE every month, so they only render where the player has
+      // CURRENT vision — otherwise they'd leak live positions from stale memory.
       if (explored) {
         for (const rival of world.rivals) {
           const rClub = CLUBS[rival.clubId];
           const rAccent = accentNumber(rClub?.accent);
           if (rival.hqTile.x === gx && rival.hqTile.y === gy) {
-            const mk = rivalHqMarker(
+            const mk = hqMarker(
               gx,
               gy,
               c,
               rAccent,
               rClub ? shortClubLabel(rClub) : "Rival",
+              rivalLogos[rival.clubId] ?? null,
             );
             mk.position.y -= rise;
             applyMemory(mk, memory);
@@ -292,8 +295,8 @@ function drawScene(
           if (!visible) continue; // live units: current sightline only
           const unitsHere = rival.units.filter((u) => u.x === gx && u.y === gy);
           for (let i = 0; i < unitsHere.length; i++) {
-            const mk = rivalUnitMarker(gx, gy, c, rAccent);
-            mk.position.x += (i - (unitsHere.length - 1) / 2) * 9;
+            const mk = scoutMarker(gx, gy, c, false, rAccent);
+            mk.position.x += (i - (unitsHere.length - 1) / 2) * 10;
             mk.position.y -= rise;
             layer.addChild(mk);
           }
@@ -560,87 +563,6 @@ function hqMarker(
   }
 
   return m;
-}
-
-// A rival club's HQ. Deliberately "other" than the player's hqMarker: a stone
-// keep + a flying pennant in the rival's club color, no friendly logo plaque, so
-// the player reads it at a glance as an opponent's home ice rather than their own.
-function rivalHqMarker(
-  gx: number,
-  gy: number,
-  c: { x: number; y: number },
-  accent: number,
-  label: string,
-) {
-  const m = new Container();
-  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  m.zIndex = gx + gy + 50;
-
-  const g = new Graphics();
-  // ground shadow + plinth
-  g.ellipse(0, 1, 19, 7).fill({ color: 0x000000, alpha: 0.35 });
-  g.poly([-17, 0, 0, 8, 17, 0, 0, -8]).fill(0x1a1410).stroke({ width: 2, color: accent });
-  // a squat keep (rival "home ice" lodge)
-  g.roundRect(-11, -26, 22, 22, 2).fill(0x2c2622).stroke({ width: 1.5, color: darkenBy(accent, 0.2) });
-  g.roundRect(-11, -26, 22, 6, 2).fill(0x37302b); // lit upper band
-  g.rect(-7, -20, 5, 7).fill({ color: accent, alpha: 0.55 }); // windows
-  g.rect(2, -20, 5, 7).fill({ color: accent, alpha: 0.55 });
-  g.rect(-3, -12, 6, 8).fill(0x16110e); // doorway
-  // flagpole + pennant in the club color
-  g.rect(10, -44, 2, 24).fill(0xd8d2c8);
-  g.poly([12, -44, 30, -39, 12, -34]).fill(accent).stroke({ width: 1.2, color: 0x05121c });
-  m.addChild(g);
-
-  const text = new Text({
-    text: label,
-    style: {
-      fontFamily: "Inter, Arial, sans-serif",
-      fontSize: 12,
-      fontWeight: "800",
-      fill: 0xf3e7d6,
-      stroke: { color: 0x05121c, width: 4 },
-    },
-  });
-  text.anchor.set(0.5, 0);
-  text.position.set(0, 9);
-  m.addChild(text);
-  return m;
-}
-
-// A rival scout on the map — a compact hooded skater tinted to the club color,
-// kept visually lighter than the player's binocular scout so the two never read
-// as the same unit.
-function rivalUnitMarker(
-  gx: number,
-  gy: number,
-  c: { x: number; y: number },
-  accent: number,
-) {
-  const s = new Graphics();
-  s.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  s.zIndex = gx + gy + 0.6;
-
-  const coat = accent;
-  const coatDark = darkenBy(accent, 0.3);
-
-  s.ellipse(0, 1, 9, 4).fill({ color: 0x000000, alpha: 0.32 }); // contact shadow
-  // legs + boots
-  s.roundRect(-4.5, -12, 4, 10, 1.5).fill(0x2a2622);
-  s.roundRect(0.5, -12, 4, 10, 1.5).fill(0x2a2622);
-  // coat body
-  s.roundRect(-8, -27, 16, 18, 5).fill(coat);
-  s.roundRect(2.5, -26, 5.5, 16, 3).fill({ color: coatDark, alpha: 0.5 }); // right-side shade
-  s.roundRect(-0.7, -26, 1.4, 14, 0.6).fill({ color: coatDark, alpha: 0.85 }); // center seam
-  // arms
-  s.roundRect(-11, -26, 5, 10, 2.5).fill(coat);
-  s.roundRect(6, -26, 5, 10, 2.5).fill(coat);
-  // hood + face
-  s.circle(0, -31, 7).fill(coatDark);
-  s.circle(0, -30.5, 4.4).fill(0xe8c9a8); // face
-  // a short stick/banner planted at the side, club-colored
-  s.rect(10, -38, 1.6, 22).fill(0xd8d2c8);
-  s.poly([11.6, -38, 22, -34.5, 11.6, -31]).fill({ color: accent, alpha: 0.92 });
-  return s;
 }
 
 // Every revealed tile sits on the same flat ground plane now — the world reads
@@ -1564,6 +1486,9 @@ export function IsoWorldMap({
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [logoTexture, setLogoTexture] = useState<Texture | null>(null);
   const [leaderTexture, setLeaderTexture] = useState<Texture | null>(null);
+  // Rival HQ logos, keyed by club id, so rival HQs render with their own crest
+  // exactly like the player's HQ marker.
+  const [rivalLogos, setRivalLogos] = useState<Record<string, Texture>>({});
 
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
@@ -1893,7 +1818,7 @@ export function IsoWorldMap({
           sa.node.rotation = Math.sin(t * 1.7) * 0.03;
         });
 
-        drawScene(layer, state, selectedKey, logoTexture, leaderTexture, registerScout);
+        drawScene(layer, state, selectedKey, logoTexture, leaderTexture, rivalLogos, registerScout);
       });
 
     return () => {
@@ -1930,12 +1855,53 @@ export function IsoWorldMap({
     };
   }, [activeClub?.assetKey]);
 
+  // Load each rival club's logo so rival HQs render their own crest, just like
+  // the player's HQ marker. Rival rosters are fixed once the world is generated,
+  // so this runs once per set of rival club ids.
+  const rivalClubKey = (state.world?.rivals ?? [])
+    .map((r) => r.clubId)
+    .join(",");
+  useEffect(() => {
+    const rivals = state.world?.rivals ?? [];
+    if (rivals.length === 0) {
+      setRivalLogos({});
+      return;
+    }
+    let cancelled = false;
+    Promise.all(
+      rivals.map((r) => {
+        const club = CLUBS[r.clubId];
+        if (!club) return Promise.resolve([r.clubId, null] as const);
+        return Assets.load<Texture>(clubAsset(club, "logo"))
+          .then((tex) => [r.clubId, tex] as const)
+          .catch(() => [r.clubId, null] as const);
+      }),
+    ).then((entries) => {
+      if (cancelled) return;
+      const map: Record<string, Texture> = {};
+      for (const [id, tex] of entries) if (tex) map[id] = tex;
+      setRivalLogos(map);
+    });
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rivalClubKey]);
+
   // Redraw whenever the world, selection, or a texture changes.
   useEffect(() => {
     if (readyRef.current && layerRef.current) {
-      drawScene(layerRef.current, state, selectedKey, logoTexture, leaderTexture, registerScout);
+      drawScene(
+        layerRef.current,
+        state,
+        selectedKey,
+        logoTexture,
+        leaderTexture,
+        rivalLogos,
+        registerScout,
+      );
     }
-  }, [state, selectedKey, logoTexture, leaderTexture]);
+  }, [state, selectedKey, logoTexture, leaderTexture, rivalLogos]);
 
   return (
     <div className="panel iso-panel">
