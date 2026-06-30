@@ -32,7 +32,7 @@ export function LandingScreen({
           className="btn btn-primary btn-lg title-cta"
           onClick={() => dispatch({ type: "START_GAME" })}
         >
-          Start New Dynasty
+          <span className="title-cta-main">Start New Dynasty</span>
         </button>
       </div>
     </div>
