@@ -198,7 +198,7 @@ export function isRevealed(world: WorldState, x: number, y: number): boolean {
 
 // The set of tiles a player can CURRENTLY see (live terrain, units, markers),
 // derived fresh from where their vision sources stand right now: the Club HQ
-// (a permanent bubble once founded), the active Scout, and the pre-founding
+// (a permanent bubble once founded), every active Scout, and the pre-founding
 // Founding Group. Tiles that are revealed but not in this set are "explored" —
 // remembered terrain, but no live information. Recomputed on demand (cheap: at
 // most a few sources), so no extra persistent state to keep in sync.

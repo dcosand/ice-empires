@@ -1674,12 +1674,9 @@ button {
 .iso-canvas canvas {
   display: block;
 }
-.iso-canvas-wrap {
-  position: relative;
-}
 .iso-minimap {
   position: absolute;
-  right: 12px;
+  left: 12px;
   bottom: 12px;
   border-radius: 8px;
   border: 1px solid var(--border-bright);
@@ -1687,7 +1684,7 @@ button {
   background: #0a1018;
   cursor: pointer;
   touch-action: none;
-  z-index: 5;
+  z-index: 12;
 }
 .iso-controls {
   margin-top: 12px;

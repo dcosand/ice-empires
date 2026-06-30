@@ -1970,9 +1970,20 @@ function MiniMap({
       if (!state.devRevealAll && !revealedSet.has(`${region.tile.x},${region.tile.y}`)) continue;
       dot(region.tile.x, region.tile.y, PIN_COLOR[rState], 2.4);
     }
+    for (const org of world.hockeyOrgs) {
+      if (!state.devRevealAll && !revealedSet.has(`${org.x},${org.y}`)) continue;
+      dot(org.x, org.y, 0xf2c14e, 2.2, true);
+    }
+    for (const pond of world.pondMarkers) {
+      if (pond.investigated) continue;
+      if (!state.devRevealAll && !revealedSet.has(`${pond.x},${pond.y}`)) continue;
+      dot(pond.x, pond.y, 0x9fd4ff, 2);
+    }
     const accent = accentNumber(getActiveClub(state)?.accent);
     if (world.founder) dot(world.founder.x, world.founder.y, accent, 2.8, true);
-    if (world.scout) dot(world.scout.x, world.scout.y, 0x38bdf8, 2.8, true);
+    for (const scout of allScouts(world)) {
+      dot(scout.x, scout.y, 0x38bdf8, 2.8, scout.id === world.selectedScoutId);
+    }
     if (world.hqTile) dot(world.hqTile.x, world.hqTile.y, accent, 3.4, true);
   }, [state, world, mmW, mmH]);
 
