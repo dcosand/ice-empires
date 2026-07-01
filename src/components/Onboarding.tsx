@@ -25,10 +25,11 @@ function buildSlides(state: GameState): Slide[] {
   const rink = (alt: string) => (
     <img className="onb-hero-img" src={clubAsset(club, "rink")} alt={alt} onError={hideOnError} />
   );
-  const backdrop = (alt: string) => (
+  // Bespoke onboarding art (cinematic backgrounds, club-agnostic).
+  const art = (name: string, alt: string) => (
     <img
       className="onb-hero-img"
-      src={clubAsset(club, "background")}
+      src={`/assets/onboarding/${name}.jpg`}
       alt={alt}
       onError={hideOnError}
     />
@@ -63,7 +64,7 @@ function buildSlides(state: GameState): Slide[] {
         "You start in the Pond Hockey Era. Hockey is raw and unorganized — no leagues, no drafts, no scouts.",
         "Just passion, cold nights, and the will to build something. Research Hockey Knowledge to move the game forward.",
       ],
-      hero: backdrop("Pond hockey night"),
+      hero: art("pond-hockey-era", "Pond hockey under the lights"),
     },
     {
       icon: "🔭",
@@ -73,7 +74,7 @@ function buildSlides(state: GameState): Slide[] {
         "Send Scouts across the map to uncover major clubs, independent hockey regions, talent hotbeds, and hidden opportunities.",
         "Select your Scout and click a tile to send it exploring the ice.",
       ],
-      hero: backdrop("The hockey world"),
+      hero: art("discover-world", "The hockey world from above"),
     },
     {
       icon: "🛡",
@@ -85,7 +86,7 @@ function buildSlides(state: GameState): Slide[] {
       ],
       hero: (
         <div className="onb-logo-row">
-          {CLUB_LIST.slice(0, 6).map((c) => (
+          {CLUB_LIST.map((c) => (
             <img
               key={c.id}
               src={clubAsset(c, "logo")}
@@ -105,14 +106,17 @@ function buildSlides(state: GameState): Slide[] {
         "Scout them. Influence them. Earn their trust and turn them into pipelines that feed your club.",
       ],
       hero: (
-        <div className="onb-panel">
-          <div className="onb-panel-title">Prairie Rink Belt</div>
-          <div className="onb-panel-sub">Independent Region</div>
-          <OnbBar label="Player Output" value="High" pct={82} />
-          <OnbBar label="Staff Opportunities" value="Medium" pct={54} />
-          <OnbBar label="Scouting Coverage" value="25%" pct={25} />
-          <OnbBar label="Recruitment Influence" value="10%" pct={10} />
-        </div>
+        <>
+          {art("independent-regions", "An independent hockey town")}
+          <div className="onb-panel onb-panel-float">
+            <div className="onb-panel-title">Prairie Rink Belt</div>
+            <div className="onb-panel-sub">Independent Region</div>
+            <OnbBar label="Player Output" value="High" pct={82} />
+            <OnbBar label="Staff Opportunities" value="Medium" pct={54} />
+            <OnbBar label="Scouting Coverage" value="25%" pct={25} />
+            <OnbBar label="Recruitment Influence" value="10%" pct={10} />
+          </div>
+        </>
       ),
     },
     {
@@ -167,12 +171,7 @@ function buildSlides(state: GameState): Slide[] {
         "Enter tournaments. Test your team. Earn reputation and build rivalries.",
         "Victory opens doors. Dynasties leave legacies.",
       ],
-      hero: (
-        <div className="onb-hero-glow">
-          <div className="onb-trophy">🏆</div>
-          <div className="onb-trophy-caption">Founders Cup</div>
-        </div>
-      ),
+      hero: art("compete", "Championship trophy on arena ice"),
     },
     {
       icon: "👑",

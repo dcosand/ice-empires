@@ -2672,20 +2672,6 @@ button {
   border-radius: 50%;
   background: radial-gradient(circle, rgba(242, 193, 78, 0.22) 0%, transparent 70%);
 }
-.onb-trophy {
-  font-size: 120px;
-  line-height: 1;
-  filter: drop-shadow(0 8px 20px rgba(242, 193, 78, 0.35));
-  animation: onb-pop 520ms ease-out 120ms both;
-}
-.onb-trophy-caption {
-  position: relative;
-  font-family: var(--font-display);
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  font-size: 12px;
-  color: var(--gold);
-}
 .onb-hero-crest {
   position: relative;
   width: min(80%, 350px);
@@ -2706,13 +2692,13 @@ button {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 20px 24px;
-  padding: 24px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 18px 20px;
+  padding: 22px;
 }
 .onb-logo-row img {
   width: 100%;
-  max-width: 132px;
+  max-width: 116px;
   justify-self: center;
   filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
   animation: onb-pop 440ms ease-out both;
