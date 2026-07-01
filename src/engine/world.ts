@@ -296,6 +296,7 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
       const baseTerrain = generatedTerrain(x, y, seed);
       const feature = generatedFeature(x, y, baseTerrain, seed);
       const variant = Math.floor(noise2d(x, y, seed + 4049) * 4);
+      const foliageDensity = foliageField(x, y, seed);
       const elevation = generatedElevation(x, y, baseTerrain, feature, seed);
       // Promote a pond basin from its underlying wet terrain to a first-class
       // `pond` terrain. The water body itself is the tile (skateable /
@@ -310,6 +311,7 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
         variant,
         elevation,
         feature,
+        foliageDensity,
         surfaceState: pond ? "frozen" : undefined,
         valid: baseTerrain !== "water" && baseTerrain !== "mountain" && feature !== "lake",
       });
@@ -702,8 +704,8 @@ const EDGE_MARGIN = 0.16; // outer fraction of the map that falls away to ocean
 const EDGE_FALLOFF = 0.6; // how hard that outer margin is pushed underwater
 const MOUNTAIN_RIDGE = 0.93; // ridged-noise level that becomes mountains (higher = fewer)
 const MOUNTAIN_INLAND = 0.54; // mountains only where the land field is this high
-const BIOME_JITTER_T = 0.1; // per-tile temperature wobble for within-cluster variety
-const BIOME_JITTER_M = 0.16; // per-tile moisture wobble for within-cluster variety
+const BIOME_JITTER_T = 0.15; // per-tile temperature wobble for within-cluster variety
+const BIOME_JITTER_M = 0.22; // per-tile moisture wobble for within-cluster variety
 
 // Landmass field. A domain-warped, medium-frequency noise gathers land into
 // several discrete masses (continents) with irregular, fragmented coastlines,
@@ -747,6 +749,17 @@ function temperatureField(x: number, y: number, seed: number): number {
   const t =
     1 - lat * 0.85 + (smoothNoise(x / 16, y / 16, seed + 77) - 0.5) * 0.32;
   return Math.max(0, Math.min(1, t));
+}
+
+// A smooth, low-frequency vegetation field (0..1). Trees key off this so foliage
+// gathers into forests — dense cores fading to sparse edges — rather than an even
+// per-tile sprinkle. The low frequency makes clusters several tiles across; the
+// finer octave breaks up the edges so tree lines aren't smooth blobs.
+function foliageField(x: number, y: number, seed: number): number {
+  return (
+    smoothNoise(x / 8, y / 8, seed + 8461) * 0.68 +
+    smoothNoise(x / 3.2, y / 3.2, seed + 8462) * 0.32
+  );
 }
 
 // Ridged noise (0..1, peaks along narrow lines) so mountains form thin ranges,
@@ -889,15 +902,26 @@ function isRiverTile(
   terrain: WorldTerrain,
   seed: number,
 ): boolean {
-  if (terrain === "water" || terrain === "ice") return false;
-  for (let i = 0; i < 4; i++) {
-    const base = ((i + 1) / 5) * WORLD_HEIGHT;
+  // Rivers skip arid ground — a river running through open desert reads as a
+  // bug, not a wadi. Deserts stay dry (their water, if any, is an oasis palm).
+  if (
+    terrain === "water" ||
+    terrain === "ice" ||
+    terrain === "desert" ||
+    terrain === "high-desert"
+  )
+    return false;
+  // Three meandering rivers spread toward the poles ((i+1)/4 → 0.25/0.5/0.75 of
+  // the map height) with modest amplitude, so they don't all pile up and overlap
+  // through the temperate middle band where most play happens.
+  for (let i = 0; i < 3; i++) {
+    const base = ((i + 1) / 4) * WORLD_HEIGHT;
     const phase = noise2d(i * 17, 0, seed + 909) * Math.PI * 2;
     const bend =
-      Math.sin(x / (10 + i * 2) + phase) * (5 + i) +
-      Math.sin(x / 23 + phase * 0.5) * 4;
+      Math.sin(x / (12 + i * 2) + phase) * (4 + i) +
+      Math.sin(x / 23 + phase * 0.5) * 3;
     const curveY = base + bend;
-    if (Math.abs(y - curveY) < 0.52) return true;
+    if (Math.abs(y - curveY) < 0.5) return true;
   }
   return false;
 }

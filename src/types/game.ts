@@ -383,6 +383,7 @@ export type WorldTile = {
   variant: number; // 0-3 art variation within the terrain family
   elevation: number; // 0..~1.1 height field; drives how tall the iso tile rises
   feature?: WorldFeature;
+  foliageDensity?: number; // 0..1 smooth field; drives forest clustering (thick cores, thin edges)
   surfaceState?: PondSurfaceState; // pond surface condition; pond tiles default to "frozen"
   valid: boolean; // can be entered / founded on (water is not)
 };

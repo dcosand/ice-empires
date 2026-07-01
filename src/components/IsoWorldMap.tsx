@@ -202,7 +202,10 @@ function drawScene(
       gTop.zIndex = gx + gy + 0.05;
       // Solid base color; the ground texture adds flat multi-tone color patches.
       gTop.poly(diamond()).fill(topColor);
-      if (explored) drawGroundTexture(gTop, tile, pal, topColor);
+      if (explored) {
+        drawTerrainBlend(gTop, world, tile);
+        drawGroundTexture(gTop, tile, pal, topColor);
+      }
       // Soft seam (was a hard dark grid line, which read as a board game).
       gTop.poly(diamond()).stroke({ width: 1, color: 0x0c1722, alpha: 0.12 });
       applyMemory(gTop, memory);
@@ -233,10 +236,19 @@ function drawScene(
           applyMemory(lf, memory);
           layer.addChild(lf);
         }
-        const veg = vegetationSprite(tile);
+        const veg = vegetationSprite(tile, world);
         if (veg) {
-          veg.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise + 8);
-          veg.zIndex = gx + gy + 0.14;
+          // Break the iso lattice: shove each grove off its tile centre and vary
+          // its size per tile, so a forest scatters organically instead of
+          // reading as neat diagonal rows of identical clumps. The offset is a
+          // good fraction of a tile, so crowns spill across seams and interlock.
+          const jx = (tileRand(gx, gy, 41) - 0.5) * 26;
+          const jy = (tileRand(gx, gy, 42) - 0.5) * 14;
+          const s = 0.82 + tileRand(gx, gy, 43) * 0.42;
+          const mirror = veg.scale.x < 0 ? -1 : 1;
+          veg.scale.set(mirror * s, s);
+          veg.position.set(isoX(gx, gy) - c.x + jx, isoY(gx, gy) - c.y - rise + 8 + jy);
+          veg.zIndex = gx + gy + 0.14 + jy * 0.001;
           applyMemory(veg, memory);
           layer.addChild(veg);
         }
@@ -664,6 +676,45 @@ function dapple(g: Graphics, base: number, v: number) {
   });
 }
 
+// Ground terrains that feather into each other at their shared edges. Water,
+// ponds and mountains are excluded — their edges (beaches, rock) read fine hard.
+function isBlendableTerrain(t: WorldTerrain): boolean {
+  return (
+    t === "plains" ||
+    t === "desert" ||
+    t === "high-desert" ||
+    t === "coastal" ||
+    t === "tropical" ||
+    t === "ice"
+  );
+}
+
+// Feather the seam between neighbouring terrain families. Each of the four iso
+// edges shared with a differently-typed land neighbour gets a translucent wedge
+// of that neighbour's tone, running from the edge toward the tile centre — so
+// tan desert bleeds into green plains across a soft band instead of a hard line.
+// Where a tile borders several types the wedges overlap at the centre and mix,
+// which is exactly the muddled transition ground you want.
+function drawTerrainBlend(g: Graphics, world: WorldState, tile: WorldTile) {
+  if (!isBlendableTerrain(tile.terrain)) return;
+  const T: [number, number] = [0, -TILE_H / 2];
+  const R: [number, number] = [TILE_W / 2, 0];
+  const B: [number, number] = [0, TILE_H / 2];
+  const L: [number, number] = [-TILE_W / 2, 0];
+  const edges: [number, number, [number, number], [number, number]][] = [
+    [tile.x, tile.y - 1, T, R], // up-right edge
+    [tile.x + 1, tile.y, R, B], // down-right edge
+    [tile.x, tile.y + 1, B, L], // down-left edge
+    [tile.x - 1, tile.y, L, T], // up-left edge
+  ];
+  for (const [nx, ny, a, b] of edges) {
+    const n = tileAt(world, nx, ny);
+    if (!n || n.terrain === tile.terrain || !isBlendableTerrain(n.terrain)) continue;
+    const col = (TERRAIN[n.terrain] ?? TERRAIN.plains).top;
+    g.poly([a[0], a[1], b[0], b[1], 0, 0]).fill({ color: col, alpha: 0.24 });
+  }
+}
+
 // ---- Flat ground cover (painted onto the tile's top diamond) --------------
 function drawGroundTexture(
   g: Graphics,
@@ -707,8 +758,31 @@ function drawGroundTexture(
       break;
   }
 
+  // A shaded forest floor under dense foliage. The tile-top diamond tiles
+  // seamlessly, so darkening it where the canopy thickens turns a row of
+  // separate grove sprites into one continuous woodland — the trees blend
+  // because the bright grass gaps between them disappear.
+  forestFloor(g, tile);
+
   if (tile.feature === "river") drawRiver(g, v);
   if (tile.feature === "lake") drawPond(g, v, true);
+}
+
+function forestFloor(g: Graphics, tile: WorldTile) {
+  let floor: number;
+  let shade: number;
+  if (tile.terrain === "plains") {
+    floor = 0.4;
+    shade = 0x3a5a2f;
+  } else if (tile.terrain === "tropical") {
+    floor = 0.42;
+    shade = 0x1e5636;
+  } else {
+    return;
+  }
+  const t = ((tile.foliageDensity ?? 0) - floor) / 0.4;
+  if (t <= 0) return;
+  g.poly(diamond()).fill({ color: shade, alpha: Math.min(0.52, t * 0.62) });
 }
 
 function groundGrass(g: Graphics, v: number, dark: number, light: number) {
@@ -763,9 +837,12 @@ function groundHighDesert(g: Graphics, v: number, color: number) {
   if (v % 2 === 0) g.poly([-14, -2, 14, -4]).stroke({ width: 1, color: 0x80613e, alpha: 0.3 });
 }
 
-function groundCoastal(g: Graphics, v: number, color: number) {
+function groundCoastal(g: Graphics, v: number, _color: number) {
+  // A sandy shore, not open water: a pale beach band and faint dry-sand ripples.
+  // The old blue wave stroke made inland coastal tiles look like water on land.
   g.poly([-30, 0, -15, 7, 0, 12, 15, 7, 30, 0, 16, 4, 0, 8, -16, 4]).fill({ color: 0xe6ca89, alpha: 0.5 });
-  g.poly([-19, -3 + v, -7, -7 + v, 8, -5 + v, 19, -9 + v]).stroke({ width: 2, color, alpha: 0.5 });
+  g.poly([-19, -3 + v, -7, -7 + v, 8, -5 + v, 19, -9 + v]).stroke({ width: 1.6, color: 0xcbad68, alpha: 0.42 });
+  if (v % 2 === 0) g.poly([-14, 6, 0, 3, 14, 6]).stroke({ width: 1.3, color: 0xd8c07e, alpha: 0.34 });
 }
 
 function groundRock(g: Graphics, v: number, color: number) {
@@ -936,19 +1013,32 @@ function paintPeak(
   ctx.restore();
 
   if (snow) {
-    const sy = apexY + peakH * 0.2;
+    // A deeper snowcap for the "ice empires" look: the snowline sits ~42% of the
+    // way down the peak, with a jagged lower edge and a couple of snow fingers
+    // running further down the gullies. Kept just inside the rock silhouette.
+    const f = 0.42;
+    const sy = apexY + peakH * f;
+    const halfSnow = peakW * 0.5 * f * 0.94;
     ctx.beginPath();
-    ctx.moveTo(apexX - peakW * 0.14, sy);
-    ctx.quadraticCurveTo(apexX - peakW * 0.05, sy - peakH * 0.09, apexX - peakW * 0.01, sy - peakH * 0.02);
-    ctx.quadraticCurveTo(apexX + peakW * 0.03, sy - peakH * 0.1, apexX + peakW * 0.08, sy - peakH * 0.03);
-    ctx.quadraticCurveTo(apexX + peakW * 0.12, sy + peakH * 0.03, apexX + peakW * 0.14, sy + peakH * 0.01);
+    ctx.moveTo(apexX - halfSnow, sy);
+    ctx.quadraticCurveTo(apexX - halfSnow * 0.55, sy + peakH * 0.07, apexX - halfSnow * 0.28, sy - peakH * 0.02);
+    ctx.quadraticCurveTo(apexX - halfSnow * 0.08, sy + peakH * 0.11, apexX + halfSnow * 0.12, sy - peakH * 0.02);
+    ctx.quadraticCurveTo(apexX + halfSnow * 0.34, sy + peakH * 0.09, apexX + halfSnow * 0.6, sy - peakH * 0.01);
+    ctx.quadraticCurveTo(apexX + halfSnow * 0.82, sy + peakH * 0.05, apexX + halfSnow, sy);
     ctx.lineTo(apexX, apexY);
     ctx.closePath();
     const snowG = ctx.createLinearGradient(0, apexY, 0, sy);
-    snowG.addColorStop(0, "#eef2f6");
-    snowG.addColorStop(1, "#c8d4e0");
+    snowG.addColorStop(0, "#f6f9fc");
+    snowG.addColorStop(1, "#cfdae6");
     ctx.fillStyle = snowG;
     ctx.fill();
+    // A soft shaded underside so the snow reads as a rounded cap, not a decal.
+    ctx.strokeStyle = "rgba(120,140,165,0.35)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(apexX - halfSnow * 0.9, sy - peakH * 0.01);
+    ctx.quadraticCurveTo(apexX, sy + peakH * 0.05, apexX + halfSnow * 0.9, sy - peakH * 0.01);
+    ctx.stroke();
   }
 }
 
@@ -981,13 +1071,17 @@ function paintMountain(ctx: Ctx, w: number, h: number, tier: string, variant: nu
     paintMound(ctx, cx + 7, base, h * 0.36, w * 0.6, "#77866a", "#647354", "#4d5942");
     paintMound(ctx, cx - 6, base, h * 0.48, w * 0.62, "#828c78", "#6a7958", "#505d44");
   } else if (tier === "mid") {
-    paintMound(ctx, cx - 10, base, h * 0.34, w * 0.44, "#7b8580", "#626b67", "#505753");
-    paintPeak(ctx, cx + 4 + lean, base, h * 0.62, w * 0.52, lean, variant === 2);
+    // A cluster of peaks so a mid tile reads as a rugged massif, not a lone bump:
+    // a low mound behind, a secondary peak, then a taller snow-dusted summit.
+    paintMound(ctx, cx - w * 0.3, base, h * 0.3, w * 0.42, "#7b8580", "#626b67", "#505753");
+    paintPeak(ctx, cx - w * 0.16, base, h * 0.5, w * 0.4, -2, variant >= 1);
+    paintPeak(ctx, cx + w * 0.18 + lean, base, h * 0.66, w * 0.5, lean, true);
   } else {
-    // high peak — a back ridge plus a dominant (sometimes snow-capped) summit
-    paintPeak(ctx, cx - w * 0.2, base, h * 0.48, w * 0.4, -2, false);
-    if (variant >= 1) paintPeak(ctx, cx + w * 0.22, base, h * 0.52, w * 0.42, 2, false);
-    paintPeak(ctx, cx + lean, base, h * 0.72, w * 0.5, lean, true);
+    // high peak — a back ridge of snow-capped summits behind a dominant, deeply
+    // snow-covered central peak.
+    paintPeak(ctx, cx - w * 0.2, base, h * 0.5, w * 0.4, -2, variant !== 0);
+    if (variant >= 1) paintPeak(ctx, cx + w * 0.22, base, h * 0.54, w * 0.42, 2, true);
+    paintPeak(ctx, cx + lean, base, h * 0.74, w * 0.52, lean, true);
   }
 }
 
@@ -1170,12 +1264,30 @@ function drawBroadleafTree(ctx: Ctx, x: number, base: number, w: number, h: numb
   ctx.fill();
 }
 
-function paintBroadleafGrove(ctx: Ctx, w: number, h: number, variant: number) {
+// A grove of `count` broadleaf trees (1 = a lone sapling, 5 = a packed forest
+// core). Trees are drawn back-to-front so nearer crowns overlap farther ones,
+// reading as depth within a cluster.
+const BROADLEAF_LAYOUT: { x: number; dy: number; w: number; h: number }[] = [
+  { x: 0.5, dy: 0, w: 20, h: 26 }, // center anchor (always present)
+  { x: 0.26, dy: -3, w: 16, h: 22 },
+  { x: 0.74, dy: -2, w: 17, h: 23 },
+  { x: 0.12, dy: 2, w: 14, h: 19 }, // reaches the tile edge to meet the next grove
+  { x: 0.88, dy: 1, w: 15, h: 20 },
+];
+
+function paintBroadleafGrove(ctx: Ctx, w: number, h: number, variant: number, count: number) {
   const base = h - 4;
-  drawBroadleafTree(ctx, w * 0.38, base - 3, 17, 23, variant);
-  if (variant !== 0) drawBroadleafTree(ctx, w * 0.62, base - 2, 16, 21, variant + 1);
-  drawBroadleafTree(ctx, w * 0.52, base, 20, 26, variant + 2);
-  grain(ctx, w * 0.16, h * 0.18, w * 0.66, h * 0.68, 20);
+  const trees = BROADLEAF_LAYOUT.slice(0, Math.max(1, Math.min(5, count)))
+    .slice()
+    .sort((a, b) => a.dy - b.dy);
+  trees.forEach((t, i) => {
+    // Per-(variant,index) offset so the five variants are genuinely different
+    // arrangements, not the same trees redrawn.
+    const dx = (tileVisualRand(variant, i, 71) - 0.5) * w * 0.16;
+    const dy = (tileVisualRand(variant, i, 72) - 0.5) * 5;
+    drawBroadleafTree(ctx, w * t.x + dx, base + t.dy + dy, t.w, t.h, variant + i);
+  });
+  grain(ctx, w * 0.14, h * 0.16, w * 0.7, h * 0.7, 20);
 }
 
 function drawPineTree(ctx: Ctx, x: number, base: number, w: number, h: number, variant: number, snow: boolean) {
@@ -1210,12 +1322,25 @@ function drawPineTree(ctx: Ctx, x: number, base: number, w: number, h: number, v
   }
 }
 
-function paintPineGrove(ctx: Ctx, w: number, h: number, variant: number, snow: boolean) {
+const PINE_LAYOUT: { x: number; dy: number; w: number; h: number }[] = [
+  { x: 0.5, dy: 0, w: 20, h: 34 }, // tallest, front-center (always present)
+  { x: 0.26, dy: -2, w: 18, h: 30 },
+  { x: 0.74, dy: -1, w: 16, h: 27 },
+  { x: 0.12, dy: 2, w: 15, h: 24 }, // reaches the tile edge to meet the next grove
+  { x: 0.88, dy: 1, w: 14, h: 22 },
+];
+
+function paintPineGrove(ctx: Ctx, w: number, h: number, variant: number, snow: boolean, count: number) {
   const base = h - 4;
-  drawPineTree(ctx, w * 0.34, base - 2, 18, 30, variant, snow);
-  drawPineTree(ctx, w * 0.58, base - 1, 16, 27, variant + 1, snow);
-  if (variant !== 1) drawPineTree(ctx, w * 0.48, base, 20, 34, variant + 2, snow);
-  grain(ctx, w * 0.24, h * 0.18, w * 0.56, h * 0.64, 18);
+  const trees = PINE_LAYOUT.slice(0, Math.max(1, Math.min(5, count)))
+    .slice()
+    .sort((a, b) => a.dy - b.dy);
+  trees.forEach((t, i) => {
+    const dx = (tileVisualRand(variant, i, 71) - 0.5) * w * 0.16;
+    const dy = (tileVisualRand(variant, i, 72) - 0.5) * 5;
+    drawPineTree(ctx, w * t.x + dx, base + t.dy + dy, t.w, t.h, variant + i, snow);
+  });
+  grain(ctx, w * 0.22, h * 0.16, w * 0.58, h * 0.66, 18);
 }
 
 function drawPalmTree(ctx: Ctx, x: number, base: number, w: number, h: number, variant: number) {
@@ -1290,37 +1415,91 @@ function drawPalmTree(ctx: Ctx, x: number, base: number, w: number, h: number, v
   ctx.fill();
 }
 
-function paintPalmGrove(ctx: Ctx, w: number, h: number, variant: number) {
+// A cluster of `count` palms at height `scale` (1 = full, ~0.7 = short oasis).
+// Spaced wide so desert palms read as a scattered oasis, not a packed grove.
+function paintPalmGrove(ctx: Ctx, w: number, h: number, variant: number, count = 2, scale = 1) {
   const base = h - 4;
-  drawPalmTree(ctx, w * 0.39, base - 1, 30, 34, variant);
-  drawPalmTree(ctx, w * 0.6, base, 24, 29, variant + 1);
-  if (variant === 2) drawPalmTree(ctx, w * 0.5, base + 1, 20, 25, variant + 2);
+  drawPalmTree(ctx, w * 0.3, base - 1, 30 * scale, 34 * scale, variant);
+  if (count >= 2) drawPalmTree(ctx, w * 0.72, base, 24 * scale, 29 * scale, variant + 1);
+  if (count >= 3) drawPalmTree(ctx, w * 0.5, base + 1, 20 * scale, 25 * scale, variant + 2);
 }
 
-function vegetationSprite(tile: WorldTile): Sprite | null {
+// How full a grove is on this tile, from the smooth foliage-density field: 0 is
+// open ground, 1-5 is a grove of that many trees. Below `floor` the tile is a
+// clearing; above it both the odds of a grove and its tree count ramp up, so a
+// forest reads as a thick core thinning to scattered trees at the edge.
+function groveCount(tile: WorldTile, floor: number, span: number, density: number): number {
+  const t = (density - floor) / span;
+  if (t <= 0) return 0;
+  // Scattered gaps near the edge (low t), near-solid canopy toward the core.
+  if (tileRand(tile.x, tile.y, 23) > Math.min(1, t * 1.2)) return 0;
+  return 1 + Math.round(Math.min(1, t) * 4);
+}
+
+// Barren / arid ground that a forest fades away from. Woods thin as they approach
+// these so a desert→forest boundary is a gradient of scattered trees, not a wall.
+function isBarrenTerrain(t: WorldTerrain): boolean {
+  return t === "desert" || t === "high-desert" || t === "water" || t === "mountain" || t === "pond";
+}
+
+// How much to shave off a tile's foliage density based on its surroundings: the
+// larger the share of its eight neighbours that are barren, the thinner its
+// canopy — so forest edges feather into the neighbouring desert or shore.
+function aridNeighborPenalty(world: WorldState, tile: WorldTile): number {
+  let barren = 0;
+  let total = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const n = tileAt(world, tile.x + dx, tile.y + dy);
+      if (!n) continue;
+      total++;
+      if (isBarrenTerrain(n.terrain)) barren++;
+    }
+  }
+  return total ? (barren / total) * 0.22 : 0;
+}
+
+function vegetationSprite(tile: WorldTile, world: WorldState): Sprite | null {
   const look = tileLook(tile);
-  const roll = tileRand(tile.x, tile.y, 23);
+  const v = look.v; // 0-4: five distinct grove arrangements per type, not three
+  // The tile's own foliage field, thinned toward barren (desert/shore) borders.
+  const density = (tile.foliageDensity ?? 0.5) - aridNeighborPenalty(world, tile);
   let sp: Sprite | null = null;
 
-  if (tile.terrain === "tropical" && roll < 0.22) {
-    const v = look.v % 3;
-    sp = new Sprite(landformTexture(`palm-grove-${v}`, 48, 38, (c) => paintPalmGrove(c, 48, 38, v)));
-    sp.alpha = 0.94;
-  } else if (tile.terrain === "coastal" && roll < 0.03 && tile.feature !== "river") {
-    const v = look.v % 3;
-    sp = new Sprite(landformTexture(`shore-palm-${v}`, 42, 34, (c) => paintPalmGrove(c, 42, 34, v)));
-    sp.alpha = 0.9;
-  } else if (tile.terrain === "ice" && roll < 0.1) {
-    const v = look.v % 3;
-    sp = new Sprite(landformTexture(`pine-snow-grove-${v}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, true)));
-    sp.alpha = 0.9;
-  } else if (tile.terrain === "plains" && roll < 0.15) {
-    const v = look.v % 3;
-    const pineMix = tile.elevation && tile.elevation > 0.54 && roll < 0.08;
-    sp = pineMix
-      ? new Sprite(landformTexture(`pine-grove-${v}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, false)))
-      : new Sprite(landformTexture(`broadleaf-grove-${v}`, 44, 34, (c) => paintBroadleafGrove(c, 44, 34, v)));
-    sp.alpha = 0.9;
+  if (tile.terrain === "tropical") {
+    // Lush broadleaf jungle — dense, blending canopy rather than bare palm
+    // trunks. Palms now live on the desert as oases (below).
+    const n = groveCount(tile, 0.32, 0.34, density);
+    if (n > 0) {
+      sp = new Sprite(landformTexture(`jungle-grove-${v}-${n}`, 48, 36, (c) => paintBroadleafGrove(c, 48, 36, v, n)));
+      sp.alpha = 0.92;
+    }
+  } else if (tile.terrain === "desert") {
+    // Sparse, short oasis palms — a rare accent well spaced across the dunes.
+    if (tileRand(tile.x, tile.y, 27) < 0.045) {
+      const count = tileRand(tile.x, tile.y, 28) < 0.35 ? 2 : 1;
+      sp = new Sprite(
+        landformTexture(`oasis-palm-${v}-${count}`, 46, 30, (c) => paintPalmGrove(c, 46, 30, v, count, 0.72)),
+      );
+      sp.alpha = 0.92;
+    }
+  } else if (tile.terrain === "ice") {
+    const n = groveCount(tile, 0.52, 0.34, density);
+    if (n > 0) {
+      sp = new Sprite(landformTexture(`pine-snow-grove-${v}-${n}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, true, n)));
+      sp.alpha = 0.9;
+    }
+  } else if (tile.terrain === "plains") {
+    const n = groveCount(tile, 0.4, 0.32, density);
+    if (n > 0) {
+      // Higher plains carry conifers; the lowlands are broadleaf woods.
+      const pineMix = (tile.elevation ?? 0) > 0.54 && look.v % 2 === 0;
+      sp = pineMix
+        ? new Sprite(landformTexture(`pine-grove-${v}-${n}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, false, n)))
+        : new Sprite(landformTexture(`broadleaf-grove-${v}-${n}`, 48, 36, (c) => paintBroadleafGrove(c, 48, 36, v, n)));
+      sp.alpha = 0.9;
+    }
   }
 
   if (!sp) return null;
