@@ -13,7 +13,6 @@ import {
 import type {
   GameAction,
   GameState,
-  DiscoveryStateValue,
   PondSurfaceState,
   WorldState,
   WorldTerrain,
@@ -72,14 +71,6 @@ const FOG = { top: 0x111c28, side: 0x0a1119, detail: 0x1c2b3d };
 // and bluish, with no live markers — versus full-color tiles you can see now.
 const MEMORY_TINT = 0x5a6e86;
 const MEMORY_ALPHA = 0.86;
-
-const PIN_COLOR: Record<DiscoveryStateValue, number> = {
-  hidden: 0x000000,
-  rumored: 0x8aa0b4,
-  discovered: 0xf2c14e,
-  surveyed: 0x38bdf8,
-  influenced: 0x5fd08a,
-};
 
 function accentNumber(hex: string | undefined): number {
   if (!hex) return 0xf2c14e;
@@ -255,24 +246,9 @@ function drawScene(
       }
 
       // ---- markers on top of the tile ----
-      const regionId = regionIdAtTile(gx, gy);
-      const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : "hidden";
-      if (explored && regionId && rState !== "hidden") {
-        const pin = new Graphics();
-        pin.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y - rise);
-        pin.zIndex = gx + gy + 0.4;
-        const col = PIN_COLOR[rState];
-        pin.poly([-4, -14, 4, -14, 0, -5]).fill(col);
-        pin.circle(0, -20, 7).fill(col).stroke({ width: 2, color: 0x05121c });
-        pin.circle(0, -20, 2.5).fill(0xffffff);
-        // "Contested" is live intel — only trust it where you currently have eyes.
-        if (visible && state.discovery.contested.includes(regionId)) {
-          pin.circle(0, -20, 11).stroke({ width: 2, color: 0xef6f6f });
-        }
-        applyMemory(pin, memory);
-        layer.addChild(pin);
-      }
-
+      // NOTE: region-discovery pins are intentionally not rendered on the map
+      // right now — the discovery subsystem still runs, but its markers are
+      // hidden until we decide whether that feature stays.
       const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
       if (explored && org) {
         const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
@@ -1971,7 +1947,14 @@ export function IsoWorldMap({
             focusY = isoY(focus.x, focus.y) - cen.y;
           }
         }
-        layer.position.set(vw / 2 - focusX, vh / 2 - focusY - 60);
+        // Start zoomed in on the HQ so the club and its Scout read clearly at
+        // game start; the player can wheel back out to survey the world.
+        const INITIAL_SCALE = 1.8;
+        layer.scale.set(INITIAL_SCALE);
+        layer.position.set(
+          vw / 2 - focusX * INITIAL_SCALE,
+          vh / 2 - focusY * INITIAL_SCALE - 60,
+        );
         layerRef.current = layer;
         appRef.current = app;
         readyRef.current = true;
@@ -2268,14 +2251,8 @@ function MiniMap({
       }
     };
 
-    // Region pins that have been at least discovered, on explored tiles.
-    for (const [regionId, rState] of Object.entries(state.discovery.regionStates)) {
-      if (rState === "hidden") continue;
-      const region = REGIONS_BY_ID[regionId];
-      if (!region) continue;
-      if (!state.devRevealAll && !revealedSet.has(`${region.tile.x},${region.tile.y}`)) continue;
-      dot(region.tile.x, region.tile.y, PIN_COLOR[rState], 2.4);
-    }
+    // Region-discovery pins are hidden on the map for now (see the tile-marker
+    // loop above), so they're omitted from the minimap too.
     for (const org of world.hockeyOrgs) {
       if (!state.devRevealAll && !revealedSet.has(`${org.x},${org.y}`)) continue;
       dot(org.x, org.y, 0xf2c14e, 2.2, true);

@@ -44,16 +44,33 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return { ...state, phase: "founding", selectedClubId: action.clubId };
 
     case "START_FOUNDING": {
-      // The founding turn IS Month 1, played on the same map-oriented Dashboard
-      // as the rest of the game: seed the club and generate the world, then go
-      // straight into "playing" with the Founding Group on the board.
+      // Month 1 begins with the club already founded: seed the club, generate the
+      // world, then immediately plant the HQ on the chosen start tile. There's no
+      // separate "move the Founding Group, then found here" step — the player
+      // drops straight into the game with production open and a Scout on the ice.
       if (!state.selectedClubId) return state;
       const withWorld: GameState = {
         ...state,
         phase: "playing",
         world: createWorld(Date.now(), state.selectedClubId),
       };
-      return beginFounding(withWorld, state.selectedClubId);
+      const seeded = beginFounding(withWorld, state.selectedClubId);
+      const club = seeded.club;
+      if (!club || !seeded.world?.founder) return seeded;
+      const placed = foundOnTile(seeded);
+      return {
+        ...placed,
+        eventLog: [
+          {
+            id: "club-founded",
+            month: placed.month,
+            title: `${club.name} HQ established`,
+            message: `${club.name} plants its home ice. Production opens — start building your first facility.`,
+            type: "era",
+          },
+          ...placed.eventLog,
+        ],
+      };
     }
 
     case "SELECT_FOUNDING_UNIT":

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
-import type { Dispatch, ReactNode, SyntheticEvent } from "react";
+import type { Dispatch, ReactNode } from "react";
 import type {
   EventLogEntry,
   GameAction,
   GameState,
   PendingEncounter,
 } from "../types/game";
-import { clubAsset } from "../data/clubs";
+import { Onboarding } from "./Onboarding";
 import { DISCOVERY_BY_ID } from "../data/discovery";
 import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
 import { FACILITIES_BY_ID } from "../data/facilities";
@@ -156,12 +156,13 @@ export function Dashboard({
       )}
 
       {founded && showFoundingMoment && state.club && (
-        <FoundingMoment
+        <Onboarding
           state={state}
-          onClose={() => setShowFoundingMoment(false)}
-          onOpenHQ={() => {
+          onClose={() => {
             setShowFoundingMoment(false);
-            setOverlay("club");
+            // Drop the player straight into play with their Scout in hand.
+            const firstScout = allScouts(state.world)[0];
+            if (firstScout) dispatch({ type: "SELECT_SCOUT", scoutId: firstScout.id });
           }}
         />
       )}
@@ -169,60 +170,6 @@ export function Dashboard({
   );
 }
 
-function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
-  e.currentTarget.style.display = "none";
-}
-
-// The "club founded" beat, shown over the live map so the moment stays part of
-// the same map-oriented gameplay instead of a disconnected screen.
-function FoundingMoment({
-  state,
-  onClose,
-  onOpenHQ,
-}: {
-  state: GameState;
-  onClose: () => void;
-  onOpenHQ: () => void;
-}) {
-  const club = state.club!;
-  return (
-    <div
-      className="founding-moment"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`${club.name} founded`}
-    >
-      <div className="founding-moment-scrim" />
-      <div className="founding-moment-card">
-        <div className="fmoment-rink-wrap">
-          <img
-            className="fmoment-rink"
-            src={clubAsset(club, "rink")}
-            alt={`${club.name} rink`}
-            onError={hideOnError}
-          />
-          <div className="fmoment-sweep" />
-        </div>
-        <div className="fmoment-body">
-          <div className="eyebrow">Club Founded · Month {state.month}</div>
-          <h2>{club.name}</h2>
-          <p>
-            The first home ice is claimed. Production opens — choose your first
-            build, then finish out the month.
-          </p>
-          <div className="fmoment-actions">
-            <button className="btn btn-primary" onClick={onClose}>
-              Continue
-            </button>
-            <button className="btn" onClick={onOpenHQ}>
-              Open Club HQ
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 function CommandRail({
   state,

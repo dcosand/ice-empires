@@ -2554,8 +2554,8 @@ button {
   }
 }
 
-/* ---------- Founding celebration modal ---------- */
-.founding-moment {
+/* ---------- Onboarding carousel (post-founding intro) ---------- */
+.onboarding {
   position: fixed;
   inset: 0;
   z-index: 90;
@@ -2564,84 +2564,317 @@ button {
   justify-content: center;
   padding: 24px;
 }
-.founding-moment-scrim {
+.onboarding-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(4, 8, 13, 0.76);
+  background: rgba(4, 8, 13, 0.82);
+  backdrop-filter: blur(2px);
 }
-.founding-moment-card {
+.onboarding-card {
   position: relative;
   z-index: 1;
-  width: min(900px, 100%);
+  display: grid;
+  grid-template-columns: 1.15fr 1fr;
+  width: min(1040px, 100%);
+  height: min(560px, 82vh);
   overflow: hidden;
   border: 1px solid var(--border-bright);
-  border-radius: 12px;
-  background: linear-gradient(180deg, #111d2b 0%, #0c1520 100%);
-  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.7);
+  border-radius: 14px;
+  background: linear-gradient(180deg, #0f1a27 0%, #0a121c 100%);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.72);
+  animation: onb-card-in 320ms ease-out both;
 }
-.fmoment-rink-wrap {
-  position: relative;
-  height: min(46vh, 390px);
-  min-height: 250px;
-  overflow: hidden;
-  background: #08101a;
-}
-.fmoment-rink {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  animation: rink-rise 700ms ease-out both;
-}
-.fmoment-rink-wrap::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(8, 14, 22, 0.02) 0%, rgba(8, 14, 22, 0.78) 100%);
-}
-.fmoment-sweep {
-  position: absolute;
-  inset: -30% -80%;
-  background: linear-gradient(90deg, transparent 42%, rgba(255, 255, 255, 0.2) 50%, transparent 58%);
-  transform: translateX(-35%) rotate(-12deg);
-  animation: rink-sweep 1200ms ease-out 180ms both;
-}
-.fmoment-body {
-  padding: 20px 22px 22px;
-}
-.fmoment-body h2 {
-  font-size: clamp(30px, 5vw, 50px);
-  line-height: 1.02;
-  margin: 4px 0 8px;
-}
-.fmoment-body p {
-  max-width: 680px;
-  color: var(--text-dim);
-  font-size: 16px;
-  margin: 0;
-}
-.fmoment-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin-top: 18px;
-}
-@keyframes rink-rise {
+@keyframes onb-card-in {
   from {
     opacity: 0;
-    transform: scale(1.04) translateY(10px);
+    transform: translateY(14px) scale(0.99);
   }
   to {
     opacity: 1;
-    transform: scale(1) translateY(0);
+    transform: none;
   }
 }
-@keyframes rink-sweep {
+.onb-skip {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 3;
+  padding: 4px 10px;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  background: rgba(8, 14, 22, 0.5);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  cursor: pointer;
+}
+.onb-skip:hover {
+  color: var(--text);
+  border-color: var(--border-bright);
+}
+
+/* ---- Hero (visual) side ---- */
+.onb-hero {
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(120% 120% at 30% 20%, #16283b 0%, #08101a 70%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  animation: onb-hero-in 480ms ease-out both;
+}
+@keyframes onb-hero-in {
   from {
-    transform: translateX(-35%) rotate(-12deg);
+    opacity: 0;
+    transform: scale(1.05);
   }
   to {
-    transform: translateX(35%) rotate(-12deg);
+    opacity: 1;
+    transform: none;
+  }
+}
+.onb-hero-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.onb-hero-fade {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, transparent 55%, rgba(10, 18, 28, 0.9) 100%),
+    linear-gradient(180deg, rgba(8, 14, 22, 0) 55%, rgba(8, 14, 22, 0.6) 100%);
+  pointer-events: none;
+}
+.onb-hero-logo {
+  position: relative;
+  z-index: 1;
+  width: min(64%, 300px);
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.6));
+  animation: onb-pop 520ms ease-out 120ms both;
+}
+.onb-hero-glow {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.onb-hero-glow::before {
+  content: "";
+  position: absolute;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(242, 193, 78, 0.22) 0%, transparent 70%);
+}
+.onb-trophy {
+  font-size: 120px;
+  line-height: 1;
+  filter: drop-shadow(0 8px 20px rgba(242, 193, 78, 0.35));
+  animation: onb-pop 520ms ease-out 120ms both;
+}
+.onb-trophy-caption {
+  position: relative;
+  font-family: var(--font-display);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 12px;
+  color: var(--gold);
+}
+.onb-hero-crest {
+  position: relative;
+  width: min(80%, 350px);
+  filter: drop-shadow(0 12px 28px rgba(242, 193, 78, 0.3));
+  animation: onb-pop 560ms ease-out 100ms both;
+}
+@keyframes onb-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.86);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.onb-logo-row {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px 24px;
+  padding: 24px;
+}
+.onb-logo-row img {
+  width: 100%;
+  max-width: 132px;
+  justify-self: center;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+  animation: onb-pop 440ms ease-out both;
+}
+
+/* ---- Floating stat panels (placeholder UI) ---- */
+.onb-panel {
+  position: relative;
+  z-index: 1;
+  width: min(82%, 300px);
+  padding: 14px 16px;
+  background: linear-gradient(180deg, rgba(19, 31, 46, 0.94) 0%, rgba(12, 20, 30, 0.94) 100%);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.5);
+  animation: onb-pop 480ms ease-out 120ms both;
+}
+.onb-panel-float {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  width: min(78%, 268px);
+}
+.onb-panel-title {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text);
+}
+.onb-panel-sub {
+  font-size: 11px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  margin-bottom: 10px;
+}
+.onb-bar-row {
+  display: grid;
+  grid-template-columns: 1fr 60px auto;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.onb-bar-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.onb-bar-track {
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  overflow: hidden;
+}
+.onb-bar-fill {
+  display: block;
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--gold) 100%);
+}
+.onb-bar-value {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---- Body (text) side ---- */
+.onb-body {
+  display: flex;
+  flex-direction: column;
+  padding: 28px 28px 20px;
+}
+.onb-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  /* Clear the absolutely-positioned Skip button in the top-right. */
+  padding-right: 62px;
+}
+.onb-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  font-size: 22px;
+  border-radius: 50%;
+  color: var(--gold);
+  background: radial-gradient(circle at 50% 40%, rgba(242, 193, 78, 0.16) 0%, transparent 70%);
+  border: 1px solid var(--gold-dim);
+}
+.onb-title {
+  font-family: var(--font-display);
+  font-size: clamp(26px, 3.4vw, 36px);
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 2px 0 4px;
+}
+.onb-tagline {
+  color: var(--gold);
+  font-size: 18px;
+  font-weight: 600;
+}
+.onb-lines {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.onb-lines p {
+  margin: 0;
+  color: var(--text-dim);
+  font-size: 18px;
+  line-height: 1.5;
+}
+.onb-footer {
+  margin-top: auto;
+  padding-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.onb-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  font-variant-numeric: tabular-nums;
+}
+.onb-dots {
+  display: flex;
+  gap: 7px;
+  margin-right: auto;
+}
+.onb-dot {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border-radius: 50%;
+  border: 0;
+  background: rgba(255, 255, 255, 0.22);
+  cursor: pointer;
+  transition: background 160ms, transform 160ms;
+}
+.onb-dot:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+.onb-dot.is-active {
+  background: var(--gold);
+  transform: scale(1.25);
+}
+.onb-nav {
+  display: flex;
+  gap: 8px;
+}
+@media (max-width: 720px) {
+  .onboarding-card {
+    grid-template-columns: 1fr;
+    height: min(640px, 88vh);
+  }
+  .onb-hero {
+    min-height: 180px;
   }
 }
 

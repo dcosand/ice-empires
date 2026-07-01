@@ -93,11 +93,11 @@ export function FoundingScreen({
               className="btn btn-gold btn-lg btn-block fr-primary-action"
               onClick={() => dispatch({ type: "START_FOUNDING" })}
             >
-              Begin the Founding Expedition →
+              Found the Club →
             </button>
             <p className="fr-action-note">
-              You'll lead your Leader across the ice and choose where to plant
-              the club.
+              Your home ice is claimed and your first Scout takes to the world —
+              production opens right away.
             </p>
             <button
               className="btn btn-block fr-secondary-action"
