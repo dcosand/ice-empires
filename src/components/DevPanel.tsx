@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState } from "../types/game";
 import { FACILITIES } from "../data/facilities";
 import { RESEARCH } from "../data/research";
+import { ERAS, ERA_ORDER } from "../data/eras";
 
 // In-app developer panel. Hidden by default; toggled with Cmd/Ctrl+Shift+Period.
 // Lets a developer jump the game into any state for testing: reset to turn 1,
@@ -85,9 +86,53 @@ export function DevPanel({
         >
           🤝 Meet nearest rival
         </button>
+        <button
+          style={hasWorld ? actionBtnStyle : disabledBtnStyle}
+          disabled={!hasWorld}
+          onClick={() => dispatch({ type: "DEV_MEET_INDEPENDENT" })}
+          title="Open the meeting screen for the nearest unmet independent"
+        >
+          🏘 Meet nearest independent
+        </button>
         <div style={hintStyle}>
           Enable “Reveal all tiles” to see rival HQs and their scouts on the map.
         </div>
+      </div>
+
+      <div style={sectionStyle}>
+        <div style={sectionTitleStyle}>Act I flow</div>
+        <button
+          style={inGame ? actionBtnStyle : disabledBtnStyle}
+          disabled={!inGame}
+          onClick={() => dispatch({ type: "DEV_GRANT_POND_TECH" })}
+          title="Complete every Pond Hockey era technology"
+        >
+          🧪 Grant all pond techs
+        </button>
+        <button
+          style={hasWorld ? actionBtnStyle : disabledBtnStyle}
+          disabled={!hasWorld}
+          onClick={() => dispatch({ type: "DEV_SPAWN_BUILDER" })}
+          title="Drop a Rink Rats builder at your HQ"
+        >
+          ⛏ Spawn builder at HQ
+        </button>
+        <button
+          style={inGame ? actionBtnStyle : disabledBtnStyle}
+          disabled={!inGame}
+          onClick={() => dispatch({ type: "DEV_ADD_EQUIPMENT" })}
+          title="Add 5 equipment to the shed"
+        >
+          🏒 +5 Equipment (have {state.equipment})
+        </button>
+        <button
+          style={inGame && !state.pendingTryout ? actionBtnStyle : disabledBtnStyle}
+          disabled={!inGame || !!state.pendingTryout}
+          onClick={() => dispatch({ type: "DEV_FORCE_TRYOUTS" })}
+          title="Open a tryout, bypassing tech/rink/cost gates"
+        >
+          📋 Force tryouts (roster {state.roster.length})
+        </button>
       </div>
 
       <div style={sectionStyle}>
@@ -108,20 +153,29 @@ export function DevPanel({
       </div>
 
       <div style={sectionStyle}>
-        <div style={sectionTitleStyle}>Research</div>
-        {RESEARCH.map((t) => {
-          const done = state.completedResearch.includes(t.id);
-          return (
-            <label key={t.id} style={rowStyle}>
-              <input
-                type="checkbox"
-                checked={done}
-                onChange={() => dispatch({ type: "DEV_TOGGLE_RESEARCH", techId: t.id })}
-              />
-              <span>{t.name}</span>
-            </label>
-          );
-        })}
+        <div style={sectionTitleStyle}>Research (40 techs, by era)</div>
+        {ERA_ORDER.map((eraId) => (
+          <details key={eraId} open={eraId === state.eraId}>
+            <summary style={{ ...sectionTitleStyle, cursor: "pointer" }}>
+              {ERAS[eraId]?.name ?? eraId}
+            </summary>
+            {RESEARCH.filter((t) => t.eraId === eraId).map((t) => {
+              const done = state.completedResearch.includes(t.id);
+              return (
+                <label key={t.id} style={rowStyle}>
+                  <input
+                    type="checkbox"
+                    checked={done}
+                    onChange={() =>
+                      dispatch({ type: "DEV_TOGGLE_RESEARCH", techId: t.id })
+                    }
+                  />
+                  <span>{t.name}</span>
+                </label>
+              );
+            })}
+          </details>
+        ))}
       </div>
 
       <div style={footerStyle}>Toggle this panel with ⌘⇧. (Ctrl⇧. on Windows)</div>

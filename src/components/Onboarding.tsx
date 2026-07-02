@@ -56,10 +56,10 @@ function buildSlides(state: GameState): Slide[] {
     {
       icon: "⛸",
       title: "The Pond Hockey Era",
-      tagline: "Every dynasty begins somewhere.",
+      tagline: "Can we make hockey exist?",
       lines: [
-        "You start in the Pond Hockey Era. Hockey is raw and unorganized — no leagues, no drafts, no scouts.",
-        "Just passion, cold nights, and the will to build something. Research Hockey Knowledge to move the game forward.",
+        `Nobody here plays hockey — not yet. Standing on winter ice, your founder saw the whole game in a single vision: skaters, sticks, a frozen pond with a name. ${club.leaderArchetype} has been trying to explain it ever since.`,
+        "Making the vision real is the opening quest: shovel a pond into a rink, cut branches into sticks, and hold tryouts for whoever's curious enough to show up.",
       ],
       hero: art("pond-hockey-era", "Pond hockey under the lights"),
     },

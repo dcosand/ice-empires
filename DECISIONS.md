@@ -94,3 +94,77 @@ From Month 6, once ≥2 regions are discovered, a discovered/surveyed/influenced
 region may be flagged `contested` with a log line naming a rival club (e.g.
 "A Helsinki Ice Crown scout was seen near Finnish Goalie Lakes."). No rival
 units, pathfinding, trade, diplomacy, or leader screens — pressure/tension only.
+
+## D16 — Two-currency economy (+ standing + inventory)
+The four resources collapsed to two true currencies: **Funds** (Budget +
+Operations merged — one production/purchase pool, Polytopia-simple) and
+**Hockey Knowledge** (research, unchanged). **Reputation** remains a
+`ResourceSet` key internally but is a non-spendable standing stat: nothing
+charges it; actions *require* thresholds (e.g. Send Introduction wants rep ≥ 3).
+**Equipment** is deliberately NOT a resource — it's `state.equipment` shed
+inventory (harvests + Equipment Shed), consumed 1-per-player to gear recruits,
+with a monthly FIFO auto-equip pass.
+
+## D17 — Five-era arc with per-club milestone transitions
+Eras: pond-hockey → club-formation → competitive-hockey → hockey-operations →
+dynasty (`ERA_ORDER`). A club advances when its CURRENT era's requirement
+checklist is fully met (Humankind-style; no global clock). Rivals advance on a
+seeded month schedule (`rival.eraId`) and contacted rivals' transitions are
+broadcast in the log for pressure. An era with an empty requirements list never
+advances.
+
+## D18 — Rinks are map objects; the Outdoor Rink facility is retired
+Rinks are built on the map by builder units, not in the HQ panel (per doc 12's
+"local improvements" doctrine). Staged: Clear Snow (instant, level-0 Cleared
+Pond) → Build Level 1 Rink (2 months, needs Outdoor Rinkcraft). "Club rinks"
+(Chebyshev ≤ 3 from HQ) enable tryouts and yield +1 Funds/mo each (replacing
+the retired facility's income); every rink is a radius-1 vision source.
+Worldgen guarantees a frozen pond (desert starts: a paveable flat) within 2
+tiles of the start.
+
+## D19 — Builders share the scouts array with a `kind` field
+Map work crews (Rink Rats and unique replacements) are `WorldUnit`s with
+`kind: "builder"` living in `world.scouts`, so movement/selection/vision/
+markers reuse the scout code. Builders trigger goodie huts and first contact
+but never survey regions. Multi-month builds use `unit.working`; working units
+are pinned at 0 moves by the monthly refresh. Harvesting is once-per-tile via
+`world.harvestedTiles` + zeroing the tile's `foliageDensity` (the grove
+visibly disappears).
+
+## D20 — PendingMeeting has kinds; one-popup rule has priority
+`pendingMeeting` is `{ kind: "rival" | "independent", id }`. Popup priority is
+encounter > rival meeting > independent meeting; every trigger early-returns
+if anything is pending. The rival meeting is a cinematic leader scene whose
+greeting choice stores `rival.attitude` ("friendly" | "wary") — the seed of
+Act-3 diplomacy.
+
+## D21 — Independents relationship ladder (city-state v1)
+`WorldHockeyOrg` carries `playerContacted`, `influencePoints`,
+`relationshipLevel` (Contacted 0 / Friendly 1 / Partner 2 / Affiliate 3 at
+10/25/50 influence), `contactedByClubIds` (rivals court them too, by
+adjacency), and 2–4 seeded `prospects` that stay fogged until Act-2 scouting
+networks. First contact grants +1 rep and +5 influence; Send Introduction
+(first-contact tech, rep ≥ 3, 1 fund) adds +5 influence.
+
+## D22 — Club uniques: swap-in defs + combined registries
+`data/clubUniques.ts` gives every club a unique unit and facility. Uniques
+with `replacesUnitId` swap the base def out of that club's production list
+(`unitsForClub`/`facilitiesForClub`); lookups of OWNED items must use the
+combined `ALL_UNIT_DEFS_BY_ID`/`ALL_FACILITY_DEFS_BY_ID` registries. V1 wired:
+Arizona Asphalt Crew (desert street rinks), Calgary Barn Raisers (1-month
+rinks), Detroit Foundry Crew (+1 harvest), Helsinki Goalie Whisperer (goalie
+tryout odds), Minnesota Warming-House Crew (+1 candidate); the rest are
+honest stubs.
+
+## D23 — Tech tree ships whole; prereq chips over drawn edges
+All 40 techs across five eras are visible from month one (aspiration is the
+point); only pond-era techs gate behavior in Act I. The tree screen uses era
+columns × branch rows with prereq chips (green when met) instead of SVG edge
+drawing — cheaper, and readable at any width.
+
+## D24 — Roster players are first-class (not cards)
+`state.roster: Player[]` with 20-scale attributes (pond-era rolls 1–6),
+`hasEquipment`, and a personality note. Cards remain for staff/one-off
+opportunities. Tryouts are the Act-I recruiting verb: tech + club rink +
+3 funds → 3–5 seeded candidates. Era exit wants 6 geared players including a
+goalie (`hasFullLine`).
