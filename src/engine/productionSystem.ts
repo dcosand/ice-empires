@@ -14,6 +14,7 @@ import { hasClubRink } from "./rinkSystem";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
 import { spawnProducedScout } from "./scoutSystem";
+import { spawnProducedBuilder } from "./builderSystem";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
 // slot. Funds income each month funds the item (see DECISIONS.md D2, revised
@@ -186,9 +187,9 @@ function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
   });
   if (def.spawnsMapUnit === "scout") {
     spawnProducedScout(draft, instanceId, def.name);
+  } else if (def.spawnsMapUnit === "builder") {
+    spawnProducedBuilder(draft, instanceId, def.name, def.id);
   }
-  // "builder" spawns are handled by builderSystem.spawnProducedBuilder — wired
-  // where this switch grows in the builder milestone.
   push("build", `${def.name} ready`, def.flavor);
   for (const unlock of def.unlocks ?? []) {
     if (unlock.type === "card") grantCard(draft, unlock.cardId, push);

@@ -21,11 +21,12 @@ import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
 
 // The Scout unlocks once Scouting Reports is researched AND the club has basic
-// infrastructure (at least one facility built).
+// infrastructure (at least one facility built). Builders don't count — owning
+// a Rink Rats crew shouldn't block recruiting your first scout.
 export function canRecruitScout(state: GameState): boolean {
   return (
     !!state.world?.hqTile &&
-    allScouts(state.world).length === 0 &&
+    allScouts(state.world).filter((u) => u.kind !== "builder").length === 0 &&
     state.completedResearch.includes("scouting-reports") &&
     state.facilities.length >= 1
   );
@@ -72,7 +73,8 @@ export function firstScout(world: WorldState | null | undefined): WorldUnit | nu
   return allScouts(world)[0] ?? null;
 }
 
-function syncLegacyScout(world: WorldState, scouts: WorldUnit[], selectedScoutId: string | null): WorldState {
+// Exported for builderSystem, which also mutates the shared field-unit array.
+export function syncLegacyScout(world: WorldState, scouts: WorldUnit[], selectedScoutId: string | null): WorldState {
   const selected = scouts.find((s) => s.id && s.id === selectedScoutId) ?? scouts[0] ?? null;
   return {
     ...world,
@@ -133,10 +135,10 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
 }
 
 // The region the scout can survey right now (on its tile, discovered, not yet
-// surveyed/influenced).
+// surveyed/influenced). Builders never survey — that's scout work.
 export function surveyableRegionId(state: GameState): string | null {
   const scout = activeScout(state.world);
-  if (!scout) return null;
+  if (!scout || scout.kind === "builder") return null;
   const regionId = regionIdAtTile(scout.x, scout.y);
   if (!regionId) return null;
   const s = state.discovery.regionStates[regionId];
@@ -357,14 +359,14 @@ function grantSurveyCard(state: GameState, tags: string[]): GameState {
   return state;
 }
 
-// Refresh the scout's movement points at the start of each month (silent).
+// Refresh each unit's movement points at the start of each month (silent).
+// Units mid-construction (`working` set) stay pinned at 0 moves until done.
 export function refreshScoutMoves(draft: GameState): void {
   const world = draft.world;
   if (!world) return;
-  const scouts = allScouts(world).map((scout) => ({
-    ...scout,
-    movesRemaining: scout.movesPerTurn,
-  }));
+  const scouts = allScouts(world).map((unit) =>
+    unit.working ? { ...unit, movesRemaining: 0 } : { ...unit, movesRemaining: unit.movesPerTurn },
+  );
   draft.world = syncLegacyScout(world, scouts, world.selectedScoutId);
 }
 

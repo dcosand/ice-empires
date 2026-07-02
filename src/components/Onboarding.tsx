@@ -22,9 +22,6 @@ type Slide = {
 // panels — until bespoke onboarding art exists.
 function buildSlides(state: GameState): Slide[] {
   const club = state.club!;
-  const rink = (alt: string) => (
-    <img className="onb-hero-img" src={clubAsset(club, "rink")} alt={alt} onError={hideOnError} />
-  );
   // Bespoke onboarding art (cinematic backgrounds, club-agnostic).
   const art = (name: string, alt: string) => (
     <img
@@ -46,7 +43,7 @@ function buildSlides(state: GameState): Slide[] {
       ],
       hero: (
         <>
-          {rink(`${club.name} rink`)}
+          {art("founded", "Pond hockey at sunrise")}
           <img
             className="onb-hero-logo"
             src={clubAsset(club, "logo")}
@@ -85,16 +82,19 @@ function buildSlides(state: GameState): Slide[] {
         "Build your reputation and earn their respect — or become their greatest rival.",
       ],
       hero: (
-        <div className="onb-logo-row">
-          {CLUB_LIST.map((c) => (
-            <img
-              key={c.id}
-              src={clubAsset(c, "logo")}
-              alt={`${c.name} crest`}
-              onError={hideOnError}
-            />
-          ))}
-        </div>
+        <>
+          {art("major-clubs", "Grand club halls")}
+          <div className="onb-logo-row">
+            {CLUB_LIST.map((c) => (
+              <img
+                key={c.id}
+                src={clubAsset(c, "logo")}
+                alt={`${c.name} crest`}
+                onError={hideOnError}
+              />
+            ))}
+          </div>
+        </>
       ),
     },
     {
@@ -129,7 +129,7 @@ function buildSlides(state: GameState): Slide[] {
       ],
       hero: (
         <>
-          {rink(`${club.name} facilities`)}
+          {art("build-club", "A club rising from the ice")}
           <div className="onb-panel onb-panel-float">
             <div className="onb-panel-title">Club HQ</div>
             <div className="onb-panel-sub">{club.name}</div>
@@ -149,12 +149,7 @@ function buildSlides(state: GameState): Slide[] {
       ],
       hero: (
         <>
-          <img
-            className="onb-hero-img"
-            src={clubAsset(club, "leader")}
-            alt={`${club.name} leader`}
-            onError={hideOnError}
-          />
+          {art("develop-talent", "A scout evaluating prospects")}
           <div className="onb-panel onb-panel-float">
             <div className="onb-panel-title">Prospect</div>
             <div className="onb-panel-sub">Two-Way Forward · Age 17</div>

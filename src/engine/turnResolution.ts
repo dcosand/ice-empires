@@ -3,6 +3,7 @@ import { getMonthlyIncome } from "./selectors";
 import { addResources } from "./resources";
 import { RESOURCE_LABELS } from "./resources";
 import { progressProduction } from "./productionSystem";
+import { progressBuilderWork } from "./builderSystem";
 import { progressResearch } from "./researchSystem";
 import { resolveDiscovery } from "./discoverySystem";
 import { progressConnection } from "./regionDevelopment";
@@ -44,6 +45,7 @@ export function endMonth(state: GameState): GameState {
 
   // 2+. Systems — each contributes a readable world/club update.
   progressProduction(draft, push);
+  progressBuilderWork(draft, push); // map crews: rink builds advance/finish
   progressResearch(draft, push);
   resolveDiscovery(draft, push); // Local Hockey Search creates leads; units reveal map fog.
   progressConnection(draft, push); // Establish Local Connection -> influenced

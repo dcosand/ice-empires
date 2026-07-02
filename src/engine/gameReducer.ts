@@ -17,6 +17,7 @@ import {
   surveyRegion,
   triggerPondEncounter,
 } from "./scoutSystem";
+import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
@@ -145,6 +146,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         action.x,
         action.y,
       );
+
+    case "CLEAR_SNOW":
+      return clearSnow(state, action.unitId);
+
+    case "BUILD_RINK":
+      return startRinkBuild(state, action.unitId);
+
+    case "HARVEST_BRANCHES":
+      return harvestBranches(state, action.unitId);
 
     case "RESOLVE_ENCOUNTER":
       return resolvePendingEncounter(state);

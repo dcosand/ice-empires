@@ -481,10 +481,34 @@ export function createScoutUnit(
     id,
     unitDefId: "pond-scout",
     name,
+    kind: "scout",
     x,
     y,
     movesPerTurn: SCOUT_MOVES,
     movesRemaining: SCOUT_MOVES,
+  };
+}
+
+const BUILDER_MOVES = 2;
+
+// A map work crew (Rink Rats or a club's unique replacement). Shares the
+// scouts array + movement code; `kind: "builder"` gates its special actions.
+export function createBuilderUnit(
+  id: string,
+  x: number,
+  y: number,
+  name = "Rink Rats",
+  unitDefId = "rink-rats",
+): WorldUnit {
+  return {
+    id,
+    unitDefId,
+    name,
+    kind: "builder",
+    x,
+    y,
+    movesPerTurn: BUILDER_MOVES,
+    movesRemaining: BUILDER_MOVES,
   };
 }
 

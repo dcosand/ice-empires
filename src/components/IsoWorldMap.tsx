@@ -42,6 +42,12 @@ import {
   canEstablishConnection,
   CONNECTION_MONTHS,
 } from "../engine/regionDevelopment";
+import {
+  canBuildRink,
+  canClearSnow,
+  canHarvestBranches,
+  canPaveStreetRink,
+} from "../engine/builderSystem";
 
 // ---- Isometric geometry --------------------------------------------------
 const TILE_W = 64; // diamond width
@@ -2375,19 +2381,31 @@ function UnitOverlay({
 
   const isLeader = leaderSelected;
   const unit = isLeader ? world.founder! : selectedScout!;
+  const isBuilder = !isLeader && unit.kind === "builder";
   const club = getActiveClub(state);
-  const name = isLeader ? "Leader" : unit.name ?? "Pond Scout";
-  const role = isLeader ? "Founding Group" : "Exploration";
+  const name = isLeader
+    ? "Leader"
+    : unit.name ?? (isBuilder ? "Rink Rats" : "Pond Scout");
+  const role = isLeader ? "Founding Group" : isBuilder ? "Construction" : "Exploration";
   const outOfMoves = unit.movesRemaining <= 0;
+  const working = !isLeader ? unit.working : undefined;
 
   // Scout field orders are tied to the tile the unit is standing on. Goodie huts
   // are no longer a manual order — they auto-resolve into a pop-up on arrival.
   const surveyId = !isLeader ? surveyableRegionId(state) : null;
-  const scoutRegionId = !isLeader ? regionIdAtTile(unit.x, unit.y) : null;
+  const scoutRegionId = !isLeader && !isBuilder ? regionIdAtTile(unit.x, unit.y) : null;
   const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
   const connecting =
     !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
-  const hasOrder = isLeader ? !!club : !!surveyId || canConnect;
+  // Builder orders (kind-gated inside builderSystem's can* predicates).
+  const unitId = unit.id ?? "";
+  const showClearSnow = isBuilder && canClearSnow(state, unitId);
+  const showBuildRink = isBuilder && canBuildRink(state, unitId);
+  const showPave = isBuilder && canPaveStreetRink(state, unitId);
+  const showHarvest = isBuilder && canHarvestBranches(state, unitId);
+  const hasOrder = isLeader
+    ? !!club
+    : !!surveyId || canConnect || showClearSnow || showBuildRink || showPave || showHarvest;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -2401,7 +2419,7 @@ function UnitOverlay({
             }}
           />
         ) : (
-          <ItemArt kind="unit" id="pond-scout" />
+          <ItemArt kind="unit" id={isBuilder ? "rink-rats" : "pond-scout"} />
         )}
       </div>
       <div className="unit-body">
@@ -2443,6 +2461,38 @@ function UnitOverlay({
               Establish Connection ({CONNECTION_MONTHS} mo)
             </button>
           )}
+          {showClearSnow && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => dispatch({ type: "CLEAR_SNOW", unitId })}
+            >
+              Clear Snow (ends turn)
+            </button>
+          )}
+          {showBuildRink && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() => dispatch({ type: "BUILD_RINK", unitId })}
+            >
+              Build Level 1 Rink (2 mo)
+            </button>
+          )}
+          {showPave && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() => dispatch({ type: "BUILD_RINK", unitId })}
+            >
+              Pave Street Rink (2 mo)
+            </button>
+          )}
+          {showHarvest && (
+            <button
+              className="btn btn-primary btn-block"
+              onClick={() => dispatch({ type: "HARVEST_BRANCHES", unitId })}
+            >
+              Harvest Branches (+2 Equipment)
+            </button>
+          )}
           {!isLeader && (
             <button
               className="btn btn-block"
@@ -2452,7 +2502,13 @@ function UnitOverlay({
             </button>
           )}
         </div>
-        {connecting ? (
+        {working ? (
+          <div className="unit-hint muted">
+            Working —{" "}
+            {working.rinkKind === "ice" ? "building a rink" : "paving a rink"},{" "}
+            {working.monthsRemaining} mo to go.
+          </div>
+        ) : connecting ? (
           <div className="unit-hint muted">
             Building local ties — {state.discovery.connection?.monthsRemaining} mo to
             go.
@@ -2462,7 +2518,9 @@ function UnitOverlay({
             <div className="unit-hint faint">
               {outOfMoves
                 ? "Out of moves this month."
-                : "Click a highlighted tile or use the arrow keys to move."}
+                : isBuilder
+                  ? "Move to a frozen pond to clear it, or a grove to harvest sticks."
+                  : "Click a highlighted tile or use the arrow keys to move."}
             </div>
           )
         )}

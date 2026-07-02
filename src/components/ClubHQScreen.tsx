@@ -17,6 +17,7 @@ import {
   getEraProgress,
 } from "../engine/selectors";
 import { productionItemName } from "../engine/productionSystem";
+import { allScouts } from "../engine/scoutSystem";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 
@@ -202,7 +203,7 @@ function OverviewTab({ state }: { state: GameState }) {
 // ---- Personnel & Roster --------------------------------------------------
 function PersonnelTab({ state }: { state: GameState }) {
   const club = state.club;
-  const scout = state.world?.scout;
+  const fieldUnits = allScouts(state.world);
   const players = state.cards.filter(
     (c) => c.type === "player" || c.type === "prospect",
   );
@@ -221,9 +222,23 @@ function PersonnelTab({ state }: { state: GameState }) {
       </div>
 
       <SectionTitle>Field Staff</SectionTitle>
-      {scout ? (
+      {fieldUnits.length > 0 ? (
         <div className="hq-people">
-          <PersonRow glyph="🔍" name="Club Scout" role="Exploration" note="Out on the ice, mapping the hockey world." />
+          {fieldUnits.map((u) => (
+            <PersonRow
+              key={u.id ?? u.name}
+              glyph={u.kind === "builder" ? "⛏" : "🔍"}
+              name={u.name ?? (u.kind === "builder" ? "Rink Rats" : "Club Scout")}
+              role={u.kind === "builder" ? "Construction" : "Exploration"}
+              note={
+                u.working
+                  ? `Building a rink — ${u.working.monthsRemaining} mo to go.`
+                  : u.kind === "builder"
+                    ? "Clearing ponds, raising rinks, cutting sticks."
+                    : "Out on the ice, mapping the hockey world."
+              }
+            />
+          ))}
         </div>
       ) : (
         <div className="faint">No field staff yet.</div>
