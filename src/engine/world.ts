@@ -277,6 +277,10 @@ export function visibleTiles(world: WorldState): Set<string> {
   // falling back to the legacy single scout field.
   const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
   for (const s of scouts) add(s);
+  // Rinks are small fixed vision sources (radius 1) — a lit sheet at night.
+  for (const rink of world.rinks ?? []) {
+    for (const k of diskKeys(rink.x, rink.y, 1)) out.add(k);
+  }
   return out;
 }
 
@@ -333,6 +337,12 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
       valid: true,
     };
   }
+
+  // Opening-fantasy guarantee: every start has a first-rink site within
+  // Chebyshev 2 — a frozen pond (or, in a desert start, a paveable flat for
+  // the street-rink path). Without one nearby, the "shovel a pond into a rink"
+  // opening quest could dead-end before it begins.
+  guaranteeStarterPond(tiles, start, seed);
 
   // Major clubs first (the human start counts as one major), then independents
   // tuck into the gaps respecting their distance to every major. Civ VI places
@@ -640,6 +650,93 @@ function shuffledHockeyOrgNames(seed: number): string[] {
   }))
     .sort((a, b) => a.score - b.score)
     .map((entry) => entry.name);
+}
+
+// Guarantee a first-rink site within Chebyshev 2 of the start tile:
+//  - desert-biome starts need a flat paveable desert tile (street-rink path,
+//    e.g. Arizona) — deserts get no ice;
+//  - everyone else needs a frozen pond. If none exists, convert the best
+//    nearby valid tile (preferring wet-adjacent ground) into one.
+function guaranteeStarterPond(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  seed: number,
+): void {
+  const at = (x: number, y: number): WorldTile | null =>
+    x >= 0 && y >= 0 && x < WORLD_WIDTH && y < WORLD_HEIGHT
+      ? tiles[y * WORLD_WIDTH + x]
+      : null;
+
+  const nearby: WorldTile[] = [];
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const t = at(start.x + dx, start.y + dy);
+      if (t) nearby.push(t);
+    }
+  }
+
+  const startTile = at(start.x, start.y);
+  const desertStart =
+    startTile?.terrain === "desert" || startTile?.terrain === "high-desert";
+
+  if (desertStart) {
+    // Street-rink path: any flat, valid desert tile will do.
+    const paveable = nearby.some(
+      (t) =>
+        t.valid &&
+        (t.terrain === "desert" || t.terrain === "high-desert") &&
+        !hasMesaLandform(t),
+    );
+    if (paveable) return;
+    // Flatten the closest valid tile into open desert.
+    const target = nearby.find((t) => t.valid);
+    if (target) {
+      const i = target.y * WORLD_WIDTH + target.x;
+      tiles[i] = {
+        ...target,
+        terrain: "desert",
+        feature: undefined,
+        foliageDensity: 0,
+        surfaceState: undefined,
+        elevation: generatedElevation(target.x, target.y, "desert", undefined, seed),
+        valid: true,
+      };
+    }
+    return;
+  }
+
+  if (nearby.some((t) => t.terrain === "pond" && t.surfaceState === "frozen")) {
+    return;
+  }
+  // Convert the best nearby candidate into a frozen pond: prefer tiles touching
+  // water/river (a basin reads naturally), fall back to any valid flat ground.
+  const wetAdjacent = (t: WorldTile): boolean => {
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        const n = at(t.x + dx, t.y + dy);
+        if (n && (n.terrain === "water" || n.feature === "lake" || n.feature === "river")) {
+          return true;
+        }
+      }
+    }
+    return false;
+  };
+  const candidates = nearby.filter(
+    (t) => t.valid && t.terrain !== "pond" && !hasMesaLandform(t),
+  );
+  const target = candidates.find(wetAdjacent) ?? candidates[0];
+  if (!target) return;
+  const i = target.y * WORLD_WIDTH + target.x;
+  tiles[i] = {
+    ...target,
+    terrain: "pond",
+    feature: undefined,
+    foliageDensity: 0,
+    surfaceState: "frozen",
+    elevation: generatedElevation(target.x, target.y, "plains", undefined, seed),
+    valid: true,
+  };
 }
 
 function canPlacePondMarker(tile: WorldTile): boolean {
