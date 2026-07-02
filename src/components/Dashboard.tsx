@@ -543,7 +543,6 @@ function researchValue(id: string): string {
 }
 
 function facilityIcon(id: string | undefined): string {
-  if (id === "outdoor-rink") return "RINK";
   if (id === "equipment-shed") return "GEAR";
   if (id === "clubhouse") return "HQ";
   if (id === "volunteer-coaching-bench") return "COACH";
@@ -553,9 +552,14 @@ function facilityIcon(id: string | undefined): string {
 
 function researchIcon(id: string | undefined): string {
   if (id === "basic-skating") return "EDGE";
+  if (id === "stick-gear-basics") return "STICK";
+  if (id === "ice-surveying") return "ICE";
+  if (id === "outdoor-rinkcraft") return "RINK";
+  if (id === "local-tryouts") return "TRY";
+  if (id === "scouting-rumors") return "EAR";
+  if (id === "first-contact") return "WAVE";
+  if (id === "rules-of-the-game") return "RULES";
   if (id === "organized-practice") return "DRILL";
   if (id === "scouting-reports") return "FILE";
-  if (id === "youth-development") return "YOUTH";
-  if (id === "goaltending-theory") return "NET";
   return "TECH";
 }

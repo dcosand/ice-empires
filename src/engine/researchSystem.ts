@@ -1,6 +1,6 @@
-import type { GameState, ResearchDef, Unlock } from "../types/game";
+import type { GameState, ResearchBranch, ResearchDef, Unlock } from "../types/game";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
-import { ERAS } from "../data/eras";
+import { ERAS, ERA_ORDER as ERA_PROGRESSION } from "../data/eras";
 import { getAvailableResearch, getMonthlyIncome } from "./selectors";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
@@ -87,6 +87,9 @@ export type ResearchOption = {
   flavor: string;
   cost: number;
   eraId: string;
+  branch: ResearchBranch;
+  // Prerequisite chips for the tech-tree screen: each prereq with its met state.
+  prereqs: { id: string; name: string; met: boolean }[];
   status: ResearchStatus;
   unlockSummary: string;
   requirementText: string;
@@ -99,8 +102,8 @@ export type ResearchEraGroup = {
   options: ResearchOption[];
 };
 
-// Era display order; eras not listed fall to the end in first-seen order.
-const ERA_ORDER = ["pond-hockey", "club-formation", "scouting-network"];
+// Era display order = the five-era progression; unknown eras fall to the end.
+const ERA_ORDER = ERA_PROGRESSION;
 
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -166,6 +169,12 @@ function researchOption(state: GameState, def: ResearchDef): ResearchOption {
     flavor: def.flavor,
     cost: def.cost,
     eraId: def.eraId,
+    branch: def.branch,
+    prereqs: def.requiredTechIds.map((id) => ({
+      id,
+      name: RESEARCH_BY_ID[id]?.name ?? humanizeId(id),
+      met: state.completedResearch.includes(id),
+    })),
     status,
     unlockSummary: unlockSummary(def.unlocks),
     requirementText: requirementText(def),

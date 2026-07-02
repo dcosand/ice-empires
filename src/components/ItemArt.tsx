@@ -78,6 +78,16 @@ const FACILITY_SCENES: Record<string, Scene> = {
 };
 
 const UNIT_SCENES: Record<string, Scene> = {
+  "rink-rats": () => (
+    <g>
+      {/* shovel + snow pile — the pond-clearing work crew */}
+      <ellipse cx="32" cy="42" rx="20" ry="10" fill="#bfe3f4" />
+      <path d="M20 46 q6 -8 14 -4 q-2 6 -10 7 z" fill="#eef6fb" />
+      <line x1="40" y1="18" x2="30" y2="38" stroke="#8a6a3c" strokeWidth="3" strokeLinecap="round" />
+      <path d="M27 38 l8 4 q-2 8 -10 4 z" fill="#9aa6b0" stroke="#5a6b7d" strokeWidth="1.5" />
+      <circle cx="42" cy="16" r="3" fill="#f2c14e" />
+    </g>
+  ),
   "pond-scout": () => (
     <g>
       <circle cx="24" cy="34" r="9" fill="#18293b" stroke="#38bdf8" strokeWidth="2.5" />
@@ -172,22 +182,79 @@ const RESEARCH_SCENES: Record<string, Scene> = {
       <line x1="48" y1="46" x2="54" y2="52" stroke="#38bdf8" strokeWidth="3.5" strokeLinecap="round" />
     </g>
   ),
-  "youth-development": () => (
+  "stick-gear-basics": () => (
     <g>
-      <circle cx="26" cy="24" r="6" fill="#cfd8e0" stroke="#7d8c98" strokeWidth="2" />
-      <path d="M20 50 v-10 a6 6 0 0 1 12 0 v10 z" fill="#5fd08a" />
-      <path d="M40 30 l4 14" stroke="#cfe8f5" strokeWidth="2.5" strokeLinecap="round" />
-      <path d="M36 46 q5 3 10 0" stroke="#9aa6b0" strokeWidth="2" fill="none" />
-      <path d="M44 18 l1.5 4 4 0 -3 3 1 4 -3.5 -2.5 -3.5 2.5 1 -4 -3 -3 4 0 z" fill="#f2c14e" />
+      {/* crossed sticks + puck */}
+      <line x1="18" y1="18" x2="42" y2="46" stroke="#b2904c" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M42 46 l8 3" stroke="#b2904c" strokeWidth="4" strokeLinecap="round" />
+      <line x1="46" y1="18" x2="24" y2="46" stroke="#8a6a3c" strokeWidth="3.5" strokeLinecap="round" />
+      <path d="M24 46 l-8 3" stroke="#8a6a3c" strokeWidth="4" strokeLinecap="round" />
+      <ellipse cx="32" cy="52" rx="5" ry="2.4" fill="#1b1f24" stroke="#3a4654" strokeWidth="1" />
     </g>
   ),
-  "goaltending-theory": () => (
+  "ice-surveying": () => (
     <g>
-      <rect x="22" y="20" width="20" height="26" rx="3" fill="#3a5a7d" stroke="#22384f" strokeWidth="1.5" />
-      <line x1="32" y1="20" x2="32" y2="46" stroke="#22384f" strokeWidth="1.2" />
-      <line x1="22" y1="33" x2="42" y2="33" stroke="#22384f" strokeWidth="1.2" />
-      <circle cx="32" cy="16" r="5" fill="#cfd8e0" stroke="#7d8c98" strokeWidth="2" />
-      <path d="M16 30 q-3 8 4 16" fill="none" stroke="#f2c14e" strokeWidth="3" strokeLinecap="round" />
+      {/* auger hole + measuring line on a pond */}
+      <ellipse cx="32" cy="40" rx="21" ry="11" fill="#bfe3f4" />
+      <circle cx="27" cy="40" r="4" fill="#123047" stroke="#eef6fb" strokeWidth="1.6" />
+      <line x1="27" y1="24" x2="27" y2="38" stroke="#f2c14e" strokeWidth="2.4" strokeDasharray="3 2" />
+      <rect x="40" y="26" width="10" height="14" rx="1.5" fill="#eae4d2" stroke="#4a4636" strokeWidth="1.4" />
+      <line x1="42" y1="30" x2="48" y2="30" stroke="#9aa6b0" strokeWidth="1.6" />
+      <line x1="42" y1="34" x2="48" y2="34" stroke="#9aa6b0" strokeWidth="1.6" />
+    </g>
+  ),
+  "outdoor-rinkcraft": () => (
+    <g>
+      <ellipse cx="32" cy="38" rx="23" ry="14" fill="#bfe3f4" />
+      <ellipse cx="32" cy="38" rx="23" ry="14" fill="none" stroke="#eef6fb" strokeWidth="2.5" />
+      <line x1="32" y1="25" x2="32" y2="51" stroke="#ef6f6f" strokeWidth="2" />
+      <circle cx="20" cy="38" r="2" fill="#3b6fa0" />
+      <circle cx="44" cy="38" r="2" fill="#3b6fa0" />
+      <rect x="26" y="20" width="12" height="6" rx="1" fill="none" stroke="#ef6f6f" strokeWidth="2" />
+    </g>
+  ),
+  "local-tryouts": () => (
+    <g>
+      {/* flyer + whistle */}
+      <rect x="18" y="16" width="20" height="26" rx="2" fill="#eef6fb" transform="rotate(-4 28 29)" />
+      <line x1="22" y1="24" x2="34" y2="23" stroke="#3a4654" strokeWidth="2" />
+      <line x1="22" y1="29" x2="34" y2="28" stroke="#9aa6b0" strokeWidth="1.6" />
+      <line x1="22" y1="34" x2="30" y2="33.5" stroke="#9aa6b0" strokeWidth="1.6" />
+      <circle cx="26" cy="19" r="1.6" fill="#ef6f6f" />
+      <circle cx="44" cy="44" r="6" fill="#f2c14e" stroke="#b8923a" strokeWidth="1.6" />
+      <rect x="48" y="38" width="7" height="4.5" rx="2" fill="#f2c14e" stroke="#b8923a" strokeWidth="1.4" />
+    </g>
+  ),
+  "scouting-rumors": () => (
+    <g>
+      {/* speech bubbles drifting over ice */}
+      <ellipse cx="32" cy="46" rx="18" ry="7" fill="#bfe3f4" opacity="0.7" />
+      <path d="M16 24 a8 6 0 0 1 16 0 a8 6 0 0 1 -12 5 l-4 4 l1 -6 z" fill="#eef6fb" />
+      <circle cx="21" cy="24" r="1.3" fill="#3a4654" />
+      <circle cx="25" cy="24" r="1.3" fill="#3a4654" />
+      <path d="M36 30 a7 5 0 0 1 14 0 a7 5 0 0 1 -10 4.4 l-4 3 l1 -5 z" fill="#cfe0ee" />
+    </g>
+  ),
+  "first-contact": () => (
+    <g>
+      {/* two pennants meeting */}
+      <line x1="20" y1="18" x2="20" y2="52" stroke="#5a6b7d" strokeWidth="2.6" />
+      <polygon points="20,20 36,25 20,30" fill="#38bdf8" />
+      <line x1="44" y1="18" x2="44" y2="52" stroke="#5a6b7d" strokeWidth="2.6" />
+      <polygon points="44,20 28,25 44,30" fill="#f2c14e" opacity="0.9" />
+      <path d="M26 46 q6 -5 12 0" fill="none" stroke="#5fd08a" strokeWidth="2.4" strokeLinecap="round" />
+    </g>
+  ),
+  "rules-of-the-game": () => (
+    <g>
+      {/* the rulebook */}
+      <rect x="20" y="16" width="24" height="32" rx="2.5" fill="#7c2434" stroke="#4a1520" strokeWidth="1.6" />
+      <line x1="32" y1="16" x2="32" y2="48" stroke="#4a1520" strokeWidth="1.4" />
+      <line x1="24" y1="24" x2="29" y2="24" stroke="#e7cfd4" strokeWidth="1.6" />
+      <line x1="24" y1="29" x2="29" y2="29" stroke="#e7cfd4" strokeWidth="1.6" />
+      <line x1="35" y1="24" x2="40" y2="24" stroke="#e7cfd4" strokeWidth="1.6" />
+      <line x1="35" y1="29" x2="40" y2="29" stroke="#e7cfd4" strokeWidth="1.6" />
+      <circle cx="32" cy="40" r="4.5" fill="none" stroke="#f2c14e" strokeWidth="2" />
     </g>
   ),
   "local-recruitment": () => (
@@ -198,7 +265,7 @@ const RESEARCH_SCENES: Record<string, Scene> = {
       <path d="M44 18 l4 4 l8 -9" fill="none" stroke="#5fd08a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </g>
   ),
-  "regional-scouting-office": () => (
+  "regional-scouting": () => (
     <g>
       <polygon points="12,24 26,20 40,24 52,20 52,46 40,50 26,46 12,50" fill="#cdb98a" stroke="#8a6a3c" strokeWidth="1.5" />
       <line x1="26" y1="20" x2="26" y2="46" stroke="#8a6a3c" strokeWidth="1.5" />
@@ -207,7 +274,7 @@ const RESEARCH_SCENES: Record<string, Scene> = {
       <circle cx="36" cy="30" r="2.4" fill="#fff" />
     </g>
   ),
-  "development-partnerships": () => (
+  "development-partnership": () => (
     <g>
       <path d="M16 48 L30 34 L38 42 L52 26" fill="none" stroke="#5fd08a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
       <polygon points="52,26 52,36 44,28" fill="#5fd08a" />
