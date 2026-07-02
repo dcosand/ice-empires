@@ -5,8 +5,13 @@ import type {
   ResourceSet,
   UnitDef,
 } from "../types/game";
-import { FACILITIES, FACILITIES_BY_ID } from "../data/facilities";
-import { UNITS, UNITS_BY_ID } from "../data/units";
+import {
+  ALL_FACILITY_DEFS_BY_ID,
+  ALL_UNIT_DEFS_BY_ID,
+  facilitiesForClub,
+  isUniqueItemId,
+  unitsForClub,
+} from "../data/clubUniques";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "./resources";
 import { getMonthlyIncome } from "./selectors";
@@ -24,14 +29,14 @@ const FUNDS: ResourceKey = "funds";
 
 export function productionItemName(kind: ProductionKind, itemId: string): string {
   return kind === "facility"
-    ? FACILITIES_BY_ID[itemId]?.name ?? itemId
-    : UNITS_BY_ID[itemId]?.name ?? itemId;
+    ? ALL_FACILITY_DEFS_BY_ID[itemId]?.name ?? itemId
+    : ALL_UNIT_DEFS_BY_ID[itemId]?.name ?? itemId;
 }
 
 // The Funds production total needed to complete the item.
 export function productionFundsCost(kind: ProductionKind, itemId: string): number {
   const cost =
-    kind === "facility" ? FACILITIES_BY_ID[itemId]?.cost : UNITS_BY_ID[itemId]?.cost;
+    kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId]?.cost : ALL_UNIT_DEFS_BY_ID[itemId]?.cost;
   return cost?.funds ?? 0;
 }
 
@@ -42,7 +47,7 @@ export function productionUpfrontCost(
   itemId: string,
 ): Partial<ResourceSet> {
   const cost =
-    kind === "facility" ? FACILITIES_BY_ID[itemId]?.cost : UNITS_BY_ID[itemId]?.cost;
+    kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId]?.cost : ALL_UNIT_DEFS_BY_ID[itemId]?.cost;
   if (!cost) return {};
   const upfront: Partial<ResourceSet> = {};
   if (cost.hockeyKnowledge) upfront.hockeyKnowledge = cost.hockeyKnowledge;
@@ -92,10 +97,10 @@ export function canStartProduction(
   if (state.activeProduction) return false;
   if (!canAffordUpfront(state, kind, itemId)) return false;
   if (kind === "facility") {
-    const def = FACILITIES_BY_ID[itemId];
+    const def = ALL_FACILITY_DEFS_BY_ID[itemId];
     return !!def && !state.facilities.includes(itemId);
   }
-  const def = UNITS_BY_ID[itemId];
+  const def = ALL_UNIT_DEFS_BY_ID[itemId];
   return !!def && unitRequirementsMet(state, def);
 }
 
@@ -163,7 +168,7 @@ export function progressProduction(draft: GameState, push: PushLog): void {
 }
 
 function completeFacility(draft: GameState, facilityId: string, push: PushLog): void {
-  const def = FACILITIES_BY_ID[facilityId];
+  const def = ALL_FACILITY_DEFS_BY_ID[facilityId];
   if (!def) return;
   draft.facilities.push(def.id);
   push("build", `${def.name} completed`, def.flavor);
@@ -174,7 +179,7 @@ function completeFacility(draft: GameState, facilityId: string, push: PushLog): 
 }
 
 function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
-  const def = UNITS_BY_ID[unitId];
+  const def = ALL_UNIT_DEFS_BY_ID[unitId];
   if (!def) return;
   const instanceId = `${def.id}-${draft.month}-${draft.units.length}`;
   draft.units.push({
@@ -217,6 +222,8 @@ export type ProductionOption = {
   status: ProductionStatus;
   lockReason?: string;
   affordable: boolean;
+  // Club-unique unit/facility (replaces or extends the base list).
+  isUnique: boolean;
 };
 
 export type ProductionOptions = {
@@ -231,17 +238,18 @@ const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 function prettyReqLabel(id: string): string {
   return (
     RESEARCH_BY_ID[id]?.name ??
-    FACILITIES_BY_ID[id]?.name ??
+    ALL_FACILITY_DEFS_BY_ID[id]?.name ??
     id.split("-").map(titleCase).join(" ")
   );
 }
 
 function facilityEffectSummary(facilityId: string): string {
-  const def = FACILITIES_BY_ID[facilityId];
+  const def = ALL_FACILITY_DEFS_BY_ID[facilityId];
   if (!def) return "";
   const parts = def.effects.map((e) => {
     if (e.type === "monthlyIncome")
       return `+${e.amount} ${RESOURCE_LABELS[e.resource]}/mo`;
+    if (e.type === "equipmentPerMonth") return `+${e.amount} Equipment/mo`;
     if (e.type === "unlockRecruitment") return "Unlocks basic recruitment";
     return "Improves local recruitment events";
   });
@@ -281,7 +289,7 @@ function unitLockReason(state: GameState, def: UnitDef): string | undefined {
 }
 
 function facilityOption(state: GameState, facilityId: string): ProductionOption {
-  const def = FACILITIES_BY_ID[facilityId];
+  const def = ALL_FACILITY_DEFS_BY_ID[facilityId];
   const active =
     state.activeProduction?.kind === "facility" &&
     state.activeProduction.itemId === facilityId;
@@ -301,11 +309,12 @@ function facilityOption(state: GameState, facilityId: string): ProductionOption 
     requirementText: "No requirements",
     status,
     affordable: canAffordUpfront(state, "facility", facilityId),
+    isUnique: isUniqueItemId(facilityId),
   };
 }
 
 function unitOption(state: GameState, unitId: string): ProductionOption {
-  const def = UNITS_BY_ID[unitId];
+  const def = ALL_UNIT_DEFS_BY_ID[unitId];
   const active =
     state.activeProduction?.kind === "unit" &&
     state.activeProduction.itemId === unitId;
@@ -326,13 +335,15 @@ function unitOption(state: GameState, unitId: string): ProductionOption {
     status,
     lockReason: met ? undefined : unitLockReason(state, def),
     affordable: canAffordUpfront(state, "unit", unitId),
+    isUnique: isUniqueItemId(unitId),
   };
 }
 
 export function getProductionOptions(state: GameState): ProductionOptions {
+  const clubId = state.club?.id ?? state.selectedClubId;
   return {
-    facilities: FACILITIES.map((f) => facilityOption(state, f.id)),
-    units: UNITS.map((u) => unitOption(state, u.id)),
+    facilities: facilitiesForClub(clubId).map((f) => facilityOption(state, f.id)),
+    units: unitsForClub(clubId).map((u) => unitOption(state, u.id)),
   };
 }
 

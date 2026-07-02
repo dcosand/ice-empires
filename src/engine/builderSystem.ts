@@ -114,7 +114,10 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
   const pave = canPaveStreetRink(state, unitId);
   if (!ice && !pave) return state;
   const world = state.world!;
+  const builder = actionableBuilder(state, unitId)!;
   const rinkKind = ice ? "ice" : "inline";
+  // Calgary's Barn Raisers put a rink up in a single month.
+  const months = builder.unitDefId === "barn-raisers" ? 1 : RINK_BUILD_MONTHS;
 
   const units = allScouts(world).map((u) =>
     u.id === unitId
@@ -126,7 +129,7 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
             x: u.x,
             y: u.y,
             rinkKind: rinkKind as "ice" | "inline",
-            monthsRemaining: RINK_BUILD_MONTHS,
+            monthsRemaining: months,
           },
         }
       : u,
@@ -140,8 +143,8 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
     "build",
     rinkKind === "ice" ? "Rink construction begins" : "Street rink paving begins",
     rinkKind === "ice"
-      ? `Boards, lines, and a shoveling schedule: a Level 1 outdoor rink is underway (${RINK_BUILD_MONTHS} months).`
-      : `Asphalt, nets, and orange wheels: a street hockey rink is underway (${RINK_BUILD_MONTHS} months).`,
+      ? `Boards, lines, and a shoveling schedule: a Level 1 outdoor rink is underway (${months} month${months === 1 ? "" : "s"}).`
+      : `Asphalt, nets, and orange wheels: a street hockey rink is underway (${months} month${months === 1 ? "" : "s"}).`,
   );
 }
 
@@ -213,6 +216,9 @@ export function harvestBranches(state: GameState, unitId: string): GameState {
   const world = state.world!;
   const unit = actionableBuilder(state, unitId)!;
   const key = tileKey(unit.x, unit.y);
+  // Detroit's Foundry Crew wastes nothing: +1 extra equipment per grove.
+  const yieldAmount =
+    HARVEST_EQUIPMENT + (unit.unitDefId === "foundry-crew" ? 1 : 0);
 
   // Clear the foliage so the grove visibly disappears from the map.
   const tiles = world.tiles.map((t) =>
@@ -223,7 +229,7 @@ export function harvestBranches(state: GameState, unitId: string): GameState {
   );
   const next: GameState = {
     ...state,
-    equipment: state.equipment + HARVEST_EQUIPMENT,
+    equipment: state.equipment + yieldAmount,
     world: syncLegacyScout(
       { ...world, tiles, harvestedTiles: [...world.harvestedTiles, key] },
       units,
@@ -234,7 +240,7 @@ export function harvestBranches(state: GameState, unitId: string): GameState {
     next,
     "build",
     "Stickwood harvested",
-    `The crew cuts and whittles the best branches into playable sticks (+${HARVEST_EQUIPMENT} Equipment). The grove is spent.`,
+    `The crew cuts and whittles the best branches into playable sticks (+${yieldAmount} Equipment). The grove is spent.`,
   );
 }
 

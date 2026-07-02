@@ -4525,3 +4525,17 @@ button {
 @media (max-width: 720px) {
   .indy-cols { grid-template-columns: 1fr; }
 }
+
+/* Club-unique badge on production cards */
+.unique-badge {
+  margin-left: 6px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--club-accent, var(--gold));
+  border: 1px solid currentColor;
+  border-radius: 999px;
+  padding: 1px 6px;
+  vertical-align: middle;
+}

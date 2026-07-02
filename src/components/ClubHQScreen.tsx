@@ -7,8 +7,10 @@ import type {
   Player,
   ResourceKey,
 } from "../types/game";
-import { FACILITIES_BY_ID } from "../data/facilities";
-import { UNITS_BY_ID } from "../data/units";
+import {
+  ALL_FACILITY_DEFS_BY_ID,
+  ALL_UNIT_DEFS_BY_ID,
+} from "../data/clubUniques";
 import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
 import { RESOURCE_LABELS } from "../engine/resources";
@@ -557,7 +559,7 @@ function ProductionTab({
 // ---- Facilities ----------------------------------------------------------
 function FacilitiesTab({ state }: { state: GameState }) {
   const built = state.facilities
-    .map((id) => FACILITIES_BY_ID[id])
+    .map((id) => ALL_FACILITY_DEFS_BY_ID[id])
     .filter((f): f is FacilityDef => !!f);
 
   if (built.length === 0) {
@@ -630,7 +632,7 @@ function UnitsTab({ state }: { state: GameState }) {
       ) : (
         <div className="hq-built-list">
           {owned.map((u) => {
-            const def = UNITS_BY_ID[u.unitDefId];
+            const def = ALL_UNIT_DEFS_BY_ID[u.unitDefId];
             return (
               <div className="hq-built" key={u.id}>
                 <ItemArt kind="unit" id={u.unitDefId} className="hq-built-art" />

@@ -63,8 +63,14 @@ export function tryoutGateHint(gate: TryoutGate): string {
   }
 }
 
+// Does the club own a given organizational unit? (unique-unit hooks)
+function ownsUnit(state: GameState, unitDefId: string): boolean {
+  return state.units.some((u) => u.unitDefId === unitDefId);
+}
+
 // Roll one candidate. Goalies are rare (~1 in 4) and get their ability in the
 // crease; skaters get a position-flavored spread of terrible numbers.
+// Helsinki's Goalie Whisperer roughly doubles goalie turnout.
 function rollCandidate(state: GameState, index: number): TryoutCandidate {
   const draw = () => {
     const roll = nextRandom(state.rngSeed);
@@ -73,8 +79,10 @@ function rollCandidate(state: GameState, index: number): TryoutCandidate {
   };
   const attr = () => POND_ATTR_MIN + Math.floor(draw() * (POND_ATTR_SPAN + 1));
 
+  const goalieCut = ownsUnit(state, "goalie-whisperer") ? 0.6 : 0.78;
   const posRoll = draw();
-  const position: PlayerPosition = posRoll < 0.45 ? "F" : posRoll < 0.78 ? "D" : "G";
+  const position: PlayerPosition =
+    posRoll < 0.45 ? "F" : posRoll < goalieCut ? "D" : "G";
   const first = FIRST_NAMES[Math.floor(draw() * FIRST_NAMES.length)];
   const last = LAST_NAMES[Math.floor(draw() * LAST_NAMES.length)];
   const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
@@ -110,7 +118,9 @@ export function holdTryouts(state: GameState): GameState {
   };
   const roll = nextRandom(working.rngSeed);
   working.rngSeed = roll.seed;
-  const count = 3 + Math.floor(roll.value * 3); // 3..5
+  // Minnesota's Warming-House Crew draws one extra hopeful to every tryout.
+  const bonus = ownsUnit(state, "warming-house-crew") ? 1 : 0;
+  const count = 3 + Math.floor(roll.value * 3) + bonus; // 3..5 (+1 with crew)
   const candidates: TryoutCandidate[] = [];
   for (let i = 0; i < count; i++) candidates.push(rollCandidate(working, i));
 

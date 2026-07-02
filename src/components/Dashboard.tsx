@@ -9,7 +9,7 @@ import type {
 import { Onboarding } from "./Onboarding";
 import { DISCOVERY_BY_ID } from "../data/discovery";
 import { ERAS, ERA_UNLOCK_MESSAGES } from "../data/eras";
-import { FACILITIES_BY_ID } from "../data/facilities";
+import { ALL_FACILITY_DEFS_BY_ID } from "../data/clubUniques";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
@@ -533,7 +533,7 @@ function completionDetail(event: EventLogEntry): {
   value: string;
 } {
   if (event.type === "build") {
-    const def = Object.values(FACILITIES_BY_ID).find(
+    const def = Object.values(ALL_FACILITY_DEFS_BY_ID).find(
       (facility) => `${facility.name} completed` === event.title,
     );
     return {
@@ -558,7 +558,7 @@ function completionDetail(event: EventLogEntry): {
 }
 
 function facilityValue(id: string): string {
-  const def = FACILITIES_BY_ID[id];
+  const def = ALL_FACILITY_DEFS_BY_ID[id];
   if (!def) return "New club infrastructure is online.";
   const effects = def.effects.map((effect) => {
     if (effect.type === "monthlyIncome") {

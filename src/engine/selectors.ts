@@ -5,8 +5,11 @@ import type {
   ResearchDef,
   ResourceSet,
 } from "../types/game";
-import { FACILITIES, FACILITIES_BY_ID } from "../data/facilities";
-import { UNITS_BY_ID } from "../data/units";
+import { FACILITIES } from "../data/facilities";
+import {
+  ALL_FACILITY_DEFS_BY_ID,
+  ALL_UNIT_DEFS_BY_ID,
+} from "../data/clubUniques";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
 import { REGIONS } from "../data/regions";
 import { CARDS_BY_ID } from "../data/cards";
@@ -20,7 +23,7 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
   let income = { ...state.club.monthlyBaseIncome };
 
   for (const facilityId of state.facilities) {
-    const facility = FACILITIES_BY_ID[facilityId];
+    const facility = ALL_FACILITY_DEFS_BY_ID[facilityId];
     if (!facility) continue;
     for (const effect of facility.effects) {
       if (effect.type === "monthlyIncome") {
@@ -39,7 +42,7 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
 
   // Owned organizational units with passive monthly-income effects.
   for (const owned of state.units) {
-    const def = UNITS_BY_ID[owned.unitDefId];
+    const def = ALL_UNIT_DEFS_BY_ID[owned.unitDefId];
     for (const effect of def?.effects ?? []) {
       if (effect.type === "monthlyIncome") {
         income = addResources(income, { [effect.resource]: effect.amount });
@@ -69,7 +72,7 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
 export function getMonthlyEquipment(state: GameState): number {
   let total = 0;
   for (const facilityId of state.facilities) {
-    const facility = FACILITIES_BY_ID[facilityId];
+    const facility = ALL_FACILITY_DEFS_BY_ID[facilityId];
     for (const effect of facility?.effects ?? []) {
       if (effect.type === "equipmentPerMonth") total += effect.amount;
     }
@@ -172,8 +175,8 @@ export function getActiveProductionProgress(state: GameState): number {
   if (!prod) return 0;
   const def =
     prod.kind === "facility"
-      ? FACILITIES_BY_ID[prod.itemId]
-      : UNITS_BY_ID[prod.itemId];
+      ? ALL_FACILITY_DEFS_BY_ID[prod.itemId]
+      : ALL_UNIT_DEFS_BY_ID[prod.itemId];
   const cost = def?.cost.funds ?? 0;
   if (cost === 0) return 0;
   return prod.progressFunds / cost;
@@ -188,7 +191,7 @@ export function getActiveResearchProgress(state: GameState): number {
 }
 
 export const lookups = {
-  facility: (id: string) => FACILITIES_BY_ID[id],
+  facility: (id: string) => ALL_FACILITY_DEFS_BY_ID[id],
   research: (id: string) => RESEARCH_BY_ID[id],
   card: (id: string) => CARDS_BY_ID[id],
 };

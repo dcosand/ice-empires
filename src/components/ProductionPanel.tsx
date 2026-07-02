@@ -278,7 +278,10 @@ function ProductionCard({
           ⓘ
         </button>
       </div>
-      <div className="prod-card-name">{opt.name}</div>
+      <div className="prod-card-name">
+        {opt.name}
+        {opt.isUnique && <span className="unique-badge">Unique</span>}
+      </div>
       <div className="prod-card-kind">
         {opt.kind === "unit" ? opt.categoryLabel : "Facility"}
       </div>
@@ -379,6 +382,7 @@ function DetailsModal({
             <div className="prod-detail-name">{opt.name}</div>
             <div className="prod-detail-kind">
               {opt.kind === "unit" ? `Unit · ${opt.categoryLabel}` : "Facility"}
+              {opt.isUnique && " · Club Unique"}
             </div>
           </div>
           <button className="btn" onClick={onClose}>
