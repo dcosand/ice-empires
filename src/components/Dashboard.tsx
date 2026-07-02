@@ -8,7 +8,7 @@ import type {
 } from "../types/game";
 import { Onboarding } from "./Onboarding";
 import { DISCOVERY_BY_ID } from "../data/discovery";
-import { CLUB_FORMATION_UNLOCK_MESSAGE } from "../data/eras";
+import { ERAS, ERA_UNLOCK_MESSAGES } from "../data/eras";
 import { FACILITIES_BY_ID } from "../data/facilities";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
@@ -83,8 +83,10 @@ export function Dashboard({
 
       {state.nextEraUnlocked && (
         <div className="era-banner">
-          <h3>Club Formation Era reached</h3>
-          <div className="muted">{CLUB_FORMATION_UNLOCK_MESSAGE}</div>
+          <h3>{ERAS[state.eraId]?.name ?? "New era"} reached</h3>
+          <div className="muted">
+            {state.club?.name} {ERA_UNLOCK_MESSAGES[state.eraId] ?? "has entered a new era."}
+          </div>
         </div>
       )}
 
@@ -134,11 +136,11 @@ export function Dashboard({
         />
       )}
 
-      {state.pendingMeeting && (
+      {state.pendingMeeting?.kind === "rival" && (
         <RivalMeetingScreen
-          clubId={state.pendingMeeting.clubId}
+          clubId={state.pendingMeeting.id}
           month={state.month}
-          onClose={() => dispatch({ type: "ACKNOWLEDGE_MEETING" })}
+          dispatch={dispatch}
         />
       )}
 

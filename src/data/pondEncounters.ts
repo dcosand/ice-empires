@@ -33,11 +33,11 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     description:
       "The stranger brought three sticks, two usable skates, and one deeply suspicious puck.",
     possibleEffects: [
-      { type: "addResource", resource: "operations", amount: 2 },
+      { type: "addResource", resource: "funds", amount: 2 },
       {
         type: "setback",
         message: "Half the gear was junk and the rest cost you to haul off.",
-        resource: "budget",
+        resource: "funds",
         amount: 2,
       },
     ],
@@ -63,7 +63,7 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
       {
         type: "setback",
         message: "You quietly settle up to make him go away.",
-        resource: "budget",
+        resource: "funds",
         amount: 3,
       },
       { type: "flavorOnly" },

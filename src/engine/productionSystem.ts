@@ -10,15 +10,16 @@ import { UNITS, UNITS_BY_ID } from "../data/units";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "./resources";
 import { getMonthlyIncome } from "./selectors";
+import { hasClubRink } from "./rinkSystem";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
 import { spawnProducedScout } from "./scoutSystem";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
-// slot. Operations production each month funds the item (see DECISIONS.md D2);
-// any non-Operations cost (Budget/Reputation) is charged upfront on start.
+// slot. Funds income each month funds the item (see DECISIONS.md D2, revised
+// for the two-currency economy); any hockeyKnowledge cost is charged upfront.
 
-const OPERATIONS: ResourceKey = "operations";
+const FUNDS: ResourceKey = "funds";
 
 export function productionItemName(kind: ProductionKind, itemId: string): string {
   return kind === "facility"
@@ -26,14 +27,15 @@ export function productionItemName(kind: ProductionKind, itemId: string): string
     : UNITS_BY_ID[itemId]?.name ?? itemId;
 }
 
-// The Operations production total needed to complete the item.
-export function productionOpsCost(kind: ProductionKind, itemId: string): number {
+// The Funds production total needed to complete the item.
+export function productionFundsCost(kind: ProductionKind, itemId: string): number {
   const cost =
     kind === "facility" ? FACILITIES_BY_ID[itemId]?.cost : UNITS_BY_ID[itemId]?.cost;
-  return cost?.operations ?? 0;
+  return cost?.funds ?? 0;
 }
 
-// Non-Operations cost paid upfront when production starts (units only, today).
+// Non-Funds cost paid upfront when production starts (rare; reputation is a
+// standing stat and should never appear as a cost).
 export function productionUpfrontCost(
   kind: ProductionKind,
   itemId: string,
@@ -42,8 +44,6 @@ export function productionUpfrontCost(
     kind === "facility" ? FACILITIES_BY_ID[itemId]?.cost : UNITS_BY_ID[itemId]?.cost;
   if (!cost) return {};
   const upfront: Partial<ResourceSet> = {};
-  if (cost.budget) upfront.budget = cost.budget;
-  if (cost.reputation) upfront.reputation = cost.reputation;
   if (cost.hockeyKnowledge) upfront.hockeyKnowledge = cost.hockeyKnowledge;
   return upfront;
 }
@@ -59,6 +59,13 @@ export function canAffordUpfront(
   );
 }
 
+// A requiredAnyOf entry can be a tech id, a facility id, or the pseudo-id
+// "club-rink" (>=1 Level-1 rink inside the club's HQ radius).
+function anyOfEntryMet(state: GameState, id: string): boolean {
+  if (id === "club-rink") return hasClubRink(state.world);
+  return state.completedResearch.includes(id) || state.facilities.includes(id);
+}
+
 // Whether a unit's tech/facility requirements are satisfied.
 export function unitRequirementsMet(state: GameState, def: UnitDef): boolean {
   const techOk = (def.requiredTechIds ?? []).every((id) =>
@@ -70,9 +77,7 @@ export function unitRequirementsMet(state: GameState, def: UnitDef): boolean {
   const anyOk =
     !def.requiredAnyOf ||
     def.requiredAnyOf.length === 0 ||
-    def.requiredAnyOf.some(
-      (id) => state.completedResearch.includes(id) || state.facilities.includes(id),
-    );
+    def.requiredAnyOf.some((id) => anyOfEntryMet(state, id));
   return techOk && facOk && anyOk;
 }
 
@@ -113,36 +118,36 @@ export function startProduction(
     activeProduction: {
       kind,
       itemId,
-      operationsRemaining: productionOpsCost(kind, itemId),
-      progressOperations: 0,
+      fundsRemaining: productionFundsCost(kind, itemId),
+      progressFunds: 0,
     },
   };
 }
 
-// Apply this month's Operations production toward the active item.
+// Apply this month's Funds production toward the active item.
 export function progressProduction(draft: GameState, push: PushLog): void {
   const prod = draft.activeProduction;
   if (!prod) return;
 
   const name = productionItemName(prod.kind, prod.itemId);
-  const cost = productionOpsCost(prod.kind, prod.itemId);
+  const cost = productionFundsCost(prod.kind, prod.itemId);
   if (cost <= 0) {
     // Malformed item — drop it rather than loop forever.
     draft.activeProduction = null;
     return;
   }
 
-  const opsPerMonth = getMonthlyIncome(draft)[OPERATIONS];
-  prod.progressOperations += opsPerMonth;
-  prod.operationsRemaining = Math.max(0, cost - prod.progressOperations);
+  const fundsPerMonth = getMonthlyIncome(draft)[FUNDS];
+  prod.progressFunds += fundsPerMonth;
+  prod.fundsRemaining = Math.max(0, cost - prod.progressFunds);
 
-  if (prod.progressOperations < cost) {
+  if (prod.progressFunds < cost) {
     push(
       "build",
       `${name} underway`,
       `${name} is ${Math.round(
-        (prod.progressOperations / cost) * 100,
-      )}% complete (${prod.progressOperations}/${cost} Operations).`,
+        (prod.progressFunds / cost) * 100,
+      )}% complete (${prod.progressFunds}/${cost} Funds).`,
     );
     return;
   }
@@ -179,9 +184,11 @@ function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
     locationId: draft.world?.hqTile ? "hq" : undefined,
     createdMonth: draft.month,
   });
-  if (def.id === "pond-scout") {
+  if (def.spawnsMapUnit === "scout") {
     spawnProducedScout(draft, instanceId, def.name);
   }
+  // "builder" spawns are handled by builderSystem.spawnProducedBuilder — wired
+  // where this switch grows in the builder milestone.
   push("build", `${def.name} ready`, def.flavor);
   for (const unlock of def.unlocks ?? []) {
     if (unlock.type === "card") grantCard(draft, unlock.cardId, push);
@@ -200,7 +207,7 @@ export type ProductionOption = {
   name: string;
   categoryLabel: string;
   description: string;
-  opsCost: number;
+  fundsCost: number;
   upfrontCost: Partial<ResourceSet>;
   buildMonths: number;
   flavor: string;
@@ -285,7 +292,7 @@ function facilityOption(state: GameState, facilityId: string): ProductionOption 
     name: def.name,
     categoryLabel: "Facility",
     description: def.description,
-    opsCost: productionOpsCost("facility", facilityId),
+    fundsCost: productionFundsCost("facility", facilityId),
     upfrontCost: productionUpfrontCost("facility", facilityId),
     buildMonths: def.buildMonths,
     flavor: def.flavor,
@@ -309,7 +316,7 @@ function unitOption(state: GameState, unitId: string): ProductionOption {
     name: def.name,
     categoryLabel: titleCase(def.category),
     description: def.description,
-    opsCost: productionOpsCost("unit", unitId),
+    fundsCost: productionFundsCost("unit", unitId),
     upfrontCost: productionUpfrontCost("unit", unitId),
     buildMonths: def.buildMonths,
     flavor: def.flavor,

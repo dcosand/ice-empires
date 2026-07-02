@@ -5,20 +5,14 @@ import { clubAsset } from "../data/clubs";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { getMonthlyIncome } from "../engine/selectors";
 
-// The four club resources, folded into the header as icon + number indicators
-// (replacing the old standalone resource cards).
-const RESOURCE_ORDER: ResourceKey[] = [
-  "budget",
-  "operations",
-  "hockeyKnowledge",
-  "reputation",
-];
+// Two currencies + the reputation standing stat, folded into the header as
+// icon + number indicators. Equipment is inventory, shown in Team contexts.
+const RESOURCE_ORDER: ResourceKey[] = ["funds", "hockeyKnowledge", "reputation"];
 
-// Civ-VI-style per-resource accent colors (gold money, amber production, sky
-// science, violet culture/standing).
+// Civ-VI-style per-resource accent colors (gold money/production, sky science,
+// violet standing).
 const RESOURCE_COLOR: Record<ResourceKey, string> = {
-  budget: "#f4c64e",
-  operations: "#ef8b4b",
+  funds: "#f4c64e",
   hockeyKnowledge: "#5ab0e6",
   reputation: "#b58cf0",
 };
@@ -38,18 +32,12 @@ function ResourceIcon({ resource }: { resource: ResourceKey }) {
     "aria-hidden": true,
   };
   switch (resource) {
-    case "budget": // coin with a dollar mark
+    case "funds": // coin with a dollar mark
       return (
         <svg {...common}>
           <circle cx="12" cy="12" r="9" />
           <path d="M14.6 9.1c-.5-.9-1.5-1.4-2.6-1.4-1.4 0-2.6.8-2.6 2 0 1.2 1 1.7 2.6 2 1.6.3 2.7.9 2.7 2.1 0 1.3-1.2 2.1-2.8 2.1-1.2 0-2.3-.5-2.7-1.4" />
           <path d="M12 6.2v1.5M12 16.3v1.5" />
-        </svg>
-      );
-    case "operations": // wrench (builds / production)
-      return (
-        <svg {...common}>
-          <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.5-3.5a6 6 0 0 1-7.9 7.6l-6.7 6.7a2.1 2.1 0 0 1-3-3l6.7-6.7a6 6 0 0 1 7.6-7.9l-3.5 3.5z" />
         </svg>
       );
     case "hockeyKnowledge": // hockey stick + puck
@@ -70,12 +58,12 @@ function ResourceIcon({ resource }: { resource: ResourceKey }) {
 }
 
 const RESOURCE_TIP: Record<ResourceKey, string> = {
-  budget: "Budget — the club's money. Earned monthly; spent on future costs.",
-  operations: "Operations — production. Each month it flows into your active build.",
+  funds:
+    "Funds — the club's money and muscle. Each month it flows into your active build; it also pays upfront costs.",
   hockeyKnowledge:
     "Hockey Knowledge — research. Each month it flows into your active tech.",
   reputation:
-    "Reputation — your standing in hockey. Grows by discovery and good deeds.",
+    "Reputation — your standing in hockey. Never spent: doors open at higher standing.",
 };
 
 export function TopBar({

@@ -365,6 +365,8 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
     pondMarkers: generatePondMarkers(tiles, start, seed, hockeyOrgs, majorPts),
     hockeyOrgs,
     rivals,
+    rinks: [],
+    harvestedTiles: [],
     scout: null,
     scoutSelected: false,
   };
@@ -451,6 +453,7 @@ function placeRivals(
       hqTile: { x: chosen.x, y: chosen.y },
       productionPoints: 0,
       contacted: false,
+      eraId: "pond-hockey",
       units: [createRivalUnit(`rival-${club.id}-scout-1`, chosen.x, chosen.y)],
     });
   }
@@ -578,10 +581,56 @@ function generateIndependents(
       y: chosen.y,
       archetype: archetypes[i % archetypes.length],
       discovered: false,
+      playerContacted: false,
+      relationshipLevel: 0,
+      influencePoints: 0,
+      contactedByClubIds: [],
+      prospects: seedOrgProspects(i, chosen.x, chosen.y, seed),
     });
   }
 
   return orgs;
+}
+
+// Teasers shown on fogged prospect slots in the Independents ledger — enough
+// to make players want a scouting network, not enough to evaluate anyone.
+const PROSPECT_TEASERS = [
+  "Locals say he's never lost a race across the lake.",
+  "Wrist shot like a rumor: nobody's seen it twice.",
+  "Big, calm, and impossible to move from the crease.",
+  "Coaches argue about everything except her passing.",
+  "Plays defense like he's guarding the family farm.",
+  "The kid who shovels the rink first and leaves last.",
+  "Scores in every scrimmage. Disappears every winter.",
+  "A goalie, allegedly. Nobody scores on him, definitely.",
+];
+
+// 2–4 fogged prospects per independent, seeded deterministically at worldgen.
+// Positions skew toward skaters; goalies stay rare (as in life).
+function seedOrgProspects(
+  orgIndex: number,
+  x: number,
+  y: number,
+  seed: number,
+): WorldHockeyOrg["prospects"] {
+  const count = 2 + Math.floor(noise2d(x, y, seed + 77001) * 3); // 2..4
+  const prospects: WorldHockeyOrg["prospects"] = [];
+  for (let i = 0; i < count; i++) {
+    const roll = noise2d(x + i * 13, y + i * 7, seed + 77031);
+    const position = roll < 0.5 ? "F" : roll < 0.85 ? "D" : "G";
+    const teaser =
+      PROSPECT_TEASERS[
+        Math.floor(noise2d(x + i, y - i, seed + 77061) * PROSPECT_TEASERS.length) %
+          PROSPECT_TEASERS.length
+      ];
+    prospects.push({
+      id: `org-${orgIndex + 1}-prospect-${i + 1}`,
+      revealed: false,
+      position,
+      teaser,
+    });
+  }
+  return prospects;
 }
 
 function shuffledHockeyOrgNames(seed: number): string[] {

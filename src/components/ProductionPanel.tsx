@@ -15,8 +15,7 @@ import { getMonthlyIncome } from "../engine/selectors";
 import { ItemArt } from "./ItemArt";
 
 const RESOURCE_SHORT: Record<ResourceKey, string> = {
-  budget: "Budget",
-  operations: "Ops",
+  funds: "Funds",
   hockeyKnowledge: "HK",
   reputation: "Rep",
 };
@@ -54,11 +53,11 @@ export function ProductionPanel({
   dispatch: Dispatch<GameAction>;
 }) {
   const opts = getProductionOptions(state);
-  const opsPerMonth = getMonthlyIncome(state).operations;
+  const fundsPerMonth = getMonthlyIncome(state).funds;
   const slotBusy = !!state.activeProduction;
 
   const monthsFor = (cost: number) =>
-    opsPerMonth > 0 ? Math.max(1, Math.ceil(cost / opsPerMonth)) : Infinity;
+    fundsPerMonth > 0 ? Math.max(1, Math.ceil(cost / fundsPerMonth)) : Infinity;
 
   // Two grouped sections — Units first, then Facilities — each sorted with
   // buildable items ahead of ghosted/locked ones.
@@ -108,7 +107,7 @@ export function ProductionPanel({
         opt={opt}
         selected={keyOf(opt) === selectedKey}
         selectable={selectable(opt)}
-        estMonths={monthsFor(opt.opsCost)}
+        estMonths={monthsFor(opt.fundsCost)}
         onClick={() => onCardClick(opt)}
         onDetails={() => setDetailKey(keyOf(opt))}
       />
@@ -117,9 +116,9 @@ export function ProductionPanel({
   return (
     <div className="panel production-panel">
       <div className="panel-sub">
-        Club HQ builds one project at a time. Operations production (+{opsPerMonth}/mo)
-        funds it; unit Budget/Reputation costs are paid upfront. Click a card to
-        select, then confirm — or right-click (or tap ⓘ) for full details.
+        Club HQ builds one project at a time. Funds income (+{fundsPerMonth}/mo)
+        flows into it each month. Click a card to select, then confirm — or
+        right-click (or tap ⓘ) for full details.
       </div>
 
       <ProductionSection
@@ -151,7 +150,7 @@ export function ProductionPanel({
       <ConfirmBar
         selected={selected}
         slotBusy={slotBusy}
-        estMonths={selected ? monthsFor(selected.opsCost) : Infinity}
+        estMonths={selected ? monthsFor(selected.fundsCost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedKey(null)}
       />
@@ -159,7 +158,7 @@ export function ProductionPanel({
       {detail && (
         <DetailsModal
           opt={detail}
-          estMonths={monthsFor(detail.opsCost)}
+          estMonths={monthsFor(detail.fundsCost)}
           onClose={() => setDetailKey(null)}
         />
       )}
@@ -228,7 +227,7 @@ function ProductionCard({
   const foot =
     opt.status === "available"
       ? estMonths === Infinity
-        ? "needs production"
+        ? "needs Funds"
         : `~${estMonths} mo`
       : opt.status === "locked"
         ? opt.lockReason ?? "Locked"
@@ -284,7 +283,7 @@ function ProductionCard({
         {opt.kind === "unit" ? opt.categoryLabel : "Facility"}
       </div>
       <div className="prod-card-cost">
-        <span>{opt.opsCost} Ops</span>
+        <span>{opt.fundsCost} Funds</span>
         {upfront && <span className="prod-card-upfront">+ {upfront}</span>}
       </div>
       <div className={`prod-card-foot${unaffordable ? " warn" : ""}`}>
@@ -334,8 +333,8 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {selected.opsCost} Ops{upfront ? ` + ${upfront}` : ""} ·{" "}
-            {estMonths === Infinity ? "needs production" : `~${estMonths} mo`}
+            {selected.fundsCost} Funds{upfront ? ` + ${upfront}` : ""} ·{" "}
+            {estMonths === Infinity ? "needs Funds" : `~${estMonths} mo`}
           </div>
         </div>
       </div>
@@ -392,13 +391,13 @@ function DetailsModal({
           <DetailRow label="Effect" value={opt.effectSummary} tone="good" />
           <DetailRow
             label="Cost"
-            value={`${opt.opsCost} Operations${upfront ? ` + ${upfront} upfront` : ""}`}
+            value={`${opt.fundsCost} Funds${upfront ? ` + ${upfront} upfront` : ""}`}
           />
           <DetailRow
             label="Build time"
             value={
               estMonths === Infinity
-                ? "Needs Operations income"
+                ? "Needs Funds income"
                 : `~${estMonths} month${estMonths === 1 ? "" : "s"}`
             }
           />

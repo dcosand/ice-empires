@@ -23,12 +23,7 @@ import { ItemArt } from "./ItemArt";
 export type HQTab = "overview" | "personnel" | "production" | "facilities" | "units";
 type Tab = HQTab;
 
-const RESOURCE_ORDER: ResourceKey[] = [
-  "budget",
-  "operations",
-  "hockeyKnowledge",
-  "reputation",
-];
+const RESOURCE_ORDER: ResourceKey[] = ["funds", "hockeyKnowledge", "reputation"];
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -173,7 +168,7 @@ function OverviewTab({ state }: { state: GameState }) {
                   {productionItemName(prod.kind, prod.itemId)}
                 </div>
                 <div className="faint">
-                  {prod.operationsRemaining} Operations remaining
+                  {prod.fundsRemaining} Funds remaining
                 </div>
               </div>
             </div>
@@ -298,16 +293,16 @@ function ProductionTab({
   dispatch: Dispatch<GameAction>;
 }) {
   const prod = state.activeProduction;
-  const opsPerMonth = getMonthlyIncome(state).operations;
+  const fundsPerMonth = getMonthlyIncome(state).funds;
 
   return (
     <div className="hq-tabpane">
       {prod ? (
         (() => {
-          const total = prod.operationsRemaining + prod.progressOperations;
+          const total = prod.fundsRemaining + prod.progressFunds;
           const turnsLeft =
-            opsPerMonth > 0
-              ? Math.max(1, Math.ceil(prod.operationsRemaining / opsPerMonth))
+            fundsPerMonth > 0
+              ? Math.max(1, Math.ceil(prod.fundsRemaining / fundsPerMonth))
               : Infinity;
           return (
             <div className="hq-now-building">
@@ -321,17 +316,17 @@ function ProductionTab({
                   <div
                     className="hq-now-fill"
                     style={{
-                      width: `${Math.round((prod.progressOperations / total) * 100)}%`,
+                      width: `${Math.round((prod.progressFunds / total) * 100)}%`,
                     }}
                   />
                 </div>
                 <div className="hq-now-meta">
                   <span>
-                    {prod.progressOperations}/{total} Operations
+                    {prod.progressFunds}/{total} Funds
                   </span>
                   <span>
                     {turnsLeft === Infinity
-                      ? "needs Operations income"
+                      ? "needs Funds income"
                       : `~${turnsLeft} turn${turnsLeft === 1 ? "" : "s"} left`}
                   </span>
                 </div>

@@ -1,5 +1,6 @@
 import type { GameState } from "../types/game";
 import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
+import { RESEARCH } from "../data/research";
 import { createWorld } from "./world";
 import { nearestRivalClubId } from "./rivalAI";
 
@@ -16,6 +17,9 @@ export function devResetTurn1(state: GameState): GameState {
     ...state,
     month: 1,
     resources: { ...state.club.startingResources },
+    equipment: 0,
+    roster: [],
+    pendingTryout: null,
     facilities: [],
     units: [],
     completedResearch: [],
@@ -81,6 +85,77 @@ export function devMeetRival(state: GameState): GameState {
         r.clubId === clubId ? { ...r, contacted: true } : r,
       ),
     },
-    pendingMeeting: { clubId },
+    pendingMeeting: { kind: "rival", id: clubId },
   };
+}
+
+// Open the independent-meeting screen for the nearest unmet independent —
+// mirrors devMeetRival so the flow is testable without walking a scout there.
+export function devMeetIndependent(state: GameState): GameState {
+  const world = state.world;
+  if (!world) return state;
+  const origin =
+    world.hqTile ?? (world.founder ? { x: world.founder.x, y: world.founder.y } : null);
+  const pool = world.hockeyOrgs.filter((o) => !o.playerContacted);
+  if (!origin || pool.length === 0) return state;
+  let best = pool[0];
+  let bestD = Infinity;
+  for (const o of pool) {
+    const d = Math.hypot(o.x - origin.x, o.y - origin.y);
+    if (d < bestD) {
+      bestD = d;
+      best = o;
+    }
+  }
+  return {
+    ...state,
+    world: {
+      ...world,
+      hockeyOrgs: world.hockeyOrgs.map((o) =>
+        o.id === best.id
+          ? { ...o, discovered: true, playerContacted: true, contactMonth: state.month }
+          : o,
+      ),
+    },
+    pendingMeeting: { kind: "independent", id: best.id },
+  };
+}
+
+// Drop a Rink Rats builder at (or beside) the HQ, bypassing production + tech.
+export function devSpawnBuilder(state: GameState): GameState {
+  const world = state.world;
+  const at = world?.hqTile ?? (world?.founder ? { x: world.founder.x, y: world.founder.y } : null);
+  if (!world || !at) return state;
+  const id = `dev-builder-${state.month}-${world.scouts.length}`;
+  return {
+    ...state,
+    world: {
+      ...world,
+      scouts: [
+        ...world.scouts,
+        {
+          id,
+          unitDefId: "rink-rats",
+          name: "Rink Rats",
+          kind: "builder",
+          x: at.x,
+          y: at.y,
+          movesPerTurn: 2,
+          movesRemaining: 2,
+        },
+      ],
+      selectedScoutId: id,
+    },
+  };
+}
+
+// Complete every Pond Hockey era tech in one click.
+export function devGrantPondTech(state: GameState): GameState {
+  const pondIds = RESEARCH.filter((r) => r.eraId === "pond-hockey").map((r) => r.id);
+  const merged = new Set([...state.completedResearch, ...pondIds]);
+  return { ...state, completedResearch: [...merged] };
+}
+
+export function devAddEquipment(state: GameState): GameState {
+  return { ...state, equipment: state.equipment + 5 };
 }

@@ -72,11 +72,7 @@ export function FoundingScreen({
             <p className="fr-identity">{club.identityText}</p>
 
             <div className="resource-bar fr-resources">
-              <Stat label="Budget" value={club.startingResources.budget} />
-              <Stat
-                label="Operations"
-                value={club.startingResources.operations}
-              />
+              <Stat label="Funds" value={club.startingResources.funds} />
               <Stat
                 label="Hockey Knowledge"
                 value={club.startingResources.hockeyKnowledge}

@@ -1,15 +1,17 @@
 // Ice Empires — shared types.
 // Content lives in /data, rules live in /engine, UI renders this state.
 
-export type ResourceKey =
-  | "budget"
-  | "operations"
-  | "hockeyKnowledge"
-  | "reputation";
+// Economy model (see DECISIONS.md): two true currencies + one standing stat.
+//   funds           — purchasing/production currency (Budget + Operations merged);
+//                     funds production toward builds each month and pays upfront costs.
+//   hockeyKnowledge — research fuel (science-per-turn, decision D1).
+//   reputation      — NOT spendable. A standing stat that actions require at
+//                     thresholds (e.g. independents want rep >= 3). Nothing charges it.
+// Equipment is deliberately NOT a resource — it's shed inventory on GameState.
+export type ResourceKey = "funds" | "hockeyKnowledge" | "reputation";
 
 export type ResourceSet = {
-  budget: number;
-  operations: number;
+  funds: number;
   hockeyKnowledge: number;
   reputation: number;
 };
@@ -61,6 +63,8 @@ export type ClubDef = {
 
 export type FacilityEffect =
   | { type: "monthlyIncome"; resource: ResourceKey; amount: number }
+  // Adds to the equipment inventory each month (equipment is not a ResourceKey).
+  | { type: "equipmentPerMonth"; amount: number }
   | { type: "unlockRecruitment" }
   | { type: "improveRecruitmentEvents" };
 
@@ -90,6 +94,7 @@ export type FacilityDef = {
 export type UnitCategory =
   | "founding"
   | "exploration"
+  | "construction"
   | "scouting"
   | "recruiting"
   | "development"
@@ -121,6 +126,9 @@ export type UnitDef = {
   requiredAnyOf?: string[];
   effects?: UnitEffect[];
   unlocks?: Unlock[];
+  // When produced, also spawn a movable unit of this kind on the map at HQ
+  // (pond-scout spawns a scout; rink-rats spawns a builder).
+  spawnsMapUnit?: "scout" | "builder";
   flavor: string;
   // One-line, player-facing summary of what this unit does / will do.
   abilitySummary: string;
@@ -143,19 +151,31 @@ export type OwnedUnit = {
 
 export type ProductionKind = "facility" | "unit";
 
-// Production is funded by Operations production each month (not paid upfront);
-// any non-Operations cost (Budget/Reputation) is charged upfront on start.
-// Mirrors ActiveResearch so Operations reads as production-toward-the-item.
+// Production is funded by Funds income each month (not paid upfront).
+// Mirrors ActiveResearch so Funds reads as production-toward-the-item.
 export type ActiveProduction = {
   kind: ProductionKind;
   itemId: string;
-  operationsRemaining: number;
-  progressOperations: number;
+  fundsRemaining: number;
+  progressFunds: number;
 };
 
 // ---------------------------------------------------------------------------
 // Research
 // ---------------------------------------------------------------------------
+
+// Tech-tree branches (rows on the tech screen). Kept as a closed union so the
+// screen can color-code rows and catch typos in the 40-tech dataset.
+export type ResearchBranch =
+  | "hockey-fundamentals"
+  | "icecraft-infrastructure"
+  | "team-formation"
+  | "scouting-reach"
+  | "club-formation"
+  | "pipelines-influence"
+  | "competition"
+  | "diplomacy"
+  | "legacy";
 
 export type ResearchDef = {
   id: string;
@@ -164,6 +184,7 @@ export type ResearchDef = {
   // Cost in Hockey Knowledge points (science-per-turn model: HK income funds it).
   cost: number;
   requiredTechIds: string[];
+  branch: ResearchBranch;
   unlocks: Unlock[];
   flavor: string;
   eraId: string;
@@ -260,6 +281,46 @@ export type CardDef = {
 };
 
 // ---------------------------------------------------------------------------
+// Players (the roster — actual humans who show up and try to play hockey)
+// ---------------------------------------------------------------------------
+
+export type PlayerPosition = "F" | "D" | "G";
+
+// Attributes on a 20-point scale. Pond-era locals roll 1–6 — they are terrible,
+// and that's the point.
+export type PlayerAttrs = {
+  skating: number;
+  shooting: number;
+  passing: number;
+  checking: number;
+  goaltending: number;
+};
+
+export type Player = {
+  id: string;
+  name: string;
+  position: PlayerPosition;
+  age: number;
+  attrs: PlayerAttrs;
+  // One stick+gear from the equipment inventory. Ungeared players don't count
+  // toward the "full line" era requirement.
+  hasEquipment: boolean;
+  joinedMonth: number;
+  origin: string; // e.g. "local tryout"
+  // One-line personality/backstory shown on cards.
+  note: string;
+};
+
+// A tryout attendee who hasn't been recruited yet.
+export type TryoutCandidate = Omit<Player, "hasEquipment" | "joinedMonth">;
+
+export type PendingTryout = {
+  candidates: TryoutCandidate[];
+  // ids of candidates already recruited this tryout (kept for the modal UI).
+  recruitedIds: string[];
+};
+
+// ---------------------------------------------------------------------------
 // Pond Hockey encounters ("goodie huts") — PLACEHOLDER for the next iteration.
 // ---------------------------------------------------------------------------
 // One-time early discoveries (wanderers, garage-rink legends, frozen-lake
@@ -340,11 +401,11 @@ export type EraDef = {
 };
 
 export type EraRequirementId =
-  | "club-founded"
-  | "outdoor-rink-complete"
-  | "research-complete"
-  | "two-regions-discovered"
-  | "first-card-acquired";
+  | "rival-contact" // met >=1 rival major club
+  | "independent-contact" // met >=1 independent hockey org
+  | "rink-built" // >=1 Level-1 rink on the map
+  | "rules-of-the-game" // the tech: your players can actually play
+  | "full-roster"; // >=6 players incl. >=1 goalie, all geared
 
 export type EraRequirement = {
   id: EraRequirementId;
@@ -388,16 +449,41 @@ export type WorldTile = {
   valid: boolean; // can be entered / founded on (water is not)
 };
 
-// A movable unit on the world (the Founding Group before founding, the Scout
-// after it unlocks).
+// What a builder is currently constructing (multi-month map work). While set,
+// the unit cannot move and its moves are not refreshed at month end.
+export type BuilderWork = {
+  task: "build-rink";
+  x: number;
+  y: number;
+  rinkKind: "ice" | "inline";
+  monthsRemaining: number;
+};
+
+// A movable unit on the world (the Founding Group before founding; Scouts and
+// Builders after). All player field units share this shape and live in
+// world.scouts — `kind` distinguishes behavior (absent = "scout" for legacy).
 export type WorldUnit = {
   id?: string;
   unitDefId?: string;
   name?: string;
+  kind?: "scout" | "builder";
   x: number;
   y: number;
   movesPerTurn: number;
   movesRemaining: number;
+  working?: BuilderWork;
+};
+
+// A rink (or pre-rink surface) created on the map by a builder unit.
+//   level 0 — Cleared Pond (shoveled snow; enables the Level-1 build)
+//   level 1 — Level 1 Outdoor Rink (or street/inline rink on pavement)
+export type WorldRink = {
+  id: string;
+  x: number;
+  y: number;
+  level: number;
+  kind: "ice" | "inline";
+  builtMonth: number;
 };
 
 export type WorldPondMarker = {
@@ -409,6 +495,20 @@ export type WorldPondMarker = {
   investigated: boolean;
 };
 
+// A prospect in an independent's pipeline. Seeded at worldgen; `revealed`
+// stays false until an Act-2 scouting network uncovers the details — the
+// ledger shows a fogged "???" slot with only position + teaser.
+export type OrgProspect = {
+  id: string;
+  revealed: boolean;
+  position: "F" | "D" | "G";
+  teaser: string;
+};
+
+// Relationship ladder with an independent (Civ city-state analog):
+//   0 Contacted · 1 Friendly · 2 Partner · 3 Affiliate
+export type OrgRelationshipLevel = 0 | 1 | 2 | 3;
+
 export type WorldHockeyOrg = {
   id: string;
   name: string;
@@ -416,6 +516,14 @@ export type WorldHockeyOrg = {
   y: number;
   archetype: "minor-club" | "junior-league" | "rink-society" | "academy";
   discovered: boolean;
+  // First-contact + relationship state (independents ledger).
+  playerContacted: boolean;
+  contactMonth?: number;
+  relationshipLevel: OrgRelationshipLevel;
+  influencePoints: number;
+  // Rival majors that have made contact with this independent.
+  contactedByClubIds: string[];
+  prospects: OrgProspect[];
 };
 
 // ---------------------------------------------------------------------------
@@ -445,13 +553,19 @@ export type RivalClub = {
   productionPoints: number; // lightweight economy accumulator toward next unit
   units: RivalUnit[];
   contacted: boolean; // has the human made first contact with this rival?
+  // How the player greeted them at first contact — seeds Act-3 diplomacy.
+  attitude?: "friendly" | "wary";
+  // Rivals progress through eras on their own seeded schedule; transitions of
+  // contacted rivals are broadcast in the log for competitive pressure.
+  eraId: string;
 };
 
-// A first-contact "leader scene" awaiting the player's acknowledgement. Mirrors
-// PendingEncounter — set when the human bumps into a rival, cleared on Continue.
-// This overlay will grow into the diplomacy / negotiation screen in later eras.
+// A first-contact "leader scene" awaiting the player's response. Mirrors
+// PendingEncounter — set when the human bumps into a rival club or an
+// independent org. `id` is a clubId (rival) or hockey-org id (independent).
 export type PendingMeeting = {
-  clubId: string;
+  kind: "rival" | "independent";
+  id: string;
 };
 
 export type WorldState = {
@@ -467,6 +581,8 @@ export type WorldState = {
   pondMarkers: WorldPondMarker[]; // one-time "goodie hut" exploration markers
   hockeyOrgs: WorldHockeyOrg[]; // persistent neutral hockey powers / city-state analogs
   rivals: RivalClub[]; // AI opponent clubs with their own HQs + units
+  rinks: WorldRink[]; // player-built rinks / cleared ponds on the map
+  harvestedTiles: string[]; // "x,y" keys of forest tiles already harvested for sticks
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
 };
@@ -485,6 +601,11 @@ export type GameState = {
   world: WorldState | null;
   club: ClubDef | null;
   resources: ResourceSet;
+  // Shed inventory of sticks & gear (not a currency): harvested from forests,
+  // produced by the Equipment Shed, consumed 1-per-player to gear recruits.
+  equipment: number;
+  roster: Player[]; // recruited players (the actual team)
+  pendingTryout: PendingTryout | null; // open tryout modal, if any
   facilities: string[]; // completed facility ids
   units: OwnedUnit[]; // owned organizational units (HQ roster)
   completedResearch: string[];
@@ -521,8 +642,19 @@ export type GameAction =
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
   | { type: "RESOLVE_ENCOUNTER" }
   | { type: "ACKNOWLEDGE_MEETING" }
+  | { type: "RESPOND_MEETING"; attitude: "friendly" | "wary" }
   | { type: "SURVEY_REGION"; regionId: string }
   | { type: "ESTABLISH_CONNECTION"; regionId: string }
+  // ---- builder (map work crew) actions ----
+  | { type: "CLEAR_SNOW"; unitId: string }
+  | { type: "BUILD_RINK"; unitId: string }
+  | { type: "HARVEST_BRANCHES"; unitId: string }
+  // ---- tryouts / roster ----
+  | { type: "HOLD_TRYOUTS" }
+  | { type: "RECRUIT_PLAYER"; candidateId: string }
+  | { type: "CLOSE_TRYOUTS" }
+  // ---- independents ----
+  | { type: "SEND_INTRODUCTION"; orgId: string }
   | { type: "END_MONTH" }
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----
@@ -531,4 +663,9 @@ export type GameAction =
   | { type: "DEV_TOGGLE_FACILITY"; facilityId: string }
   | { type: "DEV_TOGGLE_RESEARCH"; techId: string }
   | { type: "DEV_SET_REVEAL_ALL"; value: boolean }
-  | { type: "DEV_MEET_RIVAL" };
+  | { type: "DEV_MEET_RIVAL" }
+  | { type: "DEV_MEET_INDEPENDENT" }
+  | { type: "DEV_SPAWN_BUILDER" }
+  | { type: "DEV_GRANT_POND_TECH" }
+  | { type: "DEV_FORCE_TRYOUTS" }
+  | { type: "DEV_ADD_EQUIPMENT" };

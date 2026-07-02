@@ -1,105 +1,93 @@
-import type { SyntheticEvent } from "react";
+import { useEffect, useState } from "react";
+import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
+import type { GameAction } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 
-// The first-contact "leader scene". Shown full-screen over the map the first time
-// the player's scout bumps into a rival club. For now it's a meeting beat — the
-// rival's leader, club identity, and a line of flavor — but it's deliberately
-// built as a standalone screen so it can grow into the diplomacy / negotiation
-// surface (offers, demands, alliances) in later eras.
+// The first-contact "leader scene" — a Civ-style cinematic beat. Full-viewport
+// letterbox, the rival's palette floods the stage, their leader strides in, and
+// the player chooses how to greet them. The chosen attitude is stored on the
+// rival (RESPOND_MEETING) and will seed diplomacy in later eras.
 export function RivalMeetingScreen({
   clubId,
   month,
-  onClose,
+  dispatch,
 }: {
   clubId: string;
   month: number;
-  onClose: () => void;
+  dispatch: Dispatch<GameAction>;
 }) {
   const club = CLUBS[clubId];
+  // Reveal the response choices only after the entrance beat has played.
+  const [choicesReady, setChoicesReady] = useState(false);
+  useEffect(() => {
+    const t = setTimeout(() => setChoicesReady(true), 1400);
+    return () => clearTimeout(t);
+  }, []);
   if (!club) return null;
+
+  const stageStyle = {
+    "--meet-primary": club.palette.primary,
+    "--meet-secondary": club.palette.secondary,
+    "--meet-accent": club.accent,
+  } as CSSProperties;
+
+  const respond = (attitude: "friendly" | "wary") =>
+    dispatch({ type: "RESPOND_MEETING", attitude });
 
   return (
     <div
-      className="founding-moment"
+      className="meeting-scene"
+      style={stageStyle}
       role="dialog"
       aria-modal="true"
       aria-label={`First contact with ${club.name}`}
     >
-      <div className="founding-moment-scrim" />
-      <div
-        className="founding-moment-card"
-        style={{
-          maxWidth: 760,
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 40%) 1fr",
-          overflow: "hidden",
-          borderTop: `3px solid ${club.accent}`,
-        }}
-      >
-        {/* Leader portrait — the face of the rival club. */}
-        <div
-          style={{
-            position: "relative",
-            background: `linear-gradient(160deg, ${club.palette.primary}, #05121c)`,
-            display: "flex",
-            alignItems: "flex-end",
-            justifyContent: "center",
-            minHeight: 320,
-          }}
-        >
-          <img
-            src={clubAsset(club, "leader")}
-            alt={`${club.leaderArchetype} of ${club.name}`}
-            onError={hideOnError}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "cover",
-              objectPosition: "top center",
-              position: "absolute",
-              inset: 0,
-            }}
-          />
-          <img
-            src={clubAsset(club, "logo")}
-            alt={`${club.name} crest`}
-            onError={hideOnError}
-            style={{
-              position: "relative",
-              width: 64,
-              height: 64,
-              margin: 14,
-              objectFit: "contain",
-              filter: "drop-shadow(0 2px 6px rgba(0,0,0,0.6))",
-            }}
-          />
-        </div>
-
-        {/* Meeting copy. */}
-        <div className="fmoment-body" style={{ padding: 28 }}>
-          <div className="eyebrow">First Contact · Month {month}</div>
-          <h2 style={{ marginBottom: 2 }}>{club.name}</h2>
-          <div
-            style={{
-              color: club.accent,
-              fontWeight: 700,
-              fontSize: 13,
-              marginBottom: 12,
-            }}
-          >
-            {club.leaderArchetype}
+      <div className="meeting-letterbox top" />
+      <div className="meeting-letterbox bottom" />
+      <div className="meeting-stage">
+        <div className="meeting-glow" />
+        <img
+          className="meeting-portrait"
+          src={clubAsset(club, "leader")}
+          alt={`${club.leaderArchetype} of ${club.name}`}
+          onError={hideOnError}
+        />
+        <div className="meeting-panel">
+          <div className="meeting-eyebrow">First Contact · Month {month}</div>
+          <div className="meeting-crest-row">
+            <img
+              className="meeting-crest"
+              src={clubAsset(club, "logo")}
+              alt={`${club.name} crest`}
+              onError={hideOnError}
+            />
+            <div>
+              <h2 className="meeting-name">{club.name}</h2>
+              <div className="meeting-archetype">{club.leaderArchetype}</div>
+            </div>
           </div>
-          <p style={{ marginTop: 0 }}>
-            Out on the open ice, your scout meets a party flying the colors of{" "}
+          <p className="meeting-line">
+            Out on the open ice, your party meets skaters flying the colors of{" "}
             {club.name}. {club.identityText}
           </p>
-          <p style={{ opacity: 0.7, fontSize: 13 }}>
-            For now the two clubs simply take each other's measure. Talks — trades,
-            demands, and alliances — will open in a later era.
-          </p>
-          <div className="fmoment-actions" style={{ marginTop: 18 }}>
-            <button className="btn btn-primary" onClick={onClose}>
-              Continue
+          <div className={`meeting-choices${choicesReady ? " ready" : ""}`}>
+            <button
+              className="btn btn-primary meeting-choice"
+              onClick={() => respond("friendly")}
+            >
+              Extend an open hand
+              <span className="meeting-choice-sub">
+                Trade rumors, part as future friends
+              </span>
+            </button>
+            <button
+              className="btn meeting-choice"
+              onClick={() => respond("wary")}
+            >
+              Take their measure coldly
+              <span className="meeting-choice-sub">
+                Give nothing away — rivals remember
+              </span>
             </button>
           </div>
         </div>

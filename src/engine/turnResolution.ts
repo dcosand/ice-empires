@@ -10,7 +10,8 @@ import { maybeRivalRumor } from "./rivalSystem";
 import { runRivalTurns } from "./rivalAI";
 import { refreshScoutMoves } from "./scoutSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
-import { checkEraProgress } from "./eraSystem";
+import { checkEraProgress, progressRivalEras } from "./eraSystem";
+import { getMonthlyEquipment } from "./selectors";
 import { makeLog } from "./log";
 
 // Pure-ish end-of-month resolver. Clones state, advances one month, then runs
@@ -29,13 +30,16 @@ export function endMonth(state: GameState): GameState {
     logs.push(makeLog(draft.month, seq++, type, title, message));
   };
 
-  // 1. Income.
+  // 1. Income (plus equipment shed stock — inventory, not a currency).
   const income = getMonthlyIncome(draft);
   draft.resources = addResources(draft.resources, income);
+  const equipmentGain = getMonthlyEquipment(draft);
+  draft.equipment += equipmentGain;
   push(
     "resource",
     `Month ${draft.month} income`,
-    incomeSummary(income),
+    incomeSummary(income) +
+      (equipmentGain > 0 ? ` +${equipmentGain} Equipment (shed).` : ""),
   );
 
   // 2+. Systems — each contributes a readable world/club update.
@@ -46,6 +50,7 @@ export function endMonth(state: GameState): GameState {
   maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
+  progressRivalEras(draft, push); // rivals advance eras on their own clock
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);
 

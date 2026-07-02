@@ -21,10 +21,14 @@ import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
 import {
+  devAddEquipment,
+  devGrantPondTech,
+  devMeetIndependent,
   devMeetRival,
   devRegenMap,
   devResetTurn1,
   devSetRevealAll,
+  devSpawnBuilder,
   devToggleFacility,
   devToggleResearch,
 } from "./devSystem";
@@ -148,6 +152,25 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "ACKNOWLEDGE_MEETING":
       return { ...state, pendingMeeting: null };
 
+    case "RESPOND_MEETING": {
+      // Store the chosen greeting on the rival being met, then close the scene.
+      const meeting = state.pendingMeeting;
+      const world = state.world;
+      if (!meeting || meeting.kind !== "rival" || !world) {
+        return { ...state, pendingMeeting: null };
+      }
+      return {
+        ...state,
+        pendingMeeting: null,
+        world: {
+          ...world,
+          rivals: world.rivals.map((r) =>
+            r.clubId === meeting.id ? { ...r, attitude: action.attitude } : r,
+          ),
+        },
+      };
+    }
+
     case "SURVEY_REGION":
       return surveyRegion(state, action.regionId);
 
@@ -177,6 +200,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_MEET_RIVAL":
       return devMeetRival(state);
+
+    case "DEV_MEET_INDEPENDENT":
+      return devMeetIndependent(state);
+
+    case "DEV_SPAWN_BUILDER":
+      return devSpawnBuilder(state);
+
+    case "DEV_GRANT_POND_TECH":
+      return devGrantPondTech(state);
+
+    case "DEV_ADD_EQUIPMENT":
+      return devAddEquipment(state);
 
     default:
       return state;

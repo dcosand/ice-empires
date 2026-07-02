@@ -1,24 +1,16 @@
 import type { FacilityDef } from "../types/game";
 
+// Club HQ facilities. NOTE: the old "Outdoor Rink" facility is retired — rinks
+// are map objects now, built on frozen ponds by the Rink Rats unit (see
+// engine/builderSystem.ts). Each club rink yields +1 Funds/month instead.
 export const FACILITIES: FacilityDef[] = [
-  {
-    id: "outdoor-rink",
-    name: "Outdoor Rink",
-    description: "Your first sheet of real, club-owned ice.",
-    cost: { operations: 9 },
-    buildMonths: 3,
-    effects: [{ type: "monthlyIncome", resource: "operations", amount: 2 }],
-    unlocks: [{ type: "cardPool", poolId: "local-coach" }],
-    flavor: "It is not much, but it is ice. And ice is enough.",
-    eraId: "pond-hockey",
-  },
   {
     id: "equipment-shed",
     name: "Equipment Shed",
     description: "Somewhere to keep the sticks, pucks, and broken dreams.",
-    cost: { operations: 6 },
+    cost: { funds: 6 },
     buildMonths: 2,
-    effects: [{ type: "unlockRecruitment" }],
+    effects: [{ type: "unlockRecruitment" }, { type: "equipmentPerMonth", amount: 1 }],
     unlocks: [],
     flavor: "Half the sticks are too short. The dream is regulation size.",
     eraId: "pond-hockey",
@@ -27,7 +19,7 @@ export const FACILITIES: FacilityDef[] = [
     id: "clubhouse",
     name: "Clubhouse",
     description: "A roof, a kettle, and a place to belong.",
-    cost: { operations: 9 },
+    cost: { funds: 9 },
     buildMonths: 3,
     effects: [{ type: "monthlyIncome", resource: "reputation", amount: 1 }],
     unlocks: [],
@@ -38,7 +30,7 @@ export const FACILITIES: FacilityDef[] = [
     id: "volunteer-coaching-bench",
     name: "Volunteer Coaching Bench",
     description: "Unpaid, overqualified, and weirdly passionate.",
-    cost: { operations: 6 },
+    cost: { funds: 6 },
     buildMonths: 2,
     effects: [{ type: "monthlyIncome", resource: "hockeyKnowledge", amount: 1 }],
     unlocks: [],
@@ -49,7 +41,7 @@ export const FACILITIES: FacilityDef[] = [
     id: "local-notice-board",
     name: "Local Notice Board",
     description: "Cork, thumbtacks, and the power of a good flyer.",
-    cost: { operations: 3 },
+    cost: { funds: 3 },
     buildMonths: 1,
     effects: [{ type: "improveRecruitmentEvents" }],
     unlocks: [],

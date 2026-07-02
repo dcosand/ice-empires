@@ -122,7 +122,7 @@ function checkRivalContactAtScouts(draft: GameState, push: PushLog): void {
     if (rival.contacted) continue;
     if (rivalIsInContact(rival, scouts)) {
       rival.contacted = true;
-      draft.pendingMeeting = { clubId: rival.clubId };
+      draft.pendingMeeting = { kind: "rival", id: rival.clubId };
       const club = CLUBS[rival.clubId];
       push(
         "rival",
@@ -156,7 +156,7 @@ export function triggerRivalContact(state: GameState, x: number, y: number): Gam
   const next: GameState = {
     ...state,
     world: { ...world, rivals },
-    pendingMeeting: { clubId: rival.clubId },
+    pendingMeeting: { kind: "rival", id: rival.clubId },
   };
   return prependLog(
     next,

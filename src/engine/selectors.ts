@@ -10,8 +10,9 @@ import { UNITS_BY_ID } from "../data/units";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
 import { REGIONS } from "../data/regions";
 import { CARDS_BY_ID } from "../data/cards";
-import { CLUB_FORMATION_REQUIREMENTS } from "../data/eras";
+import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
+import { getClubRinks } from "./rinkSystem";
 
 // Monthly income = club base + completed-facility effects + acquired-card effects.
 export function getMonthlyIncome(state: GameState): ResourceSet {
@@ -54,7 +55,26 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
     income = addResources(income, { reputation: influenced });
   }
 
+  // Each club rink (Level >=1, inside HQ radius) yields +1 Funds/month —
+  // replaces the retired Outdoor Rink facility's income.
+  if (state.world) {
+    const rinkCount = getClubRinks(state.world).length;
+    if (rinkCount > 0) income = addResources(income, { funds: rinkCount });
+  }
+
   return income;
+}
+
+// Equipment inventory gained each month (shed stock; not a ResourceSet key).
+export function getMonthlyEquipment(state: GameState): number {
+  let total = 0;
+  for (const facilityId of state.facilities) {
+    const facility = FACILITIES_BY_ID[facilityId];
+    for (const effect of facility?.effects ?? []) {
+      if (effect.type === "equipmentPerMonth") total += effect.amount;
+    }
+  }
+  return total;
 }
 
 // Facilities that are not built and not currently building.
@@ -98,7 +118,7 @@ export function getHiddenRegionCount(state: GameState): number {
   }).length;
 }
 
-// Era-progress requirement checklist for the Club Formation Era.
+// Era-progress requirement checklist for the CURRENT era's exit criteria.
 export type EraReqStatus = {
   id: EraRequirementId;
   label: string;
@@ -106,11 +126,18 @@ export type EraReqStatus = {
 };
 
 export function getEraProgress(state: GameState): EraReqStatus[] {
-  return CLUB_FORMATION_REQUIREMENTS.map((req) => ({
+  const reqs = ERA_REQUIREMENTS[state.eraId] ?? [];
+  return reqs.map((req) => ({
     id: req.id,
     label: req.label,
     met: isRequirementMet(state, req.id),
   }));
+}
+
+// The "full line" check: 6+ players including a goalie, everyone geared.
+export function hasFullLine(state: GameState): boolean {
+  const geared = state.roster.filter((p) => p.hasEquipment);
+  return geared.length >= 6 && geared.some((p) => p.position === "G");
 }
 
 export function isRequirementMet(
@@ -118,26 +145,28 @@ export function isRequirementMet(
   id: EraRequirementId,
 ): boolean {
   switch (id) {
-    case "club-founded":
-      return state.club !== null;
-    case "outdoor-rink-complete":
-      return state.facilities.includes("outdoor-rink");
-    case "research-complete":
-      return state.completedResearch.length >= 1;
-    case "two-regions-discovered":
-      return getDiscoveredCount(state) >= 2;
-    case "first-card-acquired":
-      return state.cards.length >= 1;
+    case "rival-contact":
+      return !!state.world?.rivals.some((r) => r.contacted);
+    case "independent-contact":
+      return !!state.world?.hockeyOrgs.some((o) => o.playerContacted);
+    case "rink-built":
+      return !!state.world && state.world.rinks.some((r) => r.level >= 1);
+    case "rules-of-the-game":
+      return state.completedResearch.includes("rules-of-the-game");
+    case "full-roster":
+      return hasFullLine(state);
   }
 }
 
+// An era with no requirement list defined never advances (Dynasty, and any
+// later era whose exit criteria aren't designed yet).
 export function allEraRequirementsMet(state: GameState): boolean {
-  return CLUB_FORMATION_REQUIREMENTS.every((req) =>
-    isRequirementMet(state, req.id),
-  );
+  const reqs = ERA_REQUIREMENTS[state.eraId] ?? [];
+  if (reqs.length === 0) return false;
+  return reqs.every((req) => isRequirementMet(state, req.id));
 }
 
-// Production progress as a 0..1 fraction for the active item (Operations made).
+// Production progress as a 0..1 fraction for the active item (Funds produced).
 export function getActiveProductionProgress(state: GameState): number {
   const prod = state.activeProduction;
   if (!prod) return 0;
@@ -145,9 +174,9 @@ export function getActiveProductionProgress(state: GameState): number {
     prod.kind === "facility"
       ? FACILITIES_BY_ID[prod.itemId]
       : UNITS_BY_ID[prod.itemId];
-  const cost = def?.cost.operations ?? 0;
+  const cost = def?.cost.funds ?? 0;
   if (cost === 0) return 0;
-  return prod.progressOperations / cost;
+  return prod.progressFunds / cost;
 }
 
 export function getActiveResearchProgress(state: GameState): number {

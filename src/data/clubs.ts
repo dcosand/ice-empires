@@ -4,15 +4,14 @@ import type { ClubDef } from "../types/game";
 // the same mechanics (see DECISIONS.md) but carry their own identity + assets.
 const SHARED_START = {
   startingBonusId: "nontraditional-market",
+  // Two-currency economy: funds = old budget + operations merged.
   startingResources: {
-    budget: 8,
-    operations: 8,
+    funds: 16,
     hockeyKnowledge: 5,
     reputation: 9,
   },
   monthlyBaseIncome: {
-    budget: 2,
-    operations: 3,
+    funds: 5,
     hockeyKnowledge: 1,
     reputation: 1,
   },
