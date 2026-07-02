@@ -5,6 +5,10 @@ import { RESOURCE_LABELS } from "./resources";
 import { progressProduction } from "./productionSystem";
 import { progressBuilderWork } from "./builderSystem";
 import { autoEquipRoster } from "./tryoutSystem";
+import {
+  checkIndependentContact,
+  trackRivalOrgContacts,
+} from "./independentsSystem";
 import { progressResearch } from "./researchSystem";
 import { resolveDiscovery } from "./discoverySystem";
 import { progressConnection } from "./regionDevelopment";
@@ -54,6 +58,8 @@ export function endMonth(state: GameState): GameState {
   maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
+  trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)
+  checkIndependentContact(draft, push); // a unit parked beside an org meets them
   progressRivalEras(draft, push); // rivals advance eras on their own clock
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);

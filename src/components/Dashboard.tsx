@@ -34,12 +34,15 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { TryoutScreen } from "./TryoutScreen";
+import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
+import { IndependentsScreen } from "./IndependentsScreen";
 
 type OverlayView =
   | "build"
   | "research"
   | "search"
   | "club"
+  | "independents"
   | "cards"
   | "era"
   | "log"
@@ -121,6 +124,9 @@ export function Dashboard({
         <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
+          {overlay === "independents" && (
+            <IndependentsScreen state={state} dispatch={dispatch} />
+          )}
           {overlay === "cards" && <CardsPanel state={state} />}
           {overlay === "era" && <EraProgressPanel state={state} />}
           {overlay === "log" && <EventLog state={state} />}
@@ -150,6 +156,15 @@ export function Dashboard({
           clubId={state.pendingMeeting.id}
           month={state.month}
           dispatch={dispatch}
+        />
+      )}
+
+      {state.pendingMeeting?.kind === "independent" && (
+        <IndependentMeetingScreen
+          state={state}
+          orgId={state.pendingMeeting.id}
+          dispatch={dispatch}
+          onOpenLedger={() => setOverlay("independents")}
         />
       )}
 
@@ -351,9 +366,14 @@ function InfoDock({
   state: GameState;
   open: (view: OverlayView) => void;
 }) {
+  const contactedOrgs =
+    state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
   return (
     <div className="info-dock">
       <button onClick={() => open("club")}>HQ</button>
+      <button onClick={() => open("independents")}>
+        Independents {contactedOrgs}
+      </button>
       <button onClick={() => open("cards")}>Cards {state.cards.length}</button>
       <button onClick={() => open("era")}>Era</button>
       <button onClick={() => open("log")}>Log {state.eventLog.length}</button>
@@ -390,6 +410,7 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
     research: "Choose Research",
     search: "Local Hockey Search",
     club: "Club HQ",
+    independents: "Independents",
     cards: "Cards",
     era: "Era Progress",
     log: "Event Log",

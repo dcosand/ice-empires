@@ -1,0 +1,230 @@
+import type {
+  GameState,
+  OrgRelationshipLevel,
+  WorldHockeyOrg,
+} from "../types/game";
+import { isAdjacent } from "./world";
+import { allScouts } from "./scoutSystem";
+import { prependLog } from "./log";
+import type { PushLog } from "./turnContext";
+
+// Independents (neutral hockey orgs) are the city-state analog. This module
+// owns first contact, the relationship/influence ladder, and the ledger's
+// actions. See docs/11_INDEPENDENTS_AND_FEEDER_SYSTEM.md for the target design;
+// Act 2 adds scouting networks (prospect reveal) and Anchor Club competition.
+
+export const RELATIONSHIP_TIERS: { level: OrgRelationshipLevel; name: string }[] = [
+  { level: 0, name: "Contacted" },
+  { level: 1, name: "Friendly" },
+  { level: 2, name: "Partner" },
+  { level: 3, name: "Affiliate" },
+];
+
+// Influence thresholds to reach levels 1..3.
+export const INFLUENCE_THRESHOLDS = [10, 25, 50];
+
+export const INTRO_COST_FUNDS = 1;
+export const INTRO_REPUTATION_REQUIRED = 3;
+export const INTRO_INFLUENCE_GAIN = 5;
+const FIRST_CONTACT_REPUTATION = 1;
+const FIRST_CONTACT_INFLUENCE = 5;
+
+export function tierName(level: OrgRelationshipLevel): string {
+  return RELATIONSHIP_TIERS[level]?.name ?? "Contacted";
+}
+
+export function levelForInfluence(points: number): OrgRelationshipLevel {
+  let level: OrgRelationshipLevel = 0;
+  for (let i = 0; i < INFLUENCE_THRESHOLDS.length; i++) {
+    if (points >= INFLUENCE_THRESHOLDS[i]) level = (i + 1) as OrgRelationshipLevel;
+  }
+  return level;
+}
+
+export const ARCHETYPE_LABELS: Record<WorldHockeyOrg["archetype"], string> = {
+  "minor-club": "Minor Club",
+  "junior-league": "Junior League",
+  "rink-society": "Rink Society",
+  academy: "Academy",
+};
+
+export const ARCHETYPE_BLURBS: Record<WorldHockeyOrg["archetype"], string> = {
+  "minor-club":
+    "A proud local club with a barn, a bar tab, and opinions about everything. They produce sturdy players and long memories.",
+  "junior-league":
+    "A loose league of town teams. Half organization, half argument — and a steady stream of raw teenage talent.",
+  "rink-society":
+    "Keepers of the local ice. They know every pond, every frozen morning, and every kid who can really skate.",
+  academy:
+    "Structured, ambitious, and a little intense. Their graduates can already skate backwards, which around here counts as sorcery.",
+};
+
+// Fires after a player unit moves to (x,y): the first time a unit stands next
+// to a discovered org, formal first contact opens a meeting scene (one-popup
+// rule: encounters and rival meetings take priority; if something is already
+// open we simply don't contact this move — walking near them again retries).
+export function triggerIndependentContact(
+  state: GameState,
+  x: number,
+  y: number,
+): GameState {
+  const world = state.world;
+  if (!world || state.pendingMeeting || state.pendingEncounter) return state;
+  if (!allScouts(world).some((s) => s.x === x && s.y === y)) return state;
+
+  const org = world.hockeyOrgs.find(
+    (o) => !o.playerContacted && isAdjacentOrSame({ x, y }, o),
+  );
+  if (!org) return state;
+  return makeContact(state, org.id);
+}
+
+// Monthly sweep: a unit parked beside an org (or an org discovered by other
+// means) still gets its meeting. Mirrors checkRivalContactAtScouts.
+export function checkIndependentContact(draft: GameState, push: PushLog): void {
+  if (draft.pendingMeeting || draft.pendingEncounter) return;
+  const world = draft.world;
+  if (!world) return;
+  const units = allScouts(world);
+  if (units.length === 0) return;
+  const org = world.hockeyOrgs.find(
+    (o) => !o.playerContacted && units.some((u) => isAdjacentOrSame(u, o)),
+  );
+  if (!org) return;
+  org.playerContacted = true;
+  org.contactMonth = draft.month;
+  org.discovered = true;
+  org.influencePoints += FIRST_CONTACT_INFLUENCE;
+  org.relationshipLevel = levelForInfluence(org.influencePoints);
+  draft.resources.reputation += FIRST_CONTACT_REPUTATION;
+  draft.pendingMeeting = { kind: "independent", id: org.id };
+  push(
+    "discovery",
+    `First contact: ${org.name}`,
+    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${FIRST_CONTACT_REPUTATION} Reputation, +${FIRST_CONTACT_INFLUENCE} Influence)`,
+  );
+}
+
+function isAdjacentOrSame(
+  a: { x: number; y: number },
+  b: { x: number; y: number },
+): boolean {
+  return (a.x === b.x && a.y === b.y) || isAdjacent(a, b);
+}
+
+function makeContact(state: GameState, orgId: string): GameState {
+  const world = state.world!;
+  const org = world.hockeyOrgs.find((o) => o.id === orgId)!;
+  const influence = org.influencePoints + FIRST_CONTACT_INFLUENCE;
+  const next: GameState = {
+    ...state,
+    resources: {
+      ...state.resources,
+      reputation: state.resources.reputation + FIRST_CONTACT_REPUTATION,
+    },
+    world: {
+      ...world,
+      hockeyOrgs: world.hockeyOrgs.map((o) =>
+        o.id === orgId
+          ? {
+              ...o,
+              discovered: true,
+              playerContacted: true,
+              contactMonth: state.month,
+              influencePoints: influence,
+              relationshipLevel: levelForInfluence(influence),
+            }
+          : o,
+      ),
+    },
+    pendingMeeting: { kind: "independent", id: orgId },
+  };
+  return prependLog(
+    next,
+    "discovery",
+    `First contact: ${org.name}`,
+    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${FIRST_CONTACT_REPUTATION} Reputation, +${FIRST_CONTACT_INFLUENCE} Influence)`,
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Ledger actions
+// ---------------------------------------------------------------------------
+
+export type IntroGate = "ok" | "no-tech" | "no-standing" | "no-funds" | "not-contacted";
+
+export function introGate(state: GameState, orgId: string): IntroGate {
+  const org = state.world?.hockeyOrgs.find((o) => o.id === orgId);
+  if (!org?.playerContacted) return "not-contacted";
+  if (!state.completedResearch.includes("first-contact")) return "no-tech";
+  if (state.resources.reputation < INTRO_REPUTATION_REQUIRED) return "no-standing";
+  if (state.resources.funds < INTRO_COST_FUNDS) return "no-funds";
+  return "ok";
+}
+
+export function introGateHint(gate: IntroGate): string {
+  switch (gate) {
+    case "no-tech":
+      return "Research First Contact to open formal introductions.";
+    case "no-standing":
+      return `Needs Reputation ${INTRO_REPUTATION_REQUIRED}+ — they haven't heard enough about you yet.`;
+    case "no-funds":
+      return `Needs ${INTRO_COST_FUNDS} Fund for the trip and the coffee.`;
+    case "not-contacted":
+      return "Meet them on the map first.";
+    default:
+      return "";
+  }
+}
+
+export function canSendIntroduction(state: GameState, orgId: string): boolean {
+  return introGate(state, orgId) === "ok";
+}
+
+export function sendIntroduction(state: GameState, orgId: string): GameState {
+  if (!canSendIntroduction(state, orgId)) return state;
+  const world = state.world!;
+  const org = world.hockeyOrgs.find((o) => o.id === orgId)!;
+  const influence = org.influencePoints + INTRO_INFLUENCE_GAIN;
+  const newLevel = levelForInfluence(influence);
+  const leveled = newLevel > org.relationshipLevel;
+
+  const next: GameState = {
+    ...state,
+    resources: { ...state.resources, funds: state.resources.funds - INTRO_COST_FUNDS },
+    world: {
+      ...world,
+      hockeyOrgs: world.hockeyOrgs.map((o) =>
+        o.id === orgId
+          ? { ...o, influencePoints: influence, relationshipLevel: newLevel }
+          : o,
+      ),
+    },
+  };
+  return prependLog(
+    next,
+    "discovery",
+    leveled
+      ? `${org.name} now ${tierName(newLevel)}`
+      : `Introduction sent to ${org.name}`,
+    leveled
+      ? `Your envoys are welcomed like old friends — the relationship deepens to ${tierName(newLevel)}. (+${INTRO_INFLUENCE_GAIN} Influence)`
+      : `A visit, a handshake, and talk of hockey futures. (+${INTRO_INFLUENCE_GAIN} Influence)`,
+  );
+}
+
+// Rival majors quietly make their own contacts: any rival unit or HQ adjacent
+// to an org adds that club to its contact list (shown as crests in the ledger).
+export function trackRivalOrgContacts(draft: GameState): void {
+  const world = draft.world;
+  if (!world) return;
+  for (const org of world.hockeyOrgs) {
+    for (const rival of world.rivals) {
+      if (org.contactedByClubIds.includes(rival.clubId)) continue;
+      const points = [rival.hqTile, ...rival.units];
+      if (points.some((p) => isAdjacentOrSame(p, org))) {
+        org.contactedByClubIds.push(rival.clubId);
+      }
+    }
+  }
+}

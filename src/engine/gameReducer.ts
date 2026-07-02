@@ -19,6 +19,10 @@ import {
 } from "./scoutSystem";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
 import { closeTryouts, holdTryouts, recruitPlayer } from "./tryoutSystem";
+import {
+  sendIntroduction,
+  triggerIndependentContact,
+} from "./independentsSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
@@ -136,12 +140,16 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return selectScout(state, action.scoutId);
 
     case "MOVE_SCOUT":
-      // After the move: a pond goodie hut takes priority (sets pendingEncounter),
-      // then a rival first-contact check (sets pendingMeeting, but bails if an
-      // encounter is already open) so the player only ever sees one pop-up.
-      return triggerRivalContact(
-        triggerPondEncounter(
-          moveScout(state, action.x, action.y, action.scoutId),
+      // After the move, popups stage in priority order — goodie hut, then rival
+      // first contact, then independent first contact. Each trigger bails if
+      // something is already pending, so the player only ever sees one pop-up.
+      return triggerIndependentContact(
+        triggerRivalContact(
+          triggerPondEncounter(
+            moveScout(state, action.x, action.y, action.scoutId),
+            action.x,
+            action.y,
+          ),
           action.x,
           action.y,
         ),
@@ -166,6 +174,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "CLOSE_TRYOUTS":
       return closeTryouts(state);
+
+    case "SEND_INTRODUCTION":
+      return sendIntroduction(state, action.orgId);
 
     case "RESOLVE_ENCOUNTER":
       return resolvePendingEncounter(state);
