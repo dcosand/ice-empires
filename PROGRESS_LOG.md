@@ -1,5 +1,38 @@
 # Ice Empires — Progress Log
 
+## 2026-07-02 — Act I: the five-era arc + Pond Hockey gameplay loop
+The 5-act era arc lands (Pond Hockey → Club Formation → Competitive Hockey →
+Hockey Operations → Dynasty) plus the complete Act I loop. Engine validated
+with a headless end-to-end simulation (found → guaranteed pond → builder →
+clear snow → 2-month rink build → harvest/equipment → tryouts → full geared
+line incl. goalie → rival + independent first contact → era advance) — all 25
+assertions pass. Decisions D16–D24 recorded; agent docs added (CLAUDE.md,
+docs/13_ERA_ARC.md).
+- **Economy consolidated**: Funds (Budget+Operations merged) + Hockey
+  Knowledge; Reputation is now a non-spendable standing stat; Equipment is
+  shed inventory that gears players (harvests + Equipment Shed, FIFO auto-equip).
+- **40-tech tree** across five eras with branches; browsable era-column ×
+  branch-row tech screen with prereq chips; only pond techs gate behavior.
+- **Rink Rats builder** (Civ-worker analog): clear snow → Cleared Pond →
+  Level 1 rink (2 months, `working` state); desert street rinks (Arizona);
+  Harvest Branches → equipment. Rinks render on the iso map + minimap, grant
+  vision, and pay +1 Funds/mo inside HQ radius 3 ("club rinks"). Worldgen
+  guarantees a starter pond (or paveable desert flat) near every start.
+- **Tryouts + roster**: seeded terrible-but-lovable candidates (goalies rare),
+  TryoutScreen, ClubHQ Team tab with auto-assigned lines and gear badges. Era
+  exit wants a full geared line including a goalie.
+- **First contact**: rival meetings upgraded to a letterboxed cinematic with a
+  friendly/wary greeting choice (stored for future diplomacy); independents get
+  their own meeting scene + the Independents ledger (tiers Contacted/Friendly/
+  Partner/Affiliate, influence bars, fogged prospect pipelines, rival crests,
+  Send Introduction).
+- **Club uniques framework**: unique unit + facility for all 8 clubs; wired:
+  Asphalt Crew, Barn Raisers, Foundry Crew, Goalie Whisperer, Warming-House
+  Crew. Rivals advance eras on their own clock with log broadcasts.
+- **Act II designed** (docs/13_ERA_ARC.md): match engine v0, rival roster
+  fog-of-war + snapshots, opponent results rumors, borders rendering, Scout
+  Emissary networks, water traversal.
+
 ## 2026-06-27 — 4X spine pass
 Unifies the founding map and the in-game map into one persistent world and adds
 the Explore→Expand→Exploit→Compete spine. Engine validated with a headless
