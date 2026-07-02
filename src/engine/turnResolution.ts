@@ -4,6 +4,7 @@ import { addResources } from "./resources";
 import { RESOURCE_LABELS } from "./resources";
 import { progressProduction } from "./productionSystem";
 import { progressBuilderWork } from "./builderSystem";
+import { autoEquipRoster } from "./tryoutSystem";
 import { progressResearch } from "./researchSystem";
 import { resolveDiscovery } from "./discoverySystem";
 import { progressConnection } from "./regionDevelopment";
@@ -42,6 +43,7 @@ export function endMonth(state: GameState): GameState {
     incomeSummary(income) +
       (equipmentGain > 0 ? ` +${equipmentGain} Equipment (shed).` : ""),
   );
+  autoEquipRoster(draft, push); // hand shed stock to ungeared players FIFO
 
   // 2+. Systems — each contributes a readable world/club update.
   progressProduction(draft, push);

@@ -27,6 +27,13 @@ import {
   startableProductionCount,
 } from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
+import {
+  canHoldTryouts,
+  TRYOUT_COST_FUNDS,
+  tryoutGate,
+  tryoutGateHint,
+} from "../engine/tryoutSystem";
+import { TryoutScreen } from "./TryoutScreen";
 
 type OverlayView =
   | "build"
@@ -135,6 +142,8 @@ export function Dashboard({
           onAcknowledge={() => dispatch({ type: "RESOLVE_ENCOUNTER" })}
         />
       )}
+
+      {state.pendingTryout && <TryoutScreen state={state} dispatch={dispatch} />}
 
       {state.pendingMeeting?.kind === "rival" && (
         <RivalMeetingScreen
@@ -287,6 +296,17 @@ function CommandRail({
           detail={`${scoutMovesRemaining}/${scoutMovesTotal} moves remaining`}
           onClick={selectScout}
         />
+      )}
+      {state.completedResearch.includes("local-tryouts") && (
+        <button
+          className="btn btn-block"
+          style={{ marginTop: 6 }}
+          disabled={!canHoldTryouts(state)}
+          title={tryoutGateHint(tryoutGate(state))}
+          onClick={() => dispatch({ type: "HOLD_TRYOUTS" })}
+        >
+          Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
+        </button>
       )}
       <button
         className="btn btn-gold btn-block rail-end"

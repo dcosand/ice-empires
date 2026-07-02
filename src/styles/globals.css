@@ -4181,3 +4181,206 @@ button {
     height: 38vh;
   }
 }
+
+/* ===========================================================================
+   Tryouts + Team roster
+   =========================================================================== */
+.tryout-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tryout-sheet {
+  position: relative;
+  z-index: 1;
+  width: min(1040px, 94vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--club-accent, var(--accent));
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+}
+.tryout-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.tryout-head h2 {
+  margin: 2px 0 6px;
+  font-family: var(--font-display);
+}
+.tryout-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.tryout-card {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #10202f;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.tryout-card.recruited {
+  border-color: rgba(95, 208, 138, 0.55);
+  background: rgba(95, 208, 138, 0.07);
+}
+.tryout-card-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tryout-card-name {
+  font-weight: 700;
+  color: var(--text);
+}
+.tryout-card-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.pos-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  font-weight: 800;
+  font-size: 13px;
+  color: #0a1018;
+}
+.pos-F { background: #f2c14e; }
+.pos-D { background: #7dd3fc; }
+.pos-G { background: #b58cf0; }
+.tryout-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.attr-row {
+  display: grid;
+  grid-template-columns: 76px 1fr 20px;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+}
+.attr-label { color: var(--text-dim); }
+.attr-bar {
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(10, 16, 24, 0.8);
+  overflow: hidden;
+}
+.attr-fill {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #ef8b4b, #f2c14e);
+}
+.attr-value {
+  text-align: right;
+  color: var(--text);
+  font-weight: 700;
+}
+.tryout-note {
+  font-size: 11.5px;
+  font-style: italic;
+  color: var(--text-dim);
+  min-height: 2.4em;
+}
+.tryout-joined {
+  text-align: center;
+  color: var(--good);
+  font-weight: 700;
+  padding: 7px 0;
+}
+.tryout-foot {
+  margin-top: 12px;
+  text-align: center;
+}
+
+/* Team tab (line slots) */
+.team-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.line-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.line-forwards { grid-template-columns: repeat(3, minmax(180px, 1fr)); }
+.line-defense { grid-template-columns: repeat(2, minmax(180px, 1fr)); max-width: 66%; }
+.line-goalie { grid-template-columns: minmax(180px, 1fr); max-width: 33%; }
+.line-slot {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(13, 24, 36, 0.82);
+  padding: 10px 12px;
+}
+.line-slot.empty {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 52px;
+  border-style: dashed;
+  opacity: 0.75;
+}
+.line-slot-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+.line-slot-top > div { flex: 1; }
+.line-pos {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 4px;
+  border-radius: 7px;
+  background: var(--club-accent, var(--accent));
+  color: #0a1018;
+  font-weight: 800;
+  font-size: 12px;
+}
+.line-name { font-weight: 700; color: var(--text); font-size: 13px; }
+.line-meta { font-size: 10.5px; color: var(--text-dim); }
+.gear-badge {
+  font-size: 13px;
+}
+.gear-badge.missing {
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--bad);
+  border: 1px solid rgba(239, 111, 111, 0.5);
+  border-radius: 999px;
+  padding: 2px 7px;
+  text-transform: uppercase;
+}
+.line-attrs { display: flex; flex-direction: column; gap: 2px; }
+.line-note {
+  margin-top: 6px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--text-dim);
+}
+@media (max-width: 760px) {
+  .line-forwards, .line-defense, .line-goalie { grid-template-columns: 1fr; max-width: none; }
+}

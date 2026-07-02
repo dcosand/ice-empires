@@ -18,11 +18,13 @@ import {
   triggerPondEncounter,
 } from "./scoutSystem";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
+import { closeTryouts, holdTryouts, recruitPlayer } from "./tryoutSystem";
 import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
 import {
   devAddEquipment,
+  devForceTryouts,
   devGrantPondTech,
   devMeetIndependent,
   devMeetRival,
@@ -156,6 +158,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "HARVEST_BRANCHES":
       return harvestBranches(state, action.unitId);
 
+    case "HOLD_TRYOUTS":
+      return holdTryouts(state);
+
+    case "RECRUIT_PLAYER":
+      return recruitPlayer(state, action.candidateId);
+
+    case "CLOSE_TRYOUTS":
+      return closeTryouts(state);
+
     case "RESOLVE_ENCOUNTER":
       return resolvePendingEncounter(state);
 
@@ -222,6 +233,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_ADD_EQUIPMENT":
       return devAddEquipment(state);
+
+    case "DEV_FORCE_TRYOUTS":
+      return devForceTryouts(state);
 
     default:
       return state;

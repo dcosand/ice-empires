@@ -3,6 +3,7 @@ import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
 import { RESEARCH } from "../data/research";
 import { createWorld } from "./world";
 import { nearestRivalClubId } from "./rivalAI";
+import { holdTryouts, TRYOUT_COST_FUNDS } from "./tryoutSystem";
 
 // Dev tools — reachable only from the in-app dev panel, never from normal play.
 // They mutate state directly (bypassing costs / prerequisites) so a developer
@@ -158,4 +159,38 @@ export function devGrantPondTech(state: GameState): GameState {
 
 export function devAddEquipment(state: GameState): GameState {
   return { ...state, equipment: state.equipment + 5 };
+}
+
+// Open a tryout bypassing the tech/rink/cost gates (candidates still seeded).
+export function devForceTryouts(state: GameState): GameState {
+  if (state.pendingTryout) return state;
+  const primed: GameState = {
+    ...state,
+    completedResearch: state.completedResearch.includes("local-tryouts")
+      ? state.completedResearch
+      : [...state.completedResearch, "local-tryouts"],
+    resources: {
+      ...state.resources,
+      funds: Math.max(state.resources.funds, TRYOUT_COST_FUNDS),
+    },
+    world: state.world
+      ? state.world.rinks.some((r) => r.level >= 1)
+        ? state.world
+        : {
+            ...state.world,
+            rinks: [
+              ...state.world.rinks,
+              {
+                id: "dev-rink",
+                x: state.world.hqTile?.x ?? 0,
+                y: state.world.hqTile?.y ?? 0,
+                level: 1,
+                kind: "ice" as const,
+                builtMonth: state.month,
+              },
+            ],
+          }
+      : state.world,
+  };
+  return holdTryouts(primed);
 }

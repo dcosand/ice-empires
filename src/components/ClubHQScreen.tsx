@@ -4,6 +4,7 @@ import type {
   FacilityDef,
   GameAction,
   GameState,
+  Player,
   ResourceKey,
 } from "../types/game";
 import { FACILITIES_BY_ID } from "../data/facilities";
@@ -18,16 +19,30 @@ import {
 } from "../engine/selectors";
 import { productionItemName } from "../engine/productionSystem";
 import { allScouts } from "../engine/scoutSystem";
+import {
+  canHoldTryouts,
+  TRYOUT_COST_FUNDS,
+  tryoutGate,
+  tryoutGateHint,
+} from "../engine/tryoutSystem";
+import { AttrBar } from "./TryoutScreen";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 
-export type HQTab = "overview" | "personnel" | "production" | "facilities" | "units";
+export type HQTab =
+  | "overview"
+  | "team"
+  | "personnel"
+  | "production"
+  | "facilities"
+  | "units";
 type Tab = HQTab;
 
 const RESOURCE_ORDER: ResourceKey[] = ["funds", "hockeyKnowledge", "reputation"];
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "overview", label: "Overview" },
+  { id: "team", label: "Team" },
   { id: "personnel", label: "Personnel" },
   { id: "production", label: "Production" },
   { id: "facilities", label: "Facilities" },
@@ -118,6 +133,7 @@ export function ClubHQScreen({
 
           <div className="hq-modal-body">
             {tab === "overview" && <OverviewTab state={state} />}
+            {tab === "team" && <TeamTab state={state} dispatch={dispatch} />}
             {tab === "personnel" && <PersonnelTab state={state} />}
             {tab === "production" && (
               <ProductionTab state={state} dispatch={dispatch} />
@@ -196,6 +212,182 @@ function OverviewTab({ state }: { state: GameState }) {
           </ul>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ---- Team (the actual roster) ---------------------------------------------
+
+// Auto-assign the best available line from the roster. Simple greedy fit:
+// goalie by goaltending, defense pair by checking+skating, forward trio by
+// shooting+passing+skating; everyone else rides the bench. Manual line
+// assignment is a later-era feature.
+function assignLines(roster: Player[]): {
+  forwards: (Player | null)[];
+  defense: (Player | null)[];
+  goalie: Player | null;
+  bench: Player[];
+} {
+  const used = new Set<string>();
+  const take = (pool: Player[], score: (p: Player) => number, n: number) => {
+    const picks = pool
+      .filter((p) => !used.has(p.id))
+      .sort((a, b) => score(b) - score(a))
+      .slice(0, n);
+    picks.forEach((p) => used.add(p.id));
+    return picks;
+  };
+
+  const goalies = roster.filter((p) => p.position === "G");
+  const goalie = take(goalies, (p) => p.attrs.goaltending, 1)[0] ?? null;
+
+  const dPool = roster.filter((p) => p.position === "D");
+  let defense: Player[] = take(dPool, (p) => p.attrs.checking + p.attrs.skating, 2);
+  const fPool = roster.filter((p) => p.position === "F");
+  let forwards: Player[] = take(
+    fPool,
+    (p) => p.attrs.shooting + p.attrs.passing + p.attrs.skating,
+    3,
+  );
+  // Fill gaps with any remaining skater — pond hockey is not fussy.
+  const anySkater = roster.filter((p) => p.position !== "G");
+  while (defense.length < 2) {
+    const extra = take(anySkater, (p) => p.attrs.checking + p.attrs.skating, 1);
+    if (!extra.length) break;
+    defense = [...defense, ...extra];
+  }
+  while (forwards.length < 3) {
+    const extra = take(anySkater, (p) => p.attrs.shooting + p.attrs.passing, 1);
+    if (!extra.length) break;
+    forwards = [...forwards, ...extra];
+  }
+  const bench = roster.filter((p) => !used.has(p.id));
+  const pad = <T,>(arr: T[], n: number): (T | null)[] =>
+    [...arr, ...Array(Math.max(0, n - arr.length)).fill(null)];
+  return {
+    forwards: pad(forwards, 3),
+    defense: pad(defense, 2),
+    goalie,
+    bench,
+  };
+}
+
+function TeamTab({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const roster = state.roster;
+  const lines = assignLines(roster);
+  const geared = roster.filter((p) => p.hasEquipment);
+  const hasGoalie = geared.some((p) => p.position === "G");
+  const needBodies = Math.max(0, 6 - geared.length);
+  const gate = tryoutGate(state);
+
+  const eraHint = !hasGoalie
+    ? needBodies > 0
+      ? `${needBodies} more geared player${needBodies === 1 ? "" : "s"} — including a goalie — to ice a full line.`
+      : "You have the bodies, but no geared goalie. Someone has to stand in the net."
+    : needBodies > 0
+      ? `${needBodies} more geared player${needBodies === 1 ? "" : "s"} to ice a full line.`
+      : "Full line ready — the Pond Hockey era requirement is met.";
+
+  return (
+    <div className="hq-tabpane">
+      <div className="team-head">
+        <div>
+          <SectionTitle>First Line</SectionTitle>
+          <div className="muted" style={{ fontSize: 12 }}>
+            {eraHint} Equipment in shed: {state.equipment}
+          </div>
+        </div>
+        <button
+          className="btn btn-gold"
+          disabled={!canHoldTryouts(state)}
+          title={tryoutGateHint(gate)}
+          onClick={() => dispatch({ type: "HOLD_TRYOUTS" })}
+        >
+          Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
+        </button>
+      </div>
+
+      <div className="line-grid line-forwards">
+        <LineSlot label="LW" player={lines.forwards[0]} />
+        <LineSlot label="C" player={lines.forwards[1]} />
+        <LineSlot label="RW" player={lines.forwards[2]} />
+      </div>
+      <div className="line-grid line-defense">
+        <LineSlot label="LD" player={lines.defense[0]} />
+        <LineSlot label="RD" player={lines.defense[1]} />
+      </div>
+      <div className="line-grid line-goalie">
+        <LineSlot label="G" player={lines.goalie} />
+      </div>
+
+      <SectionTitle>Bench</SectionTitle>
+      {lines.bench.length === 0 ? (
+        <div className="faint">
+          {roster.length === 0
+            ? "No players yet. Build a rink near your HQ, research Local Tryouts, and see who shows up."
+            : "Everyone is on the ice."}
+        </div>
+      ) : (
+        <div className="line-grid">
+          {lines.bench.map((p) => (
+            <LineSlot key={p.id} label={p.position} player={p} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LineSlot({ label, player }: { label: string; player: Player | null }) {
+  if (!player) {
+    return (
+      <div className="line-slot empty">
+        <span className="line-pos">{label}</span>
+        <span className="faint">Open</span>
+      </div>
+    );
+  }
+  const attrs: { key: keyof Player["attrs"]; label: string }[] =
+    player.position === "G"
+      ? [
+          { key: "goaltending", label: "Goaltending" },
+          { key: "skating", label: "Skating" },
+        ]
+      : [
+          { key: "skating", label: "Skating" },
+          { key: "shooting", label: "Shooting" },
+          { key: "passing", label: "Passing" },
+          { key: "checking", label: "Checking" },
+        ];
+  return (
+    <div className="line-slot">
+      <div className="line-slot-top">
+        <span className="line-pos">{label}</span>
+        <div>
+          <div className="line-name">{player.name}</div>
+          <div className="line-meta">
+            Age {player.age} · Joined M{player.joinedMonth}
+          </div>
+        </div>
+        <span
+          className={`gear-badge${player.hasEquipment ? "" : " missing"}`}
+          title={player.hasEquipment ? "Geared up" : "No equipment — can't play"}
+        >
+          {player.hasEquipment ? "🏒" : "no gear"}
+        </span>
+      </div>
+      <div className="line-attrs">
+        {attrs.map((a) => (
+          <AttrBar key={a.key} label={a.label} value={player.attrs[a.key]} />
+        ))}
+      </div>
+      <div className="line-note">“{player.note}”</div>
     </div>
   );
 }
