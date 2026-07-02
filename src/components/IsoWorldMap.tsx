@@ -48,6 +48,7 @@ import {
   canHarvestBranches,
   canPaveStreetRink,
 } from "../engine/builderSystem";
+import { getClubRinks, rinkAt } from "../engine/rinkSystem";
 
 // ---- Isometric geometry --------------------------------------------------
 const TILE_W = 64; // diamond width
@@ -273,6 +274,19 @@ function drawScene(
         layer.addChild(mk);
       }
 
+      // Player-built rinks (and cleared ponds awaiting a rink). A builder mid-
+      // construction on this tile draws the scaffold variant instead.
+      const rink = world.rinks.find((r) => r.x === gx && r.y === gy);
+      const buildingHere = scouts.some(
+        (u) => u.working && u.working.x === gx && u.working.y === gy,
+      );
+      if (explored && (rink || buildingHere)) {
+        const mk = rinkMarker(gx, gy, c, rink ?? null, accent, buildingHere);
+        mk.position.y -= rise;
+        applyMemory(mk, memory);
+        layer.addChild(mk);
+      }
+
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
       if (isHQ) {
         const mk = hqMarker(gx, gy, c, accent, clubLabel, leaderTexture);
@@ -417,6 +431,68 @@ function drawIsoBlock(g: Graphics, x: number, y: number, w: number, h: number, b
     if (w > 8) g.rect(x + 6, yy, 2, 2).fill({ color: 0xe8d68a, alpha: 0.55 });
   }
   g.rect(x + 1, y - h + 1, Math.max(3, w - 2), 1).fill({ color: accent, alpha: 0.75 });
+}
+
+// A club-built rink (or its precursors) on the tile.
+//   rink null + building  -> scaffold (construction under way)
+//   level 0               -> Cleared Pond (shoveled sheet, snowbanks)
+//   level 1 kind "ice"    -> Level 1 outdoor rink: white sheet, lines, boards
+//   level 1 kind "inline" -> street rink: asphalt sheet, warm lines
+function rinkMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  rink: { level: number; kind: "ice" | "inline" } | null,
+  accent: number,
+  building: boolean,
+) {
+  const m = new Container();
+  m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  m.zIndex = gx + gy + 0.4;
+  const g = new Graphics();
+
+  g.ellipse(0, 4, 22, 9).fill({ color: 0x000000, alpha: 0.2 });
+
+  if (rink && rink.level >= 1) {
+    const isIce = rink.kind === "ice";
+    const sheet = isIce ? 0xe8f4fa : 0x5d6570;
+    const lineA = isIce ? 0xd94f4f : 0xe8934a; // center line
+    const lineB = isIce ? 0x3b6fa0 : 0xd8d8d8; // blue lines / lane paint
+    // Boards: a slightly larger ring behind the sheet reads as a low wall.
+    g.ellipse(0, 2, 22, 9.5).fill(isIce ? 0x9a7c45 : 0x4a4f57);
+    g.ellipse(0, 1, 20, 8.5).fill(sheet).stroke({ width: 1.4, color: 0xffffff, alpha: 0.85 });
+    // Center line + faceoff dots + goals.
+    g.moveTo(0, -7).lineTo(0, 9).stroke({ width: 1.6, color: lineA, alpha: 0.9 });
+    g.circle(-10, 1, 1.6).fill(lineB);
+    g.circle(10, 1, 1.6).fill(lineB);
+    g.rect(-17.5, -1, 3, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
+    g.rect(14.5, -1, 3, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
+    // Club-color pennant so ownership reads at a glance.
+    g.moveTo(18, -4).lineTo(18, -16).stroke({ width: 1.4, color: 0x5a6b7d });
+    g.poly([18, -16, 26, -13.5, 18, -11]).fill(accent);
+  } else if (building) {
+    // Scaffold: dashed outline + stacked planks while the crew works.
+    g.ellipse(0, 1, 19, 8).stroke({ width: 1.4, color: 0xd9c98a, alpha: 0.9 });
+    g.ellipse(0, 1, 14, 5.5).stroke({ width: 1, color: 0xd9c98a, alpha: 0.5 });
+    g.roundRect(-8, -3, 12, 2.6, 1).fill(0x9a7c45);
+    g.roundRect(-4, -6.5, 12, 2.6, 1).fill(0x815833);
+    g.roundRect(4, 2, 8, 2.4, 1).fill(0x6e4a2c);
+  } else {
+    // Cleared Pond: bright shoveled sheet ringed by snowbanks, shovel planted.
+    g.ellipse(0, 1, 18, 7.5).fill({ color: 0xdff0f8, alpha: 0.95 }).stroke({
+      width: 1.2,
+      color: 0xffffff,
+      alpha: 0.8,
+    });
+    g.ellipse(0, 1, 18, 7.5).stroke({ width: 3, color: 0xf4fbff, alpha: 0.5 });
+    g.arc(0, 1, 12, Math.PI * 0.15, Math.PI * 0.5).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.6 });
+    g.arc(0, 1, 8, Math.PI * 1.1, Math.PI * 1.5).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.6 });
+    g.moveTo(13, -2).lineTo(17, -12).stroke({ width: 1.6, color: 0x8a6a3c });
+    g.poly([15.5, -13.5, 20, -12, 17.5, -8.5]).fill(0x9aa6b0);
+  }
+
+  m.addChild(g);
+  return m;
 }
 
 function pondMarker(
@@ -2277,6 +2353,11 @@ function MiniMap({
       if (!state.devRevealAll && !revealedSet.has(`${pond.x},${pond.y}`)) continue;
       dot(pond.x, pond.y, 0x9fd4ff, 2);
     }
+    // Club rinks: bright white dots (level 1+) / faint for cleared ponds.
+    for (const rink of world.rinks) {
+      if (!state.devRevealAll && !revealedSet.has(`${rink.x},${rink.y}`)) continue;
+      dot(rink.x, rink.y, 0xffffff, rink.level >= 1 ? 2.4 : 1.8, rink.level >= 1);
+    }
     const accent = accentNumber(getActiveClub(state)?.accent);
     if (world.founder) dot(world.founder.x, world.founder.y, accent, 2.8, true);
     for (const scout of allScouts(world)) {
@@ -2560,6 +2641,11 @@ function MapControls({
         (m) => !m.investigated && m.x === sel[0] && m.y === sel[1],
       )
     : null;
+  const selRink = sel && state.world ? rinkAt(state.world, sel[0], sel[1]) : null;
+  const selRinkIsClub =
+    selRink && state.world
+      ? getClubRinks(state.world, 0).some((r) => r.id === selRink.id)
+      : false;
   const canSurvey = region ? surveyableRegionId(state) === region.id : false;
   const canConnect = region ? canEstablishConnection(state, region.id) : false;
   const connecting = region ? state.discovery.connection?.regionId === region.id : false;
@@ -2624,7 +2710,31 @@ function MapControls({
         </div>
       )}
 
-      {sel && !(org && revealed) && !(region && revealed && rState !== "hidden") && (
+      {sel && revealed && selRink && (
+        <div className="map-detail">
+          <div className="detail-head">
+            <strong>
+              {selRink.level >= 1
+                ? selRink.kind === "ice"
+                  ? "Level 1 Outdoor Rink"
+                  : "Street Hockey Rink"
+                : "Cleared Pond"}
+            </strong>
+            <span className="region-resource">
+              {selRink.level >= 1 ? `Built Month ${selRink.builtMonth}` : "Ready for a rink"}
+            </span>
+          </div>
+          <div className="region-report">
+            {selRink.level >= 1
+              ? `${selRinkIsClub ? "A club rink — it pays +1 Funds/month and hosts tryouts. " : "Beyond your HQ's reach — no club benefits from here. "}${
+                  selRink.kind === "ice" ? "Ice, boards, and pride." : "Asphalt, nets, and orange wheels."
+                }`
+              : "Shoveled clear by your crew. With Outdoor Rinkcraft, the Rink Rats can raise a Level 1 rink here."}
+          </div>
+        </div>
+      )}
+
+      {sel && !(org && revealed) && !selRink && !(region && revealed && rState !== "hidden") && (
         <div className="map-detail">
           {revealed && marker ? (
             <span className="muted">
