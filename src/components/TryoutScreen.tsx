@@ -7,6 +7,7 @@ import type {
 } from "../types/game";
 import { ROSTER_CAP } from "../engine/tryoutSystem";
 import { turnDateLabel } from "../engine/calendar";
+import { playSfx } from "../engine/sfx";
 
 // The tryout: curious locals wobble onto your rink and you pick a team.
 // Rendered whenever state.pendingTryout is set; closing dispatches
@@ -66,9 +67,10 @@ export function TryoutScreen({
               candidate={c}
               recruited={tryout.recruitedIds.includes(c.id)}
               disabled={rosterFull}
-              onRecruit={() =>
-                dispatch({ type: "RECRUIT_PLAYER", candidateId: c.id })
-              }
+              onRecruit={() => {
+                playSfx("recruit");
+                dispatch({ type: "RECRUIT_PLAYER", candidateId: c.id });
+              }}
             />
           ))}
         </div>

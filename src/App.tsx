@@ -1,6 +1,7 @@
-import { useReducer } from "react";
+import { useEffect, useReducer } from "react";
 import { gameReducer } from "./engine/gameReducer";
 import { createInitialState } from "./engine/initialState";
+import { installGlobalClickSfx } from "./engine/sfx";
 import { LandingScreen } from "./components/LandingScreen";
 import { ClubSelectScreen } from "./components/ClubSelectScreen";
 import { FoundingScreen } from "./components/FoundingScreen";
@@ -10,6 +11,11 @@ import { DevPanel } from "./components/DevPanel";
 
 export function App() {
   const [state, dispatch] = useReducer(gameReducer, undefined, createInitialState);
+
+  // Every button gets a quiet click; richer sounds layer on top per-event.
+  useEffect(() => {
+    installGlobalClickSfx();
+  }, []);
 
   return (
     <>

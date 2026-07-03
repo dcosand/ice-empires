@@ -14,6 +14,7 @@ import {
 } from "../engine/productionSystem";
 import { getMonthlyIncome } from "../engine/selectors";
 import { ItemArt } from "./ItemArt";
+import { playSfx } from "../engine/sfx";
 
 const RESOURCE_SHORT: Record<ResourceKey, string> = {
   funds: "Funds",
@@ -84,6 +85,7 @@ export function ProductionPanel({
 
   const confirmStart = () => {
     if (!selected || !selectable(selected) || !selected.affordable) return;
+    playSfx("confirm");
     dispatch({ type: "START_PRODUCTION", kind: selected.kind, itemId: selected.id });
     setSelectedKey(null);
   };

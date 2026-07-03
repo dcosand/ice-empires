@@ -12,6 +12,7 @@ import {
 import { getMonthlyIncome } from "../engine/selectors";
 import { ProgressBar } from "./ProgressBar";
 import { ItemArt } from "./ItemArt";
+import { playSfx } from "../engine/sfx";
 
 // Branch rows of the tech tree, in display order, each with its accent color.
 const BRANCH_META: { id: ResearchBranch; label: string; color: string }[] = [
@@ -90,6 +91,7 @@ export function ResearchPanel({
 
   const confirmStart = () => {
     if (!selected || !selectable(selected)) return;
+    playSfx("confirm");
     dispatch({ type: "SELECT_RESEARCH", techId: selected.id });
     setSelectedId(null);
   };

@@ -37,6 +37,7 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { TryoutScreen } from "./TryoutScreen";
+import { playSfx } from "../engine/sfx";
 import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
 import { IndependentsScreen } from "./IndependentsScreen";
 
@@ -87,6 +88,23 @@ export function Dashboard({
   const completion = completionEvents(state).find(
     (event) => !dismissedCompletions.has(event.id),
   );
+
+  // Event sounds: the big beats get their own audio on top of button clicks.
+  useEffect(() => {
+    if (state.pendingMeeting) playSfx("fanfare");
+  }, [state.pendingMeeting?.id]);
+  useEffect(() => {
+    if (completion) playSfx("complete");
+  }, [completion?.id]);
+  useEffect(() => {
+    if (state.month > 1) playSfx("endTurn");
+  }, [state.month]);
+  useEffect(() => {
+    if (state.nextEraUnlocked) playSfx("fanfare");
+  }, [state.eraId]);
+  useEffect(() => {
+    if (state.pendingTryout) playSfx("confirm");
+  }, [!!state.pendingTryout]);
 
   return (
     <div className="dashboard dashboard-map-mode">
