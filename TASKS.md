@@ -1,5 +1,33 @@
 # Ice Empires — Tasks
 
+## Next up (from the 2026-07-02 playtest)
+- [ ] **AI parity pass (Act II priority)** — rivals currently: found HQs, build
+      and wander scouts, make first contact, contact independents, and advance
+      eras on a seeded clock. They do NOT yet: research, produce builders,
+      clear snow / build rinks, harvest, hold tryouts, or grow influence with
+      independents. Plan: give each rival a lightweight monthly "playbook"
+      (same engine functions the human calls — builderSystem/tryoutSystem/
+      independentsSystem take a clubId) with era-appropriate priorities, so AI
+      capability tracks player capability system-by-system.
+- [ ] **Economy upkeep pass** — funds currently only go up. Design per-turn
+      upkeep: club rinks (small), map units (1/turn?), and later player wages
+      via contracts (Act III). Must keep the pond era forgiving; upkeep should
+      arrive with Club Formation so the era transition FEELS like becoming a
+      real organization.
+- [ ] **First-tryout cinematic** — the first-ever tryout deserves a meeting-
+      scene-style moment (letterbox, crowd murmur SFX, card-flip reveal of
+      candidates one by one).
+- [ ] **HQ "city" map presence** — the club HQ tile should out-impress the
+      independents' mini-districts: bigger footprint, barn-arena, banner,
+      lights; grows visually per era.
+- [ ] **Replace hand-drawn ItemArt with game-icons set** (CC-BY attribution in
+      credits screen) where the curated SVGs fit; keep bespoke art for the
+      hero pieces.
+- [ ] **Tryout card-flip browsing** — flip through candidate profiles like a
+      pack opening; hockey-card backs using club palette.
+- [ ] **Merge legacy region/"Local Hockey Search" layer into independents**
+      (one "places that matter" system; retire the parallel rumor regions).
+
 ## Done
 - [x] M0 — Read docs, write plan, record decisions.
 - [x] M1 — Skeleton: Vite+React+TS app, Landing → Founding → Dashboard shell,
