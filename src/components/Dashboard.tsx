@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Dispatch, ReactNode } from "react";
 import type {
   EventLogEntry,
@@ -9,7 +9,11 @@ import type {
 import { Onboarding } from "./Onboarding";
 import { DISCOVERY_BY_ID } from "../data/discovery";
 import { ERAS, ERA_UNLOCK_MESSAGES } from "../data/eras";
-import { ALL_FACILITY_DEFS_BY_ID } from "../data/clubUniques";
+import { CLUBS, clubAsset } from "../data/clubs";
+import {
+  ALL_FACILITY_DEFS_BY_ID,
+  ALL_UNIT_DEFS_BY_ID,
+} from "../data/clubUniques";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
@@ -89,6 +93,23 @@ export function Dashboard({
     (event) => !dismissedCompletions.has(event.id),
   );
 
+  // Era-requirement dopamine: when a checklist item flips to met, pop an
+  // animated checkmark toast (click-through to the Era panel).
+  const eraMet = getEraProgress(state).filter((r) => r.met);
+  const [eraToast, setEraToast] = useState<string | null>(null);
+  const prevMetRef = useRef<string[]>(eraMet.map((r) => r.id));
+  useEffect(() => {
+    const prev = prevMetRef.current;
+    const fresh = eraMet.find((r) => !prev.includes(r.id));
+    prevMetRef.current = eraMet.map((r) => r.id);
+    if (fresh) {
+      setEraToast(fresh.label);
+      playSfx("check");
+      const t = setTimeout(() => setEraToast(null), 4200);
+      return () => clearTimeout(t);
+    }
+  }, [eraMet.map((r) => r.id).join("|")]);
+
   // Event sounds: the big beats get their own audio on top of button clicks.
   useEffect(() => {
     if (state.pendingMeeting) playSfx("fanfare");
@@ -145,6 +166,16 @@ export function Dashboard({
         <CommandRail state={state} dispatch={dispatch} open={openView} />
         <InfoDock state={state} open={openView} />
         <NotificationRail state={state} onOpenLog={() => openView("log")} />
+        <RivalsStrip state={state} />
+        {eraToast && (
+          <button className="era-toast" onClick={() => openView("era")}>
+            <span className="era-toast-check" aria-hidden>✓</span>
+            <span>
+              <span className="era-toast-title">Era goal complete</span>
+              <span className="era-toast-label">{eraToast}</span>
+            </span>
+          </button>
+        )}
       </div>
 
       {overlay && overlay !== "club" && (
@@ -469,6 +500,74 @@ function DockButton({
   );
 }
 
+// Every major club you've met, Civ-style: leader portraits across the top of
+// the map. Click one for a quick dossier (era, attitude, identity).
+function RivalsStrip({ state }: { state: GameState }) {
+  const [openClubId, setOpenClubId] = useState<string | null>(null);
+  const met = state.world?.rivals.filter((r) => r.contacted) ?? [];
+  if (met.length === 0) return null;
+  const open = met.find((r) => r.clubId === openClubId) ?? null;
+  const openClub = open ? CLUBS[open.clubId] : null;
+  return (
+    <div className="rivals-strip">
+      <div className="rivals-strip-row">
+        {met.map((r) => {
+          const club = CLUBS[r.clubId];
+          if (!club) return null;
+          return (
+            <button
+              key={r.clubId}
+              className={`rival-face${openClubId === r.clubId ? " on" : ""}`}
+              style={{ borderColor: club.accent }}
+              title={club.name}
+              onClick={() =>
+                setOpenClubId((cur) => (cur === r.clubId ? null : r.clubId))
+              }
+            >
+              <img
+                src={clubAsset(club, "leader")}
+                alt={club.name}
+                onError={(e) => {
+                  e.currentTarget.style.display = "none";
+                }}
+              />
+            </button>
+          );
+        })}
+      </div>
+      {open && openClub && (
+        <div className="rival-popover" style={{ borderTopColor: openClub.accent }}>
+          <div className="rival-popover-head">
+            <img
+              className="rival-popover-crest"
+              src={clubAsset(openClub, "logo")}
+              alt=""
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <div>
+              <div className="rival-popover-name">{openClub.name}</div>
+              <div className="rival-popover-meta">
+                {openClub.leaderArchetype} · {ERAS[open.eraId]?.name ?? open.eraId}
+              </div>
+            </div>
+          </div>
+          <div className="rival-popover-line">{openClub.identityText}</div>
+          <div className="rival-popover-attitude">
+            {open.attitude === "friendly"
+              ? "You parted as future friends."
+              : open.attitude === "wary"
+                ? "You took their measure coldly — they remember."
+                : "No formal stance yet."}
+            {" "}Scrimmages, trades, and sabotage arrive in later eras.
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Civ-VI-style notification rail: one icon chip per event from the current
 // turn, newest on top, hover for the story, click to open the full log.
 // Major beats (era, meetings, completions) still get full-screen treatments —
@@ -570,7 +669,8 @@ function activeResearchName(state: GameState) {
 function completionEvents(state: GameState): EventLogEntry[] {
   return state.eventLog.filter(
     (event) =>
-      (event.type === "build" && event.title.endsWith(" completed")) ||
+      (event.type === "build" &&
+        (event.title.endsWith(" completed") || event.title.endsWith(" ready"))) ||
       (event.type === "research" && event.title.endsWith(" complete")),
   );
 }
@@ -642,7 +742,13 @@ function CompletionOverlay({
       <div className="completion-sheet">
         <div className={`completion-art ${detail.kind}`}>
           <ItemArt
-            kind={detail.kind === "build" ? "facility" : "research"}
+            kind={
+              detail.kind === "build"
+                ? "facility"
+                : detail.kind === "unit"
+                  ? "unit"
+                  : "research"
+            }
             id={detail.id ?? ""}
             className="completion-item-art"
           />
@@ -668,10 +774,24 @@ function CompletionOverlay({
 function completionDetail(event: EventLogEntry): {
   eyebrow: string;
   id?: string;
-  kind: "build" | "research";
+  kind: "build" | "research" | "unit";
   name: string;
   value: string;
 } {
+  if (event.type === "build" && event.title.endsWith(" ready")) {
+    const def = Object.values(ALL_UNIT_DEFS_BY_ID).find(
+      (unit) => `${unit.name} ready` === event.title,
+    );
+    return {
+      eyebrow: "Unit Ready",
+      id: def?.id,
+      kind: "unit",
+      name: def?.name ?? event.title,
+      value: def
+        ? `${def.abilitySummary}${def.spawnsMapUnit ? " They're standing by at your HQ — select and move them out." : ""}`
+        : "A new unit joins the club.",
+    };
+  }
   if (event.type === "build") {
     const def = Object.values(ALL_FACILITY_DEFS_BY_ID).find(
       (facility) => `${facility.name} completed` === event.title,

@@ -28,6 +28,10 @@ export const INTRO_REPUTATION_REQUIRED = 3;
 export const INTRO_INFLUENCE_GAIN = 5;
 const FIRST_CONTACT_REPUTATION = 1;
 const FIRST_CONTACT_INFLUENCE = 5;
+// Being the FIRST major club to reach an independent pays extra — the race
+// across the map matters.
+const FIRST_MOVER_REPUTATION = 1;
+const FIRST_MOVER_INFLUENCE = 5;
 
 export function tierName(level: OrgRelationshipLevel): string {
   return RELATIONSHIP_TIERS[level]?.name ?? "Contacted";
@@ -91,17 +95,22 @@ export function checkIndependentContact(draft: GameState, push: PushLog): void {
     (o) => !o.playerContacted && units.some((u) => isAdjacentOrSame(u, o)),
   );
   if (!org) return;
+  const firstMover = org.contactedByClubIds.length === 0;
+  const rep = FIRST_CONTACT_REPUTATION + (firstMover ? FIRST_MOVER_REPUTATION : 0);
+  const inf = FIRST_CONTACT_INFLUENCE + (firstMover ? FIRST_MOVER_INFLUENCE : 0);
   org.playerContacted = true;
   org.contactMonth = draft.month;
   org.discovered = true;
-  org.influencePoints += FIRST_CONTACT_INFLUENCE;
+  org.influencePoints += inf;
   org.relationshipLevel = levelForInfluence(org.influencePoints);
-  draft.resources.reputation += FIRST_CONTACT_REPUTATION;
+  draft.resources.reputation += rep;
   draft.pendingMeeting = { kind: "independent", id: org.id };
   push(
     "discovery",
     `First contact: ${org.name}`,
-    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${FIRST_CONTACT_REPUTATION} Reputation, +${FIRST_CONTACT_INFLUENCE} Influence)`,
+    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${rep} Reputation, +${inf} Influence${
+      firstMover ? " — you are the first major club to reach them" : ""
+    })`,
   );
 }
 
@@ -115,12 +124,15 @@ function isAdjacentOrSame(
 function makeContact(state: GameState, orgId: string): GameState {
   const world = state.world!;
   const org = world.hockeyOrgs.find((o) => o.id === orgId)!;
-  const influence = org.influencePoints + FIRST_CONTACT_INFLUENCE;
+  const firstMover = org.contactedByClubIds.length === 0;
+  const rep = FIRST_CONTACT_REPUTATION + (firstMover ? FIRST_MOVER_REPUTATION : 0);
+  const inf = FIRST_CONTACT_INFLUENCE + (firstMover ? FIRST_MOVER_INFLUENCE : 0);
+  const influence = org.influencePoints + inf;
   const next: GameState = {
     ...state,
     resources: {
       ...state.resources,
-      reputation: state.resources.reputation + FIRST_CONTACT_REPUTATION,
+      reputation: state.resources.reputation + rep,
     },
     world: {
       ...world,
@@ -143,7 +155,9 @@ function makeContact(state: GameState, orgId: string): GameState {
     next,
     "discovery",
     `First contact: ${org.name}`,
-    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${FIRST_CONTACT_REPUTATION} Reputation, +${FIRST_CONTACT_INFLUENCE} Influence)`,
+    `Your club formally meets ${org.name}, ${ARCHETYPE_LABELS[org.archetype]}. (+${rep} Reputation, +${inf} Influence${
+      firstMover ? " — you are the first major club to reach them" : ""
+    })`,
   );
 }
 

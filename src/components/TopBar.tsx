@@ -97,14 +97,25 @@ export function TopBar({
         title="Open Club HQ"
       >
         {club && (
-          <img
-            className="topbar-logo"
-            src={clubAsset(club, "logo")}
-            alt={`${club.name} logo`}
-            onError={(e) => {
-              e.currentTarget.style.display = "none";
-            }}
-          />
+          <span className="topbar-identity">
+            <img
+              className="topbar-leader"
+              src={clubAsset(club, "leader")}
+              alt={`${club.leaderArchetype}`}
+              title={`You — ${club.leaderArchetype}`}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+            <img
+              className="topbar-logo"
+              src={clubAsset(club, "logo")}
+              alt={`${club.name} logo`}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          </span>
         )}
         <div className="topbar-club-text">
           <div className="club-name">{club?.name}</div>
@@ -133,6 +144,22 @@ export function TopBar({
             <span className="res-name">{RESOURCE_LABELS[key]}</span>
           </div>
         ))}
+        <div
+          className="res-chip"
+          title="Equipment — sticks & gear in the shed. Harvest branches or build the Equipment Shed; each recruit needs 1 to play."
+          style={{ "--res-color": "#8fd18f" } as CSSProperties}
+        >
+          <span className="res-icon">
+            <img
+              src="/assets/vendor/game-icons/svg/hockey.svg"
+              alt=""
+              aria-hidden
+              style={{ width: 18, height: 18, filter: "invert(0.85)" }}
+            />
+          </span>
+          <span className="res-value">{state.equipment}</span>
+          <span className="res-name">Equipment</span>
+        </div>
       </div>
       <div className="meta">
         <span className="pill" title={`Turn ${state.month}`}>
