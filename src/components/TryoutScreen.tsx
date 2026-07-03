@@ -48,8 +48,13 @@ export function TryoutScreen({
             <h2>Whoever Shows Up</h2>
             <p className="muted" style={{ margin: 0 }}>
               The flyer said "Bring skates. Or courage." They mostly brought
-              courage. Roster {state.roster.length}/{ROSTER_CAP} · Equipment in
-              shed: {state.equipment}
+              courage. Recruiting is free — in the pond era everyone plays for
+              the love of it (wages arrive with real contracts, eras from now).
+              Each recruit takes 1 Equipment from the shed to gear up.
+            </p>
+            <p className="muted" style={{ margin: "6px 0 0", fontWeight: 700 }}>
+              Roster {state.roster.length}/{ROSTER_CAP} · Equipment in shed:{" "}
+              {state.equipment}
             </p>
           </div>
           <button

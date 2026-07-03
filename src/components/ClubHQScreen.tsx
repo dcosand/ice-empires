@@ -402,9 +402,6 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
 function PersonnelTab({ state }: { state: GameState }) {
   const club = state.club;
   const fieldUnits = allScouts(state.world);
-  const players = state.cards.filter(
-    (c) => c.type === "player" || c.type === "prospect",
-  );
   const staff = state.cards.filter((c) => c.type === "staff");
 
   return (
@@ -449,25 +446,6 @@ function PersonnelTab({ state }: { state: GameState }) {
         </div>
       )}
 
-      <SectionTitle>Players</SectionTitle>
-      {players.length === 0 ? (
-        <div className="faint">
-          No players yet — the Pond Hockey era is mostly ice, rumors, and
-          ambition. Wanderers and local believers come later.
-        </div>
-      ) : (
-        <div className="hq-people">
-          {players.map((c) => (
-            <PersonRow
-              key={c.id}
-              glyph={c.position ?? "●"}
-              name={c.name}
-              role={c.type === "prospect" ? "Prospect" : "Player"}
-              note={c.role ?? c.flavor}
-            />
-          ))}
-        </div>
-      )}
     </div>
   );
 }

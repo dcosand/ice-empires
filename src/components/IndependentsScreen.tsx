@@ -131,7 +131,10 @@ function IndependentRow({
         />
       </div>
 
-      <span className={`indy-tier tier-${org.relationshipLevel}`}>
+      <span
+        className={`indy-tier tier-${org.relationshipLevel}`}
+        title="Your club's relationship standing with this independent"
+      >
         {tierName(org.relationshipLevel)}
       </span>
 
@@ -202,7 +205,11 @@ function IndependentDetail({
             {turnDateLabel(org.contactMonth ?? 1)}
           </div>
         </div>
-        <span className={`indy-tier indy-tier-big tier-${org.relationshipLevel}`}>
+        <span
+          className={`indy-tier indy-tier-big tier-${org.relationshipLevel}`}
+          title="Your club's relationship standing with this independent"
+        >
+          <span className="indy-tier-note">your standing</span>
           {tierName(org.relationshipLevel)}
         </span>
       </div>

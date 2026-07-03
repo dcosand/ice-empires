@@ -40,8 +40,8 @@ body {
     var(--bg);
   color: var(--text);
   font-family: var(--font-ui);
-  font-size: 15px;
-  line-height: 1.5;
+  font-size: 16px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -493,8 +493,8 @@ button {
 }
 .log-entry {
   border-left: 3px solid var(--border-bright);
-  padding: 6px 0 6px 12px;
-  margin-bottom: 10px;
+  padding: 8px 0 8px 14px;
+  margin-bottom: 14px;
 }
 .log-entry.type-era {
   border-color: var(--gold);
@@ -507,14 +507,14 @@ button {
   border-color: var(--good);
 }
 .log-entry .log-month {
-  font-size: 11px;
+  font-size: 12.5px;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--text-faint);
 }
 .log-entry .log-title {
   font-weight: 700;
-  font-size: 14px;
+  font-size: 17px;
 }
 .log-entry .log-msg {
   font-size: 13px;
@@ -5031,3 +5031,67 @@ button {
   color: var(--gold);
 }
 .era-toast-label { display: block; font-size: 15px; font-weight: 700; }
+
+
+/* ===========================================================================
+   Readability pass: bigger type across panels ("bigger is fun-ner")
+   =========================================================================== */
+.log-entry .log-msg, .log-entry p { font-size: 15px; }
+.panel-sub { font-size: 15px; line-height: 1.55; }
+.map-detail .region-report { font-size: 14px; line-height: 1.5; }
+.task-button .task-label { font-size: 14.5px; }
+.task-button .task-detail { font-size: 12.5px; }
+.res-chip .res-value { font-size: 17px; }
+.res-chip .res-name { font-size: 11.5px; }
+.unit-overlay .unit-name { font-size: 16px; }
+.unit-overlay .unit-hint { font-size: 13px; }
+.hq-person-name { font-size: 15px; }
+.hq-person-note { font-size: 13px; }
+.prod-row-name { font-size: 16px; }
+.prod-row-effect { font-size: 13.5px; }
+.prod-detail-desc { font-size: 15.5px; }
+.tryout-card-name { font-size: 17px; }
+.tryout-card-meta { font-size: 13px; }
+.attr-row { font-size: 13px; grid-template-columns: 92px 1fr 24px; }
+.attr-bar { height: 8px; }
+.tryout-note { font-size: 13.5px; }
+.line-name { font-size: 15px; }
+.line-meta { font-size: 12px; }
+.line-note { font-size: 12.5px; }
+.indy-prospect-name { font-size: 15px; }
+.indy-prospect-teaser { font-size: 13px; }
+.tech-node-name { font-size: 16px; }
+.tech-node-cost { font-size: 13px; }
+.tech-prereq-chip { font-size: 12px; }
+.hq-era-list li { font-size: 14.5px; }
+.completion-copy p { font-size: 15.5px; }
+.completion-value strong { font-size: 15.5px; }
+
+/* Tryouts: hockey-card breathing room on a wide sheet */
+.tryout-sheet {
+  width: min(1560px, 96vw);
+  padding: 30px 34px;
+}
+.tryout-head h2 { font-size: 30px; }
+.tryout-head .muted { font-size: 15px; }
+.tryout-gallery {
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 18px;
+}
+.tryout-card {
+  padding: 18px;
+  gap: 12px;
+  border-width: 1.5px;
+  background: linear-gradient(180deg, #13273a 0%, #0e1c2b 100%);
+}
+.tryout-card .pos-badge { width: 40px; height: 40px; font-size: 17px; border-radius: 10px; }
+
+/* Independents detail: standing label + bigger rival crests */
+.indy-tier-note {
+  display: block;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  opacity: 0.7;
+}
+.indy-detail .indy-rival-crest { width: 56px; height: 56px; }
+.indy-rival-line { font-size: 16px; gap: 12px; }
