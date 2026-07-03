@@ -4059,11 +4059,11 @@ button {
 .meeting-stage {
   position: relative;
   display: grid;
-  grid-template-columns: minmax(280px, 44%) minmax(320px, 520px);
+  grid-template-columns: minmax(300px, 44%) minmax(380px, 640px);
   align-items: end;
-  gap: 0 28px;
-  width: min(1080px, 94vw);
-  height: min(640px, 78vh);
+  gap: 0 40px;
+  width: min(1280px, 95vw);
+  height: min(720px, 82vh);
 }
 .meeting-glow {
   position: absolute;
@@ -4102,8 +4102,8 @@ button {
   background: rgba(7, 13, 20, 0.82);
   border: 1px solid rgba(120, 160, 200, 0.22);
   border-top: 3px solid var(--meet-accent, var(--accent));
-  border-radius: 12px;
-  padding: 24px 26px;
+  border-radius: 14px;
+  padding: 36px 40px;
   backdrop-filter: blur(6px);
   animation: meeting-panel-in 0.8s 0.45s ease both;
 }
@@ -4112,7 +4112,7 @@ button {
   to { opacity: 1; transform: translateY(0); }
 }
 .meeting-eyebrow {
-  font-size: 11px;
+  font-size: 13px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--meet-accent, var(--accent));
@@ -4121,36 +4121,37 @@ button {
 .meeting-crest-row {
   display: flex;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+  gap: 16px;
+  margin-bottom: 18px;
 }
 .meeting-crest {
-  width: 54px;
-  height: 54px;
+  width: 72px;
+  height: 72px;
   object-fit: contain;
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.6));
 }
 .meeting-name {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 26px;
+  font-size: 38px;
   color: var(--text);
 }
 .meeting-archetype {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 700;
   color: var(--meet-accent, var(--accent));
 }
 .meeting-line {
   color: var(--text);
   opacity: 0.92;
-  line-height: 1.5;
-  margin: 0 0 6px;
+  font-size: 17px;
+  line-height: 1.6;
+  margin: 0 0 12px;
 }
 .meeting-choices {
   display: grid;
-  gap: 10px;
-  margin-top: 16px;
+  gap: 12px;
+  margin-top: 24px;
   opacity: 0;
   transform: translateY(8px);
   transition: opacity 0.5s ease, transform 0.5s ease;
@@ -4165,12 +4166,13 @@ button {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 2px;
+  gap: 4px;
   text-align: left;
-  padding: 10px 14px;
+  padding: 14px 18px;
+  font-size: 16px;
 }
 .meeting-choice-sub {
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 400;
   opacity: 0.65;
 }
@@ -4569,4 +4571,112 @@ button {
   border-radius: 16px;
   position: relative;
   z-index: 1;
+}
+
+/* Production panel — compact rows (replaces the card gallery) */
+.prod-list-title {
+  margin: 14px 0 6px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+.prod-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.prod-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 40px 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: rgba(13, 24, 36, 0.72);
+  cursor: pointer;
+  transition: border-color 0.08s ease, background 0.08s ease;
+}
+.prod-row:hover {
+  border-color: var(--accent);
+}
+.prod-row.selected {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold);
+  background: rgba(242, 193, 78, 0.06);
+}
+.prod-row.status-locked {
+  opacity: 0.55;
+  cursor: help;
+}
+.prod-row.status-built,
+.prod-row.status-active {
+  opacity: 0.85;
+}
+.prod-row.unaffordable .prod-row-cost {
+  color: var(--bad);
+}
+.prod-row-art {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 9px;
+}
+.prod-row-main {
+  flex: 1;
+  min-width: 0;
+}
+.prod-row-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: var(--text);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.prod-row-kind {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.prod-row-effect {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.prod-row-cost {
+  text-align: right;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  white-space: nowrap;
+}
+.prod-row-status {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-dim);
+  max-width: 220px;
+  white-space: normal;
+}
+.prod-row-status.s-active { color: var(--accent); }
+.prod-row-status.s-built { color: var(--good); }
+.prod-row-check {
+  position: absolute;
+  right: 40px;
+  top: 8px;
+  color: var(--gold);
+  font-weight: 800;
+}
+.prod-row-info {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
 }

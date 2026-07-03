@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Dispatch, ReactNode } from "react";
+import type { Dispatch } from "react";
 import type {
   GameAction,
   GameState,
@@ -9,7 +9,6 @@ import type {
 import {
   getProductionOptions,
   type ProductionOption,
-  type ProductionStatus,
 } from "../engine/productionSystem";
 import { getMonthlyIncome } from "../engine/selectors";
 import { ItemArt } from "./ItemArt";
@@ -20,14 +19,6 @@ const RESOURCE_SHORT: Record<ResourceKey, string> = {
   reputation: "Rep",
 };
 
-// Buildable first, then in-progress, then already-built, then locked (ghosted).
-const STATUS_RANK: Record<ProductionStatus, number> = {
-  available: 0,
-  active: 1,
-  built: 2,
-  locked: 3,
-};
-
 function upfrontChips(cost: Partial<ResourceSet>): string {
   return (Object.entries(cost) as [ResourceKey, number][])
     .map(([res, amt]) => `${amt} ${RESOURCE_SHORT[res]}`)
@@ -36,15 +27,16 @@ function upfrontChips(cost: Partial<ResourceSet>): string {
 
 const keyOf = (o: ProductionOption) => `${o.kind}-${o.id}`;
 
+// STABLE order: data order, with locked items sinking to the bottom. Never
+// re-rank on selection or when something starts building — rows must not jump
+// around under the player's cursor.
 const sortOptions = (arr: ProductionOption[]): ProductionOption[] =>
-  [...arr].sort((a, b) => {
-    const r = STATUS_RANK[a.status] - STATUS_RANK[b.status];
-    if (r !== 0) return r;
-    if (a.status === "available")
-      return (a.affordable ? 0 : 1) - (b.affordable ? 0 : 1);
-    return 0;
-  });
+  [...arr].sort(
+    (a, b) => (a.status === "locked" ? 1 : 0) - (b.status === "locked" ? 1 : 0),
+  );
 
+// Compact row list: one line per item — art, name, what it does, cost, state.
+// Simpler and quieter than the old card gallery.
 export function ProductionPanel({
   state,
   dispatch,
@@ -59,8 +51,6 @@ export function ProductionPanel({
   const monthsFor = (cost: number) =>
     fundsPerMonth > 0 ? Math.max(1, Math.ceil(cost / fundsPerMonth)) : Infinity;
 
-  // Two grouped sections — Units first, then Facilities — each sorted with
-  // buildable items ahead of ghosted/locked ones.
   const unitOptions = useMemo(() => sortOptions(opts.units), [opts]);
   const facilityOptions = useMemo(() => sortOptions(opts.facilities), [opts]);
   const lookup = useMemo(
@@ -68,15 +58,12 @@ export function ProductionPanel({
     [unitOptions, facilityOptions],
   );
 
-  const [openUnits, setOpenUnits] = useState(true);
-  const [openFacilities, setOpenFacilities] = useState(true);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailKey, setDetailKey] = useState<string | null>(null);
 
   const selected = lookup.find((o) => keyOf(o) === selectedKey) ?? null;
   const detail = lookup.find((o) => keyOf(o) === detailKey) ?? null;
 
-  // A card can be picked only when the HQ slot is free and it's buildable.
   const selectable = (o: ProductionOption) => o.status === "available" && !slotBusy;
 
   // Drop a stale selection if the slot fills or the pick is no longer buildable.
@@ -85,8 +72,7 @@ export function ProductionPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [slotBusy, selectedKey, selected?.status]);
 
-  const onCardClick = (o: ProductionOption) => {
-    // Not buildable → fall through to details so the player still learns why.
+  const onRowClick = (o: ProductionOption) => {
     if (!selectable(o)) {
       setDetailKey(keyOf(o));
       return;
@@ -100,15 +86,15 @@ export function ProductionPanel({
     setSelectedKey(null);
   };
 
-  const renderCards = (options: ProductionOption[]) =>
+  const renderRows = (options: ProductionOption[]) =>
     options.map((opt) => (
-      <ProductionCard
+      <ProductionRow
         key={keyOf(opt)}
         opt={opt}
         selected={keyOf(opt) === selectedKey}
         selectable={selectable(opt)}
         estMonths={monthsFor(opt.fundsCost)}
-        onClick={() => onCardClick(opt)}
+        onClick={() => onRowClick(opt)}
         onDetails={() => setDetailKey(keyOf(opt))}
       />
     ));
@@ -116,36 +102,15 @@ export function ProductionPanel({
   return (
     <div className="panel production-panel">
       <div className="panel-sub">
-        Club HQ builds one project at a time. Funds income (+{fundsPerMonth}/mo)
-        flows into it each month. Click a card to select, then confirm — or
-        right-click (or tap ⓘ) for full details.
+        One project at a time; Funds income (+{fundsPerMonth}/turn) flows into
+        it. Click a row to select, then confirm. ⓘ for details.
       </div>
 
-      <ProductionSection
-        title="Units"
-        count={unitOptions.length}
-        open={openUnits}
-        onToggle={() => setOpenUnits((v) => !v)}
-      >
-        {unitOptions.length > 0 ? (
-          renderCards(unitOptions)
-        ) : (
-          <div className="faint">No units available.</div>
-        )}
-      </ProductionSection>
+      <div className="prod-list-title">Units</div>
+      <div className="prod-rows">{renderRows(unitOptions)}</div>
 
-      <ProductionSection
-        title="Facilities"
-        count={facilityOptions.length}
-        open={openFacilities}
-        onToggle={() => setOpenFacilities((v) => !v)}
-      >
-        {facilityOptions.length > 0 ? (
-          renderCards(facilityOptions)
-        ) : (
-          <div className="faint">No facilities available.</div>
-        )}
-      </ProductionSection>
+      <div className="prod-list-title">Facilities</div>
+      <div className="prod-rows">{renderRows(facilityOptions)}</div>
 
       <ConfirmBar
         selected={selected}
@@ -166,46 +131,22 @@ export function ProductionPanel({
   );
 }
 
-function ProductionSection({
-  title,
-  count,
-  open,
-  onToggle,
-  children,
-}: {
-  title: string;
-  count: number;
-  open: boolean;
-  onToggle: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <section className="prod-section">
-      <button
-        type="button"
-        className="prod-section-head"
-        aria-expanded={open}
-        onClick={onToggle}
-      >
-        <span className={`prod-section-chevron${open ? " open" : ""}`} aria-hidden>
-          ▸
-        </span>
-        <span className="prod-section-title">{title}</span>
-        <span className="prod-section-count">{count}</span>
-      </button>
-      {open && <div className="prod-gallery">{children}</div>}
-    </section>
-  );
+function statusText(opt: ProductionOption, estMonths: number): string {
+  switch (opt.status) {
+    case "active":
+      return "Building…";
+    case "built":
+      return "Built ✓";
+    case "locked":
+      return opt.lockReason ?? "Locked";
+    default:
+      return estMonths === Infinity
+        ? "needs Funds"
+        : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`;
+  }
 }
 
-// Locked items are ghosted/disabled (no badge); only built & in-progress get one.
-function statusBadge(status: ProductionStatus): string | null {
-  if (status === "built") return "✓ Built";
-  if (status === "active") return "Building…";
-  return null;
-}
-
-function ProductionCard({
+function ProductionRow({
   opt,
   selected,
   selectable,
@@ -221,24 +162,12 @@ function ProductionCard({
   onDetails: () => void;
 }) {
   const upfront = upfrontChips(opt.upfrontCost);
-  const badge = statusBadge(opt.status);
   const unaffordable = opt.status === "available" && !opt.affordable;
-
-  const foot =
-    opt.status === "available"
-      ? estMonths === Infinity
-        ? "needs Funds"
-        : `~${estMonths} mo`
-      : opt.status === "locked"
-        ? opt.lockReason ?? "Locked"
-        : opt.status === "built"
-          ? "Already built"
-          : "In progress";
 
   return (
     <div
       className={[
-        "prod-card",
+        "prod-row",
         `status-${opt.status}`,
         selected ? "selected" : "",
         !selectable ? "not-selectable" : "",
@@ -262,36 +191,42 @@ function ProductionCard({
         onDetails();
       }}
     >
-      <div className="prod-card-art-wrap">
-        <ItemArt kind={opt.kind} id={opt.id} className="prod-card-art" />
-        {selected && <span className="prod-card-check" aria-hidden>✓</span>}
-        {badge && <span className="prod-card-badge">{badge}</span>}
-        <button
-          type="button"
-          className="prod-card-info"
-          aria-label={`${opt.name} details`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDetails();
-          }}
-        >
-          ⓘ
-        </button>
+      <ItemArt kind={opt.kind} id={opt.id} className="prod-row-art" />
+      <div className="prod-row-main">
+        <div className="prod-row-name">
+          {opt.name}
+          {opt.isUnique && <span className="unique-badge">Unique</span>}
+          <span className="prod-row-kind">
+            {opt.kind === "unit" ? opt.categoryLabel : "Facility"}
+          </span>
+        </div>
+        <div className="prod-row-effect">{opt.effectSummary}</div>
       </div>
-      <div className="prod-card-name">
-        {opt.name}
-        {opt.isUnique && <span className="unique-badge">Unique</span>}
+      <div className="prod-row-cost">
+        <div>
+          {opt.fundsCost} Funds
+          {upfront ? ` + ${upfront}` : ""}
+        </div>
+        <div className={`prod-row-status s-${opt.status}`}>
+          {statusText(opt, estMonths)}
+        </div>
       </div>
-      <div className="prod-card-kind">
-        {opt.kind === "unit" ? opt.categoryLabel : "Facility"}
-      </div>
-      <div className="prod-card-cost">
-        <span>{opt.fundsCost} Funds</span>
-        {upfront && <span className="prod-card-upfront">+ {upfront}</span>}
-      </div>
-      <div className={`prod-card-foot${unaffordable ? " warn" : ""}`}>
-        {unaffordable ? `Need ${upfront} upfront` : foot}
-      </div>
+      {selected && (
+        <span className="prod-row-check" aria-hidden>
+          ✓
+        </span>
+      )}
+      <button
+        type="button"
+        className="prod-card-info prod-row-info"
+        aria-label={`${opt.name} details`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onDetails();
+        }}
+      >
+        ⓘ
+      </button>
     </div>
   );
 }
@@ -321,14 +256,12 @@ function ConfirmBar({
   if (!selected) {
     return (
       <div className="prod-confirm empty">
-        <span className="faint">Select a facility or unit, then confirm to build.</span>
+        <span className="faint">Select something to build, then confirm.</span>
       </div>
     );
   }
 
   const upfront = upfrontChips(selected.upfrontCost);
-  const canStart = selected.affordable;
-
   return (
     <div className="prod-confirm ready">
       <div className="prod-confirm-info">
@@ -337,7 +270,9 @@ function ConfirmBar({
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
             {selected.fundsCost} Funds{upfront ? ` + ${upfront}` : ""} ·{" "}
-            {estMonths === Infinity ? "needs Funds" : `~${estMonths} mo`}
+            {estMonths === Infinity
+              ? "needs Funds income"
+              : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`}
           </div>
         </div>
       </div>
@@ -347,14 +282,19 @@ function ConfirmBar({
         </button>
         <button
           className="btn btn-primary"
-          disabled={!canStart}
-          onClick={onConfirm}
+          disabled={!selected.affordable}
+          onClick={confirmGuard(onConfirm)}
         >
-          {canStart ? "Start Production" : `Need ${upfront} upfront`}
+          Start Building
         </button>
       </div>
     </div>
   );
+}
+
+// Plain pass-through kept as a single seam for a future click sound hook.
+function confirmGuard(fn: () => void): () => void {
+  return fn;
 }
 
 function DetailsModal({
@@ -379,10 +319,12 @@ function DetailsModal({
         <div className="prod-detail-head">
           <ItemArt kind={opt.kind} id={opt.id} className="prod-detail-art" />
           <div className="prod-detail-titles">
-            <div className="prod-detail-name">{opt.name}</div>
+            <div className="prod-detail-name">
+              {opt.name}
+              {opt.isUnique && <span className="unique-badge">Unique</span>}
+            </div>
             <div className="prod-detail-kind">
               {opt.kind === "unit" ? `Unit · ${opt.categoryLabel}` : "Facility"}
-              {opt.isUnique && " · Club Unique"}
             </div>
           </div>
           <button className="btn" onClick={onClose}>
@@ -392,7 +334,7 @@ function DetailsModal({
         <p className="prod-detail-desc">{opt.description}</p>
         {opt.flavor && <p className="prod-detail-flavor">{opt.flavor}</p>}
         <div className="prod-detail-rows">
-          <DetailRow label="Effect" value={opt.effectSummary} tone="good" />
+          <DetailRow label="Does" value={opt.effectSummary} tone="good" />
           <DetailRow
             label="Cost"
             value={`${opt.fundsCost} Funds${upfront ? ` + ${upfront} upfront` : ""}`}
@@ -402,7 +344,7 @@ function DetailsModal({
             value={
               estMonths === Infinity
                 ? "Needs Funds income"
-                : `~${estMonths} month${estMonths === 1 ? "" : "s"}`
+                : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`
             }
           />
           <DetailRow
