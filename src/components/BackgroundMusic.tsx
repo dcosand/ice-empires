@@ -3,8 +3,10 @@ import { useEffect, useRef, useState } from "react";
 // Tracks live in /public/assets/audio (served as static files; spaces encoded).
 const TRACKS = [
   { name: "Forge of Empires", url: "/assets/audio/Forge%20of%20Empires.mp3" },
+  { name: "Frozen Apex", url: "/assets/audio/Frozen%20Apex.mp3" },
   { name: "Ice Empires", url: "/assets/audio/Ice%20Empires.mp3" },
   { name: "Siren Ridge", url: "/assets/audio/Siren%20Ridge.mp3" },
+  { name: "Stonebound Horizon", url: "/assets/audio/Stonebound%20Horizon.mp3" },
 ];
 
 // Single looping playlist, mounted once at the app root so music persists across
