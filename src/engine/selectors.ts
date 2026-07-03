@@ -153,7 +153,10 @@ export function isRequirementMet(
     case "independent-contact":
       return !!state.world?.hockeyOrgs.some((o) => o.playerContacted);
     case "rink-built":
-      return !!state.world && state.world.rinks.some((r) => r.level >= 1);
+      return (
+        !!state.world &&
+        state.world.rinks.some((r) => r.level >= 1 && !r.ownerClubId)
+      );
     case "rules-of-the-game":
       return state.completedResearch.includes("rules-of-the-game");
     case "full-roster":

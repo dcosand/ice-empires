@@ -5202,3 +5202,16 @@ button {
 .dock-btn.has-tip:hover::after {
   transform: translateX(-50%) translateY(0);
 }
+
+/* Independent favor race */
+.indy-race-note {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 8px;
+}
+.indy-rival-pts {
+  margin-left: auto;
+  font-size: 13px;
+  color: var(--text-dim);
+}

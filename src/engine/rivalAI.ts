@@ -14,7 +14,12 @@ import type { PushLog } from "./turnContext";
 
 const RIVAL_OPS_PER_MONTH = 3; // production a rival banks each month
 const RIVAL_UNIT_COST = 9; // production to field one more scout (~Pond Scout's 8)
+const RIVAL_BUILDER_COST = 12; // a work crew costs a bit more than a scout
 const MAX_RIVAL_UNITS = 6; // cap so a rival never floods the map
+const MAX_RIVAL_SCOUTS = 4; // leave roster room for the builder
+const MAX_RIVAL_RINKS = 3; // rinks a rival will raise near its HQ
+const RIVAL_RINK_SEARCH_RADIUS = 9; // how far from home a crew will look for ice
+const RIVAL_RINK_BUILD_MONTHS = 3; // clear + build, one month slower than the human
 
 // Run every rival's monthly turn: economy (spawn scouts) + movement (wander),
 // then check whether a wandering rival walked into one of the human's scouts.
@@ -24,7 +29,7 @@ export function runRivalTurns(draft: GameState, push: PushLog): void {
 
   for (const rival of world.rivals) {
     advanceRivalEconomy(draft, rival, push);
-    moveRivalUnits(draft, rival);
+    moveRivalUnits(draft, rival, push);
   }
 
   checkRivalContactAtScouts(draft, push);
@@ -38,17 +43,29 @@ function advanceRivalEconomy(draft: GameState, rival: RivalClub, push: PushLog):
   // nothing to spend them on. Resumes if a unit slot ever frees up.
   if (rival.units.length >= MAX_RIVAL_UNITS) return;
   rival.productionPoints += RIVAL_OPS_PER_MONTH;
-  while (
-    rival.productionPoints >= RIVAL_UNIT_COST &&
-    rival.units.length < MAX_RIVAL_UNITS
-  ) {
-    rival.productionPoints -= RIVAL_UNIT_COST;
+
+  // Build order mirrors a sane human opening: a couple of scouts to see the
+  // world, then a work crew to raise rinks, then more scouts.
+  while (rival.units.length < MAX_RIVAL_UNITS) {
+    const scouts = rival.units.filter((u) => u.kind === "scout").length;
+    const builders = rival.units.filter((u) => u.kind === "builder").length;
+    const ownRinks = draft.world?.rinks.filter(
+      (r) => r.ownerClubId === rival.clubId,
+    ).length ?? 0;
+    const wantsBuilder =
+      scouts >= 2 && builders === 0 && ownRinks < MAX_RIVAL_RINKS;
+    const cost = wantsBuilder ? RIVAL_BUILDER_COST : RIVAL_UNIT_COST;
+    if (rival.productionPoints < cost) break;
+    if (!wantsBuilder && scouts >= MAX_RIVAL_SCOUTS) break;
+
+    rival.productionPoints -= cost;
     const n = rival.units.length + 1;
     rival.units.push(
       createRivalUnit(
-        `rival-${rival.clubId}-scout-${draft.month}-${n}`,
+        `rival-${rival.clubId}-${wantsBuilder ? "builder" : "scout"}-${draft.month}-${n}`,
         rival.hqTile.x,
         rival.hqTile.y,
+        wantsBuilder ? "builder" : "scout",
       ),
     );
     if (rival.contacted) {
@@ -56,7 +73,9 @@ function advanceRivalEconomy(draft: GameState, rival: RivalClub, push: PushLog):
       push(
         "rival",
         `${club?.name ?? "A rival"} expands`,
-        `${club?.name ?? "A rival club"} sent another scout out from its home ice.`,
+        wantsBuilder
+          ? `${club?.name ?? "A rival club"} put together a rink-building crew.`
+          : `${club?.name ?? "A rival club"} sent another scout out from its home ice.`,
       );
     }
   }
@@ -64,10 +83,14 @@ function advanceRivalEconomy(draft: GameState, rival: RivalClub, push: PushLog):
 
 // Wander each unit: refresh its moves and random-walk, biased away from the HQ so
 // units fan out and explore rather than circling home.
-function moveRivalUnits(draft: GameState, rival: RivalClub): void {
+function moveRivalUnits(draft: GameState, rival: RivalClub, push: PushLog): void {
   const world = draft.world;
   if (!world) return;
   for (const unit of rival.units) {
+    if (unit.kind === "builder") {
+      runRivalBuilder(draft, rival, unit, push);
+      continue;
+    }
     unit.movesRemaining = unit.movesPerTurn;
     while (unit.movesRemaining > 0) {
       const candidates = wanderCandidates(unit, rival.hqTile, draft);
@@ -80,6 +103,126 @@ function moveRivalUnits(draft: GameState, rival: RivalClub): void {
       unit.movesRemaining -= 1;
     }
   }
+}
+
+// A rival work crew: walk to the nearest unclaimed frozen pond near home,
+// then spend RIVAL_RINK_BUILD_MONTHS raising a rink (clear + build folded
+// together — one month slower than the human's two-step, so parity without
+// out-racing the player). Idles by the HQ once the rink quota is met.
+function runRivalBuilder(
+  draft: GameState,
+  rival: RivalClub,
+  unit: RivalUnit,
+  push: PushLog,
+): void {
+  const world = draft.world!;
+
+  // Mid-build: keep at it.
+  if (unit.workingMonths !== undefined) {
+    unit.movesRemaining = 0;
+    unit.workingMonths -= 1;
+    if (unit.workingMonths > 0) return;
+    unit.workingMonths = undefined;
+    world.rinks.push({
+      id: `rink-${unit.x}-${unit.y}`,
+      x: unit.x,
+      y: unit.y,
+      level: 1,
+      kind: "ice",
+      builtMonth: draft.month,
+      ownerClubId: rival.clubId,
+    });
+    if (rival.contacted) {
+      const club = CLUBS[rival.clubId];
+      push(
+        "rival",
+        `${club?.name ?? "A rival"} raises a rink`,
+        `${club?.name ?? "A rival club"} finished an outdoor rink near its home ice.`,
+      );
+    }
+    return;
+  }
+
+  const target = nearestBuildablePond(world, rival);
+  if (!target) return; // quota met or no ice nearby: hold position
+
+  // Standing on the target: break ground.
+  if (unit.x === target.x && unit.y === target.y) {
+    unit.movesRemaining = 0;
+    unit.workingMonths = RIVAL_RINK_BUILD_MONTHS;
+    return;
+  }
+
+  // Greedy step toward the target (diagonals allowed, matching unit movement).
+  unit.movesRemaining = unit.movesPerTurn;
+  let guard = 8;
+  while (unit.movesRemaining > 0 && guard-- > 0) {
+    const step = stepToward(world, unit, target);
+    if (!step) break;
+    unit.x = step.x;
+    unit.y = step.y;
+    unit.movesRemaining -= 1;
+    if (unit.x === target.x && unit.y === target.y) {
+      unit.movesRemaining = 0;
+      unit.workingMonths = RIVAL_RINK_BUILD_MONTHS;
+      break;
+    }
+  }
+}
+
+// The closest frozen pond within the rival's home radius that nobody has
+// built on (or is standing mid-build on). Null once the rink quota is met.
+function nearestBuildablePond(
+  world: NonNullable<GameState["world"]>,
+  rival: RivalClub,
+): { x: number; y: number } | null {
+  const owned = world.rinks.filter((r) => r.ownerClubId === rival.clubId).length;
+  if (owned >= MAX_RIVAL_RINKS) return null;
+  let best: { x: number; y: number } | null = null;
+  let bestD = Infinity;
+  const r = RIVAL_RINK_SEARCH_RADIUS;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const x = rival.hqTile.x + dx;
+      const y = rival.hqTile.y + dy;
+      const tile = tileAt(world, x, y);
+      if (!tile || tile.terrain !== "pond" || tile.surfaceState !== "frozen") continue;
+      if (world.rinks.some((k) => k.x === x && k.y === y)) continue;
+      const d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (d < bestD) {
+        bestD = d;
+        best = { x, y };
+      }
+    }
+  }
+  return best;
+}
+
+// One greedy step toward the target; sidesteps simple blockers.
+function stepToward(
+  world: NonNullable<GameState["world"]>,
+  unit: { x: number; y: number },
+  target: { x: number; y: number },
+): { x: number; y: number } | null {
+  const options: { x: number; y: number; d: number }[] = [];
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const x = unit.x + dx;
+      const y = unit.y + dy;
+      const tile = tileAt(world, x, y);
+      if (!tile || !tile.valid) continue;
+      options.push({
+        x,
+        y,
+        d: Math.max(Math.abs(x - target.x), Math.abs(y - target.y)),
+      });
+    }
+  }
+  if (options.length === 0) return null;
+  options.sort((a, b) => a.d - b.d);
+  const curD = Math.max(Math.abs(unit.x - target.x), Math.abs(unit.y - target.y));
+  return options[0].d < curD ? options[0] : null;
 }
 
 // Valid adjacent tiles to wander to, preferring tiles that move outward from the

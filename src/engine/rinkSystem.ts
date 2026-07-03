@@ -17,8 +17,10 @@ export function rinkAt(
 export function getClubRinks(world: WorldState, minLevel = 1): WorldRink[] {
   const hq = world.hqTile;
   if (!hq) return [];
+  // Rival-built rinks (ownerClubId set) never count as the player's.
   return world.rinks.filter(
     (r) =>
+      !r.ownerClubId &&
       r.level >= minLevel &&
       Math.max(Math.abs(r.x - hq.x), Math.abs(r.y - hq.y)) <= CLUB_RINK_RADIUS,
   );

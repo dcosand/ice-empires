@@ -421,14 +421,15 @@ export function createRivalUnit(
   id: string,
   x: number,
   y: number,
+  kind: RivalUnit["kind"] = "scout",
 ): RivalUnit {
   return {
     id,
     x,
     y,
-    movesPerTurn: RIVAL_SCOUT_MOVES,
-    movesRemaining: RIVAL_SCOUT_MOVES,
-    kind: "scout",
+    movesPerTurn: kind === "builder" ? 2 : RIVAL_SCOUT_MOVES,
+    movesRemaining: kind === "builder" ? 2 : RIVAL_SCOUT_MOVES,
+    kind,
   };
 }
 
@@ -619,6 +620,7 @@ function generateIndependents(
       relationshipLevel: 0,
       influencePoints: 0,
       contactedByClubIds: [],
+      rivalInfluence: {},
       prospects: seedOrgProspects(i, chosen.x, chosen.y, seed),
     });
   }

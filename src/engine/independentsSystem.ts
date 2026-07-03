@@ -227,18 +227,44 @@ export function sendIntroduction(state: GameState, orgId: string): GameState {
   );
 }
 
-// Rival majors quietly make their own contacts: any rival unit or HQ adjacent
-// to an org adds that club to its contact list (shown as crests in the ledger).
+// Rival majors quietly court independents: any rival unit or HQ adjacent to
+// an org adds that club to its contact list AND grows that rival's influence
+// there each month it stays close. This is the seed of Act II's Anchor Club
+// race — the player can already watch rivals out-hustle them in the ledger.
+const RIVAL_COURT_INFLUENCE = 2;
+const RIVAL_FIRST_CONTACT_INFLUENCE = 5;
+
 export function trackRivalOrgContacts(draft: GameState): void {
   const world = draft.world;
   if (!world) return;
   for (const org of world.hockeyOrgs) {
     for (const rival of world.rivals) {
-      if (org.contactedByClubIds.includes(rival.clubId)) continue;
       const points = [rival.hqTile, ...rival.units];
-      if (points.some((p) => isAdjacentOrSame(p, org))) {
+      const near = points.some((p) => isAdjacentOrSame(p, org));
+      if (!near) continue;
+      if (!org.contactedByClubIds.includes(rival.clubId)) {
         org.contactedByClubIds.push(rival.clubId);
+        org.rivalInfluence[rival.clubId] =
+          (org.rivalInfluence[rival.clubId] ?? 0) + RIVAL_FIRST_CONTACT_INFLUENCE;
+      } else {
+        org.rivalInfluence[rival.clubId] =
+          (org.rivalInfluence[rival.clubId] ?? 0) + RIVAL_COURT_INFLUENCE;
       }
     }
   }
+}
+
+// Who's winning this independent's favor (the player included)?
+export function leadingSuitor(
+  org: WorldHockeyOrg,
+): { clubId: string | null; influence: number } {
+  let clubId: string | null = null; // null = the player
+  let influence = org.influencePoints;
+  for (const [id, pts] of Object.entries(org.rivalInfluence)) {
+    if (pts > influence) {
+      clubId = id;
+      influence = pts;
+    }
+  }
+  return { clubId, influence };
 }

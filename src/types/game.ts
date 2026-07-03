@@ -486,6 +486,9 @@ export type WorldRink = {
   level: number;
   kind: "ice" | "inline";
   builtMonth: number;
+  // Which club built it. Undefined = the player's club. Rival rinks render in
+  // the rival's colors and give the player no benefits.
+  ownerClubId?: string;
 };
 
 export type WorldPondMarker = {
@@ -525,6 +528,9 @@ export type WorldHockeyOrg = {
   influencePoints: number;
   // Rival majors that have made contact with this independent.
   contactedByClubIds: string[];
+  // Influence each rival club has built here (the player's is influencePoints).
+  // The Anchor Club race of Act II grows out of this.
+  rivalInfluence: Record<string, number>;
   prospects: OrgProspect[];
 };
 
@@ -536,7 +542,7 @@ export type WorldHockeyOrg = {
 // This is deliberately NOT a full strategic AI — it's the foundation the real
 // opponent / diplomacy systems will grow from.
 
-export type RivalUnitKind = "scout";
+export type RivalUnitKind = "scout" | "builder";
 
 // A movable rival unit on the world. Mirrors WorldUnit, but kept separate so the
 // player's own movement / selection code never has to reason about enemy units.
@@ -547,6 +553,8 @@ export type RivalUnit = {
   movesPerTurn: number;
   movesRemaining: number;
   kind: RivalUnitKind;
+  // Rival builders lock in place while raising a rink (months remaining).
+  workingMonths?: number;
 };
 
 export type RivalClub = {

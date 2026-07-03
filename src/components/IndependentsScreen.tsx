@@ -13,6 +13,7 @@ import {
   INTRO_COST_FUNDS,
   introGate,
   introGateHint,
+  leadingSuitor,
   tierName,
 } from "../engine/independentsSystem";
 
@@ -299,31 +300,46 @@ function IndependentDetail({
         </section>
 
         <section>
-          <div className="indy-col-title">Also in contact</div>
+          <div className="indy-col-title">The race for their favor</div>
           {org.contactedByClubIds.length === 0 ? (
             <div className="faint indy-foot-note">
               No rival club has reached them. Yet.
             </div>
           ) : (
-            <div className="indy-rivals">
-              {org.contactedByClubIds.map((clubId) => {
-                const club = CLUBS[clubId];
-                if (!club) return null;
-                return (
-                  <div key={clubId} className="indy-rival-line">
-                    <img
-                      className="indy-rival-crest"
-                      src={clubAsset(club, "logo")}
-                      alt=""
-                      onError={(e) => {
-                        e.currentTarget.style.display = "none";
-                      }}
-                    />
-                    <span>{club.name}</span>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <div className="indy-race-note">
+                {(() => {
+                  const lead = leadingSuitor(org);
+                  if (lead.clubId === null) {
+                    return "You lead their favor.";
+                  }
+                  const club = CLUBS[lead.clubId];
+                  return `${club?.name ?? "A rival"} is courting them hardest — ${lead.influence} influence to your ${org.influencePoints}.`;
+                })()}
+              </div>
+              <div className="indy-rivals">
+                {org.contactedByClubIds.map((clubId) => {
+                  const club = CLUBS[clubId];
+                  if (!club) return null;
+                  return (
+                    <div key={clubId} className="indy-rival-line">
+                      <img
+                        className="indy-rival-crest"
+                        src={clubAsset(club, "logo")}
+                        alt=""
+                        onError={(e) => {
+                          e.currentTarget.style.display = "none";
+                        }}
+                      />
+                      <span>{club.name}</span>
+                      <span className="indy-rival-pts">
+                        {org.rivalInfluence[clubId] ?? 0} influence
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </section>
       </div>

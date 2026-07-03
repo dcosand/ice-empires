@@ -279,11 +279,18 @@ function drawScene(
       // Player-built rinks (and cleared ponds awaiting a rink). A builder mid-
       // construction on this tile draws the scaffold variant instead.
       const rink = world.rinks.find((r) => r.x === gx && r.y === gy);
-      const buildingHere = scouts.some(
-        (u) => u.working && u.working.x === gx && u.working.y === gy,
-      );
+      const buildingHere =
+        scouts.some((u) => u.working && u.working.x === gx && u.working.y === gy) ||
+        world.rivals.some((rv) =>
+          rv.units.some(
+            (u) => u.workingMonths !== undefined && u.x === gx && u.y === gy,
+          ),
+        );
       if (explored && (rink || buildingHere)) {
-        const mk = rinkMarker(gx, gy, c, rink ?? null, accent, buildingHere);
+        const rinkAccent = rink?.ownerClubId
+          ? accentNumber(CLUBS[rink.ownerClubId]?.accent)
+          : accent;
+        const mk = rinkMarker(gx, gy, c, rink ?? null, rinkAccent, buildingHere);
         mk.position.y -= rise;
         applyMemory(mk, memory);
         layer.addChild(mk);
@@ -321,7 +328,10 @@ function drawScene(
           if (!visible) continue; // live units: current sightline only
           const unitsHere = rival.units.filter((u) => u.x === gx && u.y === gy);
           for (let i = 0; i < unitsHere.length; i++) {
-            const mk = scoutMarker(gx, gy, c, false, rAccent);
+            const mk =
+              unitsHere[i].kind === "builder"
+                ? builderMarker(gx, gy, c, false, rAccent)
+                : scoutMarker(gx, gy, c, false, rAccent);
             mk.position.x += (i - (unitsHere.length - 1) / 2) * 10;
             mk.position.y -= rise;
             layer.addChild(mk);
@@ -2821,11 +2831,13 @@ function MapControls({
             </span>
           </div>
           <div className="region-report">
-            {selRink.level >= 1
-              ? `${selRinkIsClub ? "A club rink — it pays +1 Funds/month and hosts tryouts. " : "Beyond your HQ's reach — no club benefits from here. "}${
-                  selRink.kind === "ice" ? "Ice, boards, and pride." : "Asphalt, nets, and orange wheels."
-                }`
-              : "Shoveled clear by your crew. With Outdoor Rinkcraft, the Rink Rats can raise a Level 1 rink here."}
+            {selRink.ownerClubId
+              ? `Built by ${CLUBS[selRink.ownerClubId]?.name ?? "a rival club"} — their ice, their pride, none of your benefits.`
+              : selRink.level >= 1
+                ? `${selRinkIsClub ? "A club rink — it pays +1 Funds/month and hosts tryouts. " : "Beyond your HQ's reach — no club benefits from here. "}${
+                    selRink.kind === "ice" ? "Ice, boards, and pride." : "Asphalt, nets, and orange wheels."
+                  }`
+                : "Shoveled clear by your crew. With Outdoor Rinkcraft, the Rink Rats can raise a Level 1 rink here."}
           </div>
         </div>
       )}
