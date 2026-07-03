@@ -1,12 +1,17 @@
 import type {
   EncounterEffect,
   GameState,
+  PlayerGender,
   ResourceKey,
   WorldState,
   WorldUnit,
 } from "../types/game";
 import { CARDS_BY_ID } from "../data/cards";
-import { FIRST_NAMES, LAST_NAMES } from "../data/playerNames";
+import {
+  FEMALE_FIRST_NAMES,
+  LAST_NAMES,
+  MALE_FIRST_NAMES,
+} from "../data/playerNames";
 import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
 import {
@@ -216,10 +221,12 @@ export function resolvePendingEncounter(state: GameState): GameState {
     next = draft;
   } else if (effect.type === "addRosterPlayer") {
     const draft: GameState = structuredClone(next);
+    const identity = wandererIdentity(draft);
     const player = createWandererPlayer(
       draft,
       effect.position,
-      wandererName(draft, pe.name),
+      identity.name,
+      identity.gender,
     );
     if (!player) {
       // Roster full: the wanderer nods and moves on; the story still pays.
@@ -312,15 +319,20 @@ function describeOutcome(effect: EncounterEffect): {
   }
 }
 
-// A wanderer gets a real name from the player pools (seeded), with the
-// encounter name kept as their note-worthy origin story.
-function wandererName(draft: GameState, _encounterName: string): string {
+// A wanderer gets a real name from the player pools (seeded).
+function wandererIdentity(draft: GameState): { name: string; gender: PlayerGender } {
   const r1 = nextRandom(draft.rngSeed);
   const r2 = nextRandom(r1.seed);
-  draft.rngSeed = r2.seed;
-  return `${FIRST_NAMES[Math.floor(r1.value * FIRST_NAMES.length)]} ${
-    LAST_NAMES[Math.floor(r2.value * LAST_NAMES.length)]
-  }`;
+  const r3 = nextRandom(r2.seed);
+  draft.rngSeed = r3.seed;
+  const gender: PlayerGender = r1.value < 0.32 ? "female" : "male";
+  const firstPool = gender === "female" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
+  const first = firstPool[Math.floor(r2.value * firstPool.length)];
+  const last = LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)];
+  return {
+    gender,
+    name: `${first} ${last}`,
+  };
 }
 
 function resourceLabel(resource: ResourceKey): string {

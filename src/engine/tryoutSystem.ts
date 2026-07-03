@@ -1,15 +1,18 @@
 import type {
   GameState,
   Player,
+  PlayerGender,
   PlayerPosition,
   TryoutCandidate,
 } from "../types/game";
 import {
   CANDIDATE_NOTES,
-  FIRST_NAMES,
+  FEMALE_FIRST_NAMES,
   GOALIE_NOTES,
   LAST_NAMES,
+  MALE_FIRST_NAMES,
 } from "../data/playerNames";
+import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
 import { prependLog } from "./log";
 import { nextRandom } from "./rng";
@@ -85,13 +88,17 @@ function rollCandidate(state: GameState, index: number): TryoutCandidate {
   const posRoll = draw();
   const position: PlayerPosition =
     posRoll < 0.45 ? "F" : posRoll < goalieCut ? "D" : "G";
-  const first = FIRST_NAMES[Math.floor(draw() * FIRST_NAMES.length)];
+  const gender: PlayerGender = draw() < 0.32 ? "female" : "male";
+  const firstPool = gender === "female" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
+  const first = firstPool[Math.floor(draw() * firstPool.length)];
   const last = LAST_NAMES[Math.floor(draw() * LAST_NAMES.length)];
   const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
+  const id = `candidate-${state.month}-${index}-${Math.floor(draw() * 1e6)}`;
 
   return {
-    id: `candidate-${state.month}-${index}-${Math.floor(draw() * 1e6)}`,
+    id,
     name: `${first} ${last}`,
+    gender,
     position,
     age: 14 + Math.floor(draw() * 6),
     attrs: {
@@ -101,6 +108,12 @@ function rollCandidate(state: GameState, index: number): TryoutCandidate {
       checking: attr(),
       goaltending: position === "G" ? Math.max(2, attr()) : 1,
     },
+    imageUrl: playerImageFor({
+      gender,
+      kind: "prospect",
+      position,
+      seed: id,
+    }),
     origin: "local tryout",
     note: notes[Math.floor(draw() * notes.length)],
   };
@@ -153,6 +166,12 @@ export function recruitPlayer(state: GameState, candidateId: string): GameState 
   const gearAvailable = state.equipment >= 1;
   const player: Player = {
     ...candidate,
+    imageUrl: playerImageFor({
+      gender: candidate.gender,
+      kind: "player",
+      position: candidate.position,
+      seed: candidate.id,
+    }),
     hasEquipment: gearAvailable,
     joinedMonth: state.month,
   };
@@ -202,6 +221,7 @@ export function createWandererPlayer(
   draft: GameState,
   position: PlayerPosition,
   name: string,
+  gender: PlayerGender,
 ): Player | null {
   if (draft.roster.length >= ROSTER_CAP) return null;
   const draw = () => {
@@ -216,6 +236,7 @@ export function createWandererPlayer(
   const player: Player = {
     id: `wanderer-${draft.month}-${Math.floor(draw() * 1e6)}`,
     name,
+    gender,
     position,
     age: 16 + Math.floor(draw() * 8),
     attrs: {
@@ -225,6 +246,12 @@ export function createWandererPlayer(
       checking: attr(),
       goaltending: position === "G" ? Math.max(4, attr()) : 1,
     },
+    imageUrl: playerImageFor({
+      gender,
+      kind: "player",
+      position,
+      seed: `${name}-${draft.month}-${position}`,
+    }),
     hasEquipment: geared,
     joinedMonth: draft.month,
     origin: "map encounter",

@@ -231,6 +231,7 @@ export type CardDef = {
 // ---------------------------------------------------------------------------
 
 export type PlayerPosition = "F" | "D" | "G";
+export type PlayerGender = "male" | "female";
 
 // Attributes on a 20-point scale. Pond-era locals roll 1–6 — they are terrible,
 // and that's the point.
@@ -245,9 +246,11 @@ export type PlayerAttrs = {
 export type Player = {
   id: string;
   name: string;
+  gender: PlayerGender;
   position: PlayerPosition;
   age: number;
   attrs: PlayerAttrs;
+  imageUrl?: string;
   // One stick+gear from the equipment inventory. Ungeared players don't count
   // toward the "full line" era requirement.
   hasEquipment: boolean;

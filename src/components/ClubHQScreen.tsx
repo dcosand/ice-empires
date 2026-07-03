@@ -32,6 +32,7 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { AttrBar } from "./TryoutScreen";
+import { PlayerHeadshot } from "./HockeyCard";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 
@@ -391,6 +392,9 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
     <div className="line-slot">
       <div className="line-slot-top">
         <span className="line-pos">{label}</span>
+        <div className="line-headshot">
+          <PlayerHeadshot subject={player} />
+        </div>
         <div>
           <div className="line-name">{player.name}</div>
           <div className="line-meta">

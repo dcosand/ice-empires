@@ -4368,6 +4368,29 @@ button {
   margin-bottom: 6px;
 }
 .line-slot-top > div { flex: 1; }
+.line-headshot {
+  flex: 0 0 38px !important;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.line-headshot .hc-headshot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.line-headshot .hc-headshot-img {
+  object-position: 50% 16%;
+}
+.line-headshot .hc-headshot-silhouette {
+  width: 74%;
+}
+.line-headshot .hc-initials {
+  font-size: 15px;
+}
 .line-pos {
   display: inline-flex;
   align-items: center;
@@ -5372,6 +5395,18 @@ button {
   width: 66%;
   height: 92%;
   fill: rgba(255, 255, 255, 0.14);
+}
+.hc-headshot-img {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 14%;
+}
+.hc-headshot-fallback {
+  display: contents;
 }
 .hc-initials {
   position: relative;

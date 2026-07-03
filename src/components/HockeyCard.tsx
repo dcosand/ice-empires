@@ -14,6 +14,7 @@ export type CardSubject = {
   age: number;
   attrs: PlayerAttrs;
   note: string;
+  imageUrl?: string;
 };
 
 export const ATTR_LABELS: { key: keyof PlayerAttrs; label: string }[] = [
@@ -112,22 +113,10 @@ export function HockeyCard({
   );
 }
 
-// A player's headshot. Real headshot art will live in a randomizable pool at
-// /assets/players/<n>.png (assign a stable one per player via headshotIndex);
-// none exists yet, so we render a deterministic tinted monogram keyed to the
-// player so every face is visually distinct and stable across renders. When art
-// lands: set HEADSHOT_POOL_SIZE > 0 and render the <img> with this as onError.
-const HEADSHOT_POOL_SIZE = 0; // number of headshot images available in the pool
-
 function hashString(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return Math.abs(h);
-}
-
-// The pool slot this player would draw (stable per name); unused until art lands.
-export function headshotIndex(name: string): number {
-  return HEADSHOT_POOL_SIZE > 0 ? hashString(name) % HEADSHOT_POOL_SIZE : -1;
 }
 
 export function PlayerHeadshot({ subject }: { subject: CardSubject }) {
@@ -138,13 +127,30 @@ export function PlayerHeadshot({ subject }: { subject: CardSubject }) {
     .slice(0, 2)
     .join("")
     .toUpperCase();
-  return (
-    <div className="hc-headshot" style={{ "--hue": hue } as CSSProperties}>
+  const fallback = (
+    <>
       <svg viewBox="0 0 64 72" className="hc-headshot-silhouette" aria-hidden>
         <circle cx="32" cy="26" r="14" />
         <path d="M8 72c0-15 11-24 24-24s24 9 24 24z" />
       </svg>
       <span className="hc-initials">{initials}</span>
+    </>
+  );
+  return (
+    <div className="hc-headshot" style={{ "--hue": hue } as CSSProperties}>
+      {subject.imageUrl ? (
+        <img
+          className="hc-headshot-img"
+          src={subject.imageUrl}
+          alt=""
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
+      ) : (
+        fallback
+      )}
+      {subject.imageUrl && <span className="hc-headshot-fallback">{fallback}</span>}
     </div>
   );
 }
