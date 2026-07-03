@@ -115,6 +115,40 @@ function eraName(eraId: string): string {
   return ERAS[eraId]?.name ?? humanizeId(eraId);
 }
 
+// Player-facing payoff line: exactly what completing this tech lets you DO
+// (or, for prereq-only techs, what it opens the path to). Hand-written for
+// every tech wired to a real gate; derived from unlocks/dependents otherwise.
+const TECH_PAYOFFS: Record<string, string> = {
+  "basic-skating":
+    "Your locals can move on ice — required for Local Tryouts and Rules of the Game",
+  "stick-gear-basics":
+    "Rink Rats can Harvest Branches into Equipment · required for Local Tryouts",
+  "ice-surveying": "Unlocks the Rink Rats work crew (build it in Production)",
+  "outdoor-rinkcraft": "Rink Rats can Build Level 1 Rinks on cleared ponds",
+  "local-tryouts": "Unlocks Hold Tryouts at your club rinks — recruit your first players",
+  "scouting-rumors": "Opens the path to First Contact",
+  "first-contact": "Unlocks Send Introduction in the Independents ledger",
+  "rules-of-the-game":
+    "Your players can actually play — checks off a Pond Hockey era requirement",
+  "scouting-reports": "Unlocks the map Scout and the Basic Scout unit",
+  "local-recruitment": "Unlocks the Recruiter unit",
+  "regional-scouting": "Unlocks the Regional Scout unit",
+  "development-partnership": "Unlocks the Development Envoy unit",
+};
+
+export function techPayoff(def: ResearchDef): string {
+  const wired = TECH_PAYOFFS[def.id];
+  if (wired) return wired;
+  if (def.unlocks.length > 0) return unlockSummary(def.unlocks);
+  const dependents = RESEARCH.filter((r) =>
+    r.requiredTechIds.includes(def.id),
+  ).map((r) => r.name);
+  if (dependents.length > 0) {
+    return `Opens the path to ${dependents.join(" + ")}`;
+  }
+  return "Advances your hockey knowledge";
+}
+
 function unlockSummary(unlocks: Unlock[]): string {
   if (unlocks.length === 0) return "Advances your hockey knowledge";
   const parts = unlocks.map((u) => {
@@ -176,7 +210,7 @@ function researchOption(state: GameState, def: ResearchDef): ResearchOption {
       met: state.completedResearch.includes(id),
     })),
     status,
-    unlockSummary: unlockSummary(def.unlocks),
+    unlockSummary: techPayoff(def),
     requirementText: requirementText(def),
     lockReason: lockReason(state, def),
   };

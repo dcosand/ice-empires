@@ -72,14 +72,20 @@ export function FoundingScreen({
             <p className="fr-identity">{club.identityText}</p>
 
             <div className="resource-bar fr-resources">
-              <Stat label="Funds" value={club.startingResources.funds} />
+              <Stat
+                label="Funds"
+                value={club.startingResources.funds}
+                hint="Money & muscle — builds everything"
+              />
               <Stat
                 label="Hockey Knowledge"
                 value={club.startingResources.hockeyKnowledge}
+                hint="Research — invents the game"
               />
               <Stat
                 label="Reputation"
                 value={club.startingResources.reputation}
+                hint="Standing — opens doors, never spent"
               />
             </div>
           </div>
@@ -108,11 +114,20 @@ export function FoundingScreen({
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({
+  label,
+  value,
+  hint,
+}: {
+  label: string;
+  value: number;
+  hint?: string;
+}) {
   return (
-    <div className="resource">
+    <div className="resource" title={hint}>
       <div className="label">{label}</div>
       <div className="value">{value}</div>
+      {hint && <div className="resource-hint">{hint}</div>}
     </div>
   );
 }

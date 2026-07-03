@@ -5,6 +5,7 @@ import type {
   WorldState,
   WorldUnit,
 } from "../types/game";
+import { CARDS_BY_ID } from "../data/cards";
 import { REGIONS_BY_ID } from "../data/regions";
 import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
@@ -255,8 +256,19 @@ function describeOutcome(effect: EncounterEffect): {
   switch (effect.type) {
     case "addResource":
       return { outcome: `+${effect.amount} ${resourceLabel(effect.resource)}.`, tone: "good" };
-    case "addCard":
-      return { outcome: "A new hockey person joins your club.", tone: "good" };
+    case "addCard": {
+      const card = CARDS_BY_ID[effect.cardId];
+      const role =
+        card?.type === "staff"
+          ? "joins your staff"
+          : card?.type === "prospect"
+            ? "joins as a prospect"
+            : "joins your club";
+      return {
+        outcome: `${card?.name ?? "A new hockey person"} ${role} — see them under Cards (or Club HQ → Personnel).`,
+        tone: "good",
+      };
+    }
     case "teamAttribute":
       return {
         outcome: `+${effect.amount} future ${effect.attribute} development.`,

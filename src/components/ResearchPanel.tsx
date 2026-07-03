@@ -109,8 +109,8 @@ export function ResearchPanel({
             left={`${active.progressKnowledge}/${activeDef.cost} Hockey Knowledge`}
             right={
               hkPerMonth > 0
-                ? `~${Math.ceil(active.knowledgeRemaining / hkPerMonth)} mo left`
-                : "needs knowledge"
+                ? `funded by +${hkPerMonth} HK/turn · ~${Math.ceil(active.knowledgeRemaining / hkPerMonth)} turn${Math.ceil(active.knowledgeRemaining / hkPerMonth) === 1 ? "" : "s"} left`
+                : "needs Hockey Knowledge income"
             }
           />
         </div>

@@ -1791,6 +1791,7 @@ export function IsoWorldMap({
   );
   const keyMoveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const rightClickRef = useRef<(gx: number, gy: number) => void>(() => {});
+  const cycleUnitsRef = useRef<() => void>(() => {});
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -1867,22 +1868,25 @@ export function IsoWorldMap({
       return;
     }
 
+    const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
+
+    // Civ behavior: clicking your HQ tile never MOVES a unit onto it — that
+    // click means "open the city", not "walk there". Units still step onto
+    // the HQ tile via arrow keys.
     const scout = activeScout(w);
     const moveable = scout ? moveableTilesFor(w, scout) : new Set<string>();
-    if (scout && moveable.has(key)) {
+    if (scout && moveable.has(key) && !hqHere) {
       dispatch({ type: "MOVE_SCOUT", x: gx, y: gy, scoutId: scout.id });
       setSelectedKey(key);
       return;
     }
 
     const scoutsHere = allScouts(w).filter((s) => s.x === gx && s.y === gy);
-    const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
 
     // Civ-style tile cycling: a unit standing on the tile takes selection
-    // priority, so clicking the founding-club tile picks up the Scout that lives
-    // there rather than jumping straight to the Club HQ screen. Clicking again
-    // (once the Scout is already selected) falls through to open HQ. Right-click
-    // opens HQ directly without disturbing the unit (see endDrag).
+    // priority — so clicking the HQ tile picks up the scout parked there
+    // first; clicking again cycles stacked units, then falls through to open
+    // the Club HQ screen. Right-click opens HQ directly (see endDrag).
     if (scoutsHere.length > 0) {
       const selectedIdx = scoutsHere.findIndex((s) => s.id === w.selectedScoutId);
       const nextScout =
@@ -1904,6 +1908,8 @@ export function IsoWorldMap({
       return;
     }
 
+    // The unit on this tile is already selected (or there is none): the click
+    // now means "open the Club HQ".
     if (hqHere) {
       setSelectedKey(key);
       onOpenHQ?.();
@@ -1927,6 +1933,30 @@ export function IsoWorldMap({
       setSelectedKey(tileKey(gx, gy));
       onOpenHQ?.();
     }
+  };
+
+  // Tab / ` cycles through your units that still have moves this turn (skips
+  // crews locked mid-construction), selecting the next one and snapping the
+  // camera to it — Civ's "next unit" convention.
+  cycleUnitsRef.current = () => {
+    const w = state.world;
+    if (!w) return;
+    const ready = allScouts(w).filter(
+      (u) => u.id && u.movesRemaining > 0 && !u.working,
+    );
+    if (ready.length === 0) return;
+    const idx = ready.findIndex((u) => u.id === w.selectedScoutId);
+    const next = ready[(idx + 1) % ready.length];
+    if (!next?.id) return;
+    if (next.id !== w.selectedScoutId) {
+      dispatch({ type: "SELECT_SCOUT", scoutId: next.id });
+    }
+    setSelectedKey(tileKey(next.x, next.y));
+    const cen = centroid(w);
+    cameraRef.current?.centerOnLocal(
+      isoX(next.x, next.y) - cen.x,
+      isoY(next.x, next.y) - cen.y,
+    );
   };
 
   // Always-fresh keyboard mover. (dx, dy) is a grid step; the selected unit
@@ -1977,6 +2007,12 @@ export function IsoWorldMap({
     const onKey = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement | null)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
+      // Tab or ` (backquote/tilde): next unit with moves remaining.
+      if (e.code === "Tab" || e.code === "Backquote") {
+        e.preventDefault();
+        cycleUnitsRef.current();
+        return;
+      }
       const d = DIRS[e.code];
       if (!d) return;
       e.preventDefault();
@@ -2029,9 +2065,9 @@ export function IsoWorldMap({
             focusY = isoY(focus.x, focus.y) - cen.y;
           }
         }
-        // Start zoomed in on the HQ so the club and its Scout read clearly at
-        // game start; the player can wheel back out to survey the world.
-        const INITIAL_SCALE = 1.8;
+        // Start at MAX zoom on the HQ — the world is undiscovered, so opening
+        // tight on the club sells the fog; the player wheels out as they grow.
+        const INITIAL_SCALE = 2.4;
         layer.scale.set(INITIAL_SCALE);
         layer.position.set(
           vw / 2 - focusX * INITIAL_SCALE,
