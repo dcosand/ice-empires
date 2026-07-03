@@ -31,6 +31,8 @@ import {
   tileAt,
   tileKey,
   tileVisualRand,
+  groveIntensity,
+  hasVisibleGrove,
   visibleTiles,
 } from "../engine/world";
 import {
@@ -47,7 +49,6 @@ import {
   canClearSnow,
   canHarvestBranches,
   canPaveStreetRink,
-  HARVEST_MIN_FOLIAGE,
 } from "../engine/builderSystem";
 import { getClubRinks, rinkAt } from "../engine/rinkSystem";
 
@@ -337,13 +338,11 @@ function drawScene(
       const scoutsHere = scouts.filter((s) => s.x === gx && s.y === gy);
       for (let i = 0; i < scoutsHere.length; i++) {
         const scout = scoutsHere[i];
-        const mk = scoutMarker(
-          gx,
-          gy,
-          c,
-          !!scout.id && scout.id === world.selectedScoutId,
-          accent,
-        );
+        const isSel = !!scout.id && scout.id === world.selectedScoutId;
+        const mk =
+          scout.kind === "builder"
+            ? builderMarker(gx, gy, c, isSel, accent)
+            : scoutMarker(gx, gy, c, isSel, accent);
         mk.position.x += (i - (scoutsHere.length - 1) / 2) * 10;
         mk.position.y -= rise;
         // When a Scout shares the HQ tile, draw him in front of the HQ pin so
@@ -452,44 +451,51 @@ function rinkMarker(
   m.zIndex = gx + gy + 0.4;
   const g = new Graphics();
 
-  g.ellipse(0, 4, 22, 9).fill({ color: 0x000000, alpha: 0.2 });
+  g.ellipse(0, 4, 23, 10).fill({ color: 0x000000, alpha: 0.2 });
 
   if (rink && rink.level >= 1) {
     const isIce = rink.kind === "ice";
     const sheet = isIce ? 0xe8f4fa : 0x5d6570;
     const lineA = isIce ? 0xd94f4f : 0xe8934a; // center line
     const lineB = isIce ? 0x3b6fa0 : 0xd8d8d8; // blue lines / lane paint
-    // Boards: a slightly larger ring behind the sheet reads as a low wall.
-    g.ellipse(0, 2, 22, 9.5).fill(isIce ? 0x9a7c45 : 0x4a4f57);
-    g.ellipse(0, 1, 20, 8.5).fill(sheet).stroke({ width: 1.4, color: 0xffffff, alpha: 0.85 });
-    // Center line + faceoff dots + goals.
-    g.moveTo(0, -7).lineTo(0, 9).stroke({ width: 1.6, color: lineA, alpha: 0.9 });
-    g.circle(-10, 1, 1.6).fill(lineB);
-    g.circle(10, 1, 1.6).fill(lineB);
-    g.rect(-17.5, -1, 3, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
-    g.rect(14.5, -1, 3, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
+    // A real rink silhouette: long rounded rectangle with corner radius —
+    // boards first (slightly larger), then the sheet inside them.
+    g.roundRect(-23, -8.5, 46, 19, 8).fill(isIce ? 0x9a7c45 : 0x4a4f57);
+    g.roundRect(-21, -7, 42, 16, 7)
+      .fill(sheet)
+      .stroke({ width: 1.4, color: 0xffffff, alpha: 0.85 });
+    // Center line + blue lines + faceoff dots + goals.
+    g.moveTo(0, -6.5).lineTo(0, 8.5).stroke({ width: 1.6, color: lineA, alpha: 0.9 });
+    g.moveTo(-8, -6.5).lineTo(-8, 8.5).stroke({ width: 1, color: lineB, alpha: 0.75 });
+    g.moveTo(8, -6.5).lineTo(8, 8.5).stroke({ width: 1, color: lineB, alpha: 0.75 });
+    g.circle(-14, 1, 1.6).fill(lineB);
+    g.circle(14, 1, 1.6).fill(lineB);
+    g.rect(-19.5, -1, 2.6, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
+    g.rect(16.9, -1, 2.6, 4).stroke({ width: 1.1, color: lineA, alpha: 0.9 });
     // Club-color pennant so ownership reads at a glance.
-    g.moveTo(18, -4).lineTo(18, -16).stroke({ width: 1.4, color: 0x5a6b7d });
-    g.poly([18, -16, 26, -13.5, 18, -11]).fill(accent);
+    g.moveTo(21, -6).lineTo(21, -18).stroke({ width: 1.4, color: 0x5a6b7d });
+    g.poly([21, -18, 29, -15.5, 21, -13]).fill(accent);
   } else if (building) {
-    // Scaffold: dashed outline + stacked planks while the crew works.
-    g.ellipse(0, 1, 19, 8).stroke({ width: 1.4, color: 0xd9c98a, alpha: 0.9 });
-    g.ellipse(0, 1, 14, 5.5).stroke({ width: 1, color: 0xd9c98a, alpha: 0.5 });
+    // Scaffold: dashed rink outline + stacked planks while the crew works.
+    g.roundRect(-20, -6.5, 40, 15, 7).stroke({ width: 1.4, color: 0xd9c98a, alpha: 0.9 });
+    g.roundRect(-14, -4, 28, 10, 5).stroke({ width: 1, color: 0xd9c98a, alpha: 0.5 });
     g.roundRect(-8, -3, 12, 2.6, 1).fill(0x9a7c45);
     g.roundRect(-4, -6.5, 12, 2.6, 1).fill(0x815833);
     g.roundRect(4, 2, 8, 2.4, 1).fill(0x6e4a2c);
   } else {
-    // Cleared Pond: bright shoveled sheet ringed by snowbanks, shovel planted.
-    g.ellipse(0, 1, 18, 7.5).fill({ color: 0xdff0f8, alpha: 0.95 }).stroke({
-      width: 1.2,
-      color: 0xffffff,
-      alpha: 0.8,
-    });
-    g.ellipse(0, 1, 18, 7.5).stroke({ width: 3, color: 0xf4fbff, alpha: 0.5 });
-    g.arc(0, 1, 12, Math.PI * 0.15, Math.PI * 0.5).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.6 });
-    g.arc(0, 1, 8, Math.PI * 1.1, Math.PI * 1.5).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.6 });
-    g.moveTo(13, -2).lineTo(17, -12).stroke({ width: 1.6, color: 0x8a6a3c });
-    g.poly([15.5, -13.5, 20, -12, 17.5, -8.5]).fill(0x9aa6b0);
+    // Cleared Pond: a shoveled rink-shaped sheet ringed by snowbanks — the
+    // rounded-rectangle footprint the future rink will occupy.
+    g.roundRect(-19, -6.5, 38, 15, 7)
+      .fill({ color: 0xdff0f8, alpha: 0.95 })
+      .stroke({ width: 3, color: 0xf4fbff, alpha: 0.6 });
+    g.roundRect(-19, -6.5, 38, 15, 7).stroke({ width: 1.2, color: 0xffffff, alpha: 0.8 });
+    // shovel stroke marks on the ice
+    g.moveTo(-12, -3).lineTo(10, -3).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.55 });
+    g.moveTo(-10, 1).lineTo(12, 1).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.45 });
+    g.moveTo(-12, 5).lineTo(8, 5).stroke({ width: 1, color: 0xa8ccd8, alpha: 0.5 });
+    // planted shovel
+    g.moveTo(16, -2).lineTo(20, -13).stroke({ width: 1.6, color: 0x8a6a3c });
+    g.poly([18.5, -14.5, 23, -13, 20.5, -9.5]).fill(0x9aa6b0);
   }
 
   m.addChild(g);
@@ -1487,49 +1493,19 @@ function paintPalmGrove(ctx: Ctx, w: number, h: number, variant: number, count =
 // open ground, 1-5 is a grove of that many trees. Below `floor` the tile is a
 // clearing; above it both the odds of a grove and its tree count ramp up, so a
 // forest reads as a thick core thinning to scattered trees at the edge.
-function groveCount(tile: WorldTile, floor: number, span: number, density: number): number {
-  const t = (density - floor) / span;
-  if (t <= 0) return 0;
-  // Scattered gaps near the edge (low t), near-solid canopy toward the core.
-  if (tileRand(tile.x, tile.y, 23) > Math.min(1, t * 1.2)) return 0;
-  return 1 + Math.round(Math.min(1, t) * 4);
-}
-
-// Barren / arid ground that a forest fades away from. Woods thin as they approach
-// these so a desert→forest boundary is a gradient of scattered trees, not a wall.
-function isBarrenTerrain(t: WorldTerrain): boolean {
-  return t === "desert" || t === "high-desert" || t === "water" || t === "mountain" || t === "pond";
-}
-
-// How much to shave off a tile's foliage density based on its surroundings: the
-// larger the share of its eight neighbours that are barren, the thinner its
-// canopy — so forest edges feather into the neighbouring desert or shore.
-function aridNeighborPenalty(world: WorldState, tile: WorldTile): number {
-  let barren = 0;
-  let total = 0;
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      if (dx === 0 && dy === 0) continue;
-      const n = tileAt(world, tile.x + dx, tile.y + dy);
-      if (!n) continue;
-      total++;
-      if (isBarrenTerrain(n.terrain)) barren++;
-    }
-  }
-  return total ? (barren / total) * 0.22 : 0;
-}
-
 function vegetationSprite(tile: WorldTile, world: WorldState): Sprite | null {
   const look = tileLook(tile);
   const v = look.v; // 0-4: five distinct grove arrangements per type, not three
-  // The tile's own foliage field, thinned toward barren (desert/shore) borders.
-  const density = (tile.foliageDensity ?? 0.5) - aridNeighborPenalty(world, tile);
+  // Grove presence/size comes from the shared engine predicate so the map and
+  // harvest eligibility can never disagree about where trees are.
+  const t = groveIntensity(world, tile);
+  const grove = t > 0 ? 1 + Math.round(t * 4) : 0;
   let sp: Sprite | null = null;
 
   if (tile.terrain === "tropical") {
     // Lush broadleaf jungle — dense, blending canopy rather than bare palm
     // trunks. Palms now live on the desert as oases (below).
-    const n = groveCount(tile, 0.32, 0.34, density);
+    const n = grove;
     if (n > 0) {
       sp = new Sprite(landformTexture(`jungle-grove-${v}-${n}`, 48, 36, (c) => paintBroadleafGrove(c, 48, 36, v, n)));
       sp.alpha = 0.92;
@@ -1544,13 +1520,13 @@ function vegetationSprite(tile: WorldTile, world: WorldState): Sprite | null {
       sp.alpha = 0.92;
     }
   } else if (tile.terrain === "ice") {
-    const n = groveCount(tile, 0.52, 0.34, density);
+    const n = grove;
     if (n > 0) {
       sp = new Sprite(landformTexture(`pine-snow-grove-${v}-${n}`, 50, 42, (c) => paintPineGrove(c, 50, 42, v, true, n)));
       sp.alpha = 0.9;
     }
   } else if (tile.terrain === "plains") {
-    const n = groveCount(tile, 0.4, 0.32, density);
+    const n = grove;
     if (n > 0) {
       // Higher plains carry conifers; the lowlands are broadleaf woods.
       const pineMix = (tile.elevation ?? 0) > 0.54 && look.v % 2 === 0;
@@ -1733,6 +1709,77 @@ function scoutMarker(
   s.poly([14, -48.4, 30.6, -47, 28.8, -46, 14, -46]).fill({ color: parkaLight, alpha: 0.75 }); // team stripe
   s.poly([14, -52.5, 31, -51, 28.5, -47, 31, -43.5, 14, -42]).stroke({ width: 1, color: parkaDark, alpha: 0.7 });
 
+  return s;
+}
+
+// The Builder (Rink Rats): blue-collar and under-paid — canvas work coat,
+// club-accent toque, work gloves, and a shovel over the shoulder. Reads
+// instantly different from the parka-and-banner Scout at any zoom.
+const COAT = 0xb08144; // waxed canvas
+const COAT_DK = 0x8a6230;
+const COAT_LT = 0xd0a266;
+const GLOVE = 0x6e4a2c;
+const SHOVEL_WOOD = 0x9a7240;
+const SHOVEL_STEEL = 0xb9c2cc;
+
+function builderMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  selected: boolean | undefined,
+  accent: number,
+) {
+  const s = new Graphics();
+  s.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  s.zIndex = gx + gy + 0.6;
+
+  if (selected) {
+    s.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
+  }
+  s.ellipse(0, 1, 11, 4).fill({ color: 0x000000, alpha: 0.35 });
+
+  // shovel planted over the right shoulder (blade up — off shift, mid-lean)
+  s.roundRect(12.2, -46, 2.6, 46, 1).fill(SHOVEL_WOOD);
+  s.roundRect(12.2, -46, 1, 46, 1).fill({ color: lighten(SHOVEL_WOOD, 0.3), alpha: 0.8 });
+  s.poly([9.6, -46, 17.6, -46, 16.6, -56, 10.6, -56]).fill(SHOVEL_STEEL)
+    .stroke({ width: 1, color: 0x7d8791 });
+  s.ellipse(13.5, 1, 6, 2.4).fill({ color: 0xeaf2fb, alpha: 0.85 });
+
+  // work boots + canvas pants
+  s.roundRect(-6.5, -4, 6.5, 4, 1.5).fill(BOOT);
+  s.roundRect(0, -4, 6.5, 4, 1.5).fill(BOOT);
+  s.roundRect(-5, -14, 4.5, 11, 2).fill(0x4a4234);
+  s.roundRect(0.5, -14, 4.5, 11, 2).fill(0x4a4234);
+  s.roundRect(0.5, -14, 4.5, 11, 2).fill({ color: 0x000000, alpha: 0.18 });
+
+  // canvas work coat, tool-belt, chest flannel stripes
+  s.roundRect(-9.5, -31, 19, 20, 5).fill(COAT);
+  s.roundRect(3, -30, 6, 18, 4).fill({ color: COAT_DK, alpha: 0.5 });
+  s.roundRect(-9.5, -15.5, 19, 3.4, 1.5).fill(0x3a3128); // tool belt
+  s.roundRect(-3.5, -15.8, 3.4, 4, 1).fill(BRASS_LT).stroke({ width: 0.7, color: BRASS_DK }); // buckle
+  s.roundRect(5, -15.6, 3, 3.6, 0.8).fill(0x8a8f96); // hanging hammer head
+  s.roundRect(-9.5, -25.5, 19, 2.2, 1).fill({ color: accent, alpha: 0.85 }); // club stripe
+  s.roundRect(-0.8, -31, 1.6, 12, 0.6).fill({ color: COAT_DK, alpha: 0.8 });
+
+  // right arm up gripping the shovel shaft
+  s.roundRect(7, -30, 6, 9, 3).fill(COAT);
+  s.poly([8, -29.5, 11, -29.5, 13.6, -34, 11, -35.5]).fill(COAT);
+  s.circle(13.4, -34.5, 2.4).fill(GLOVE);
+
+  // left arm relaxed at the side, gloved
+  s.roundRect(-13, -30, 6, 13, 3).fill(COAT);
+  s.roundRect(-13, -30, 2.2, 13, 2).fill({ color: COAT_LT, alpha: 0.4 });
+  s.circle(-10, -16.5, 2.4).fill(GLOVE);
+
+  // club-accent knit toque with a pom, no hood — face out in the cold
+  s.circle(0, -38.4, 5.2).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
+  s.circle(-1.9, -38.2, 0.85).fill(EYE);
+  s.circle(2, -38.2, 0.85).fill(EYE);
+  // a working man's stubble
+  s.rect(-3, -35.6, 6, 1.6).fill({ color: 0x8a6a50, alpha: 0.45 });
+  s.arc(0, -40.4, 5.4, Math.PI, 0).fill(accent);
+  s.roundRect(-5.4, -41.4, 10.8, 2.4, 1.2).fill(darkenBy(accent, 0.25)); // knit band
+  s.circle(0, -46.2, 1.8).fill(lighten(accent, 0.4)); // pom
   return s;
 }
 
@@ -2683,14 +2730,14 @@ function terrainLabel(tile: WorldTile): string {
 
 function terrainNotes(tile: WorldTile, state: GameState): string {
   const notes: string[] = [];
-  if ((tile.foliageDensity ?? 0) >= HARVEST_MIN_FOLIAGE) {
+  if (state.world && hasVisibleGrove(state.world, tile)) {
     notes.push(
       state.completedResearch.includes("stick-gear-basics")
-        ? "Dense trees — Rink Rats can Harvest Branches here."
-        : "Dense trees — harvestable for stickwood once you know Stick & Gear Basics.",
+        ? "Trees — Rink Rats can Harvest Branches here."
+        : "Trees — harvestable for stickwood once you know Stick & Gear Basics.",
     );
   } else if ((tile.foliageDensity ?? 0) > 0.15) {
-    notes.push("Scattered trees, too thin to harvest.");
+    notes.push("Scattered brush, nothing worth cutting.");
   }
   if (tile.feature === "river") notes.push("A river runs through it.");
   if (tile.feature === "lake") notes.push("Lake water — impassable.");

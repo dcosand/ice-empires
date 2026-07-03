@@ -790,6 +790,54 @@ export function tileVisualRand(x: number, y: number, salt: number): number {
   return h / 4294967295;
 }
 
+// ---------------------------------------------------------------------------
+// Forest groves — the single source of truth for "there are visible trees on
+// this tile". The map renderer AND harvest eligibility both read this, so a
+// tile can never offer invisible trees (or hide harvestable ones).
+// ---------------------------------------------------------------------------
+
+const GROVE_PARAMS: Partial<Record<WorldTerrain, { floor: number; span: number }>> = {
+  tropical: { floor: 0.32, span: 0.34 },
+  ice: { floor: 0.52, span: 0.34 },
+  plains: { floor: 0.4, span: 0.32 },
+};
+
+// Barren / arid ground that a forest fades away from.
+function isBarrenTerrain(t: WorldTerrain): boolean {
+  return t === "desert" || t === "high-desert" || t === "water" || t === "mountain" || t === "pond";
+}
+
+// How much surrounding barrenness thins this tile's foliage.
+export function aridNeighborPenalty(world: WorldState, tile: WorldTile): number {
+  let barren = 0;
+  let total = 0;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const n = tileAt(world, tile.x + dx, tile.y + dy);
+      if (!n) continue;
+      total++;
+      if (isBarrenTerrain(n.terrain)) barren++;
+    }
+  }
+  return total ? (barren / total) * 0.22 : 0;
+}
+
+// 0 = no grove renders on this tile; >0 = grove density factor (0..1].
+export function groveIntensity(world: WorldState, tile: WorldTile): number {
+  const p = GROVE_PARAMS[tile.terrain];
+  if (!p) return 0;
+  const density = (tile.foliageDensity ?? 0.5) - aridNeighborPenalty(world, tile);
+  const t = (density - p.floor) / p.span;
+  if (t <= 0) return 0;
+  if (tileVisualRand(tile.x, tile.y, 23) > Math.min(1, t * 1.2)) return 0;
+  return Math.min(1, t);
+}
+
+export function hasVisibleGrove(world: WorldState, tile: WorldTile | null | undefined): boolean {
+  return !!tile && groveIntensity(world, tile) > 0;
+}
+
 export function hasMesaLandform(tile: WorldTile): boolean {
   return tile.terrain === "high-desert" && tileVisualRand(tile.x, tile.y, 11) < 0.09;
 }

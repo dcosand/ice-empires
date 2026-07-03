@@ -3,6 +3,7 @@ import {
   addReveal,
   createBuilderUnit,
   hasMesaLandform,
+  hasVisibleGrove,
   tileAt,
   tileKey,
 } from "./world";
@@ -204,9 +205,12 @@ export function canHarvestBranches(state: GameState, unitId: string): boolean {
   if (!world || !unit || unit.movesRemaining <= 0) return false;
   if (!state.completedResearch.includes("stick-gear-basics")) return false;
   const tile = tileAt(world, unit.x, unit.y);
+  // Only where the player can SEE trees (same predicate the renderer uses),
+  // and never on the HQ tile or an existing rink.
+  if (world.hqTile && world.hqTile.x === unit.x && world.hqTile.y === unit.y) return false;
   return (
-    !!tile &&
-    (tile.foliageDensity ?? 0) >= HARVEST_MIN_FOLIAGE &&
+    hasVisibleGrove(world, tile) &&
+    !rinkAt(world, unit.x, unit.y) &&
     !world.harvestedTiles.includes(tileKey(unit.x, unit.y))
   );
 }
