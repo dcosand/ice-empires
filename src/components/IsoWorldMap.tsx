@@ -160,12 +160,15 @@ function drawScene(
     for (let gx = 0; gx < world.width; gx++) {
       const key = tileKey(gx, gy);
       const tile = tileAt(world, gx, gy)!;
-      // Three fog tiers: unseen (never explored) → dark fog; explored (seen
-      // before, not in current vision) → remembered terrain, dimmed, no live
-      // markers; visible (in current vision) → full color and live info.
+      // Two fog tiers now: unseen (never explored) → dark fog; explored →
+      // full color forever (Polytopia). `visible` (current line of sight)
+      // only gates live info like rival unit positions.
       const explored = state.devRevealAll || revealedSet.has(key);
       const visible = state.devRevealAll || visibleSet.has(key);
-      const memory = explored && !visible;
+      // Polytopia rule: explored terrain stays fully lit forever — no memory
+      // dimming. Current sight (`visible`) still gates LIVE info only: rival
+      // units render solely inside your present line of sight (Civ rule).
+      const memory = false;
       const pal = explored ? TERRAIN[tile.terrain] ?? TERRAIN.plains : FOG;
       const rise = explored ? tileRise(tile) : FOG_RISE;
       const topColor = explored ? variantTopColor(tile, pal.top) : pal.top;
@@ -1751,8 +1754,9 @@ function builderMarker(
   // shovel planted over the right shoulder (blade up — off shift, mid-lean)
   s.roundRect(12.2, -46, 2.6, 46, 1).fill(SHOVEL_WOOD);
   s.roundRect(12.2, -46, 1, 46, 1).fill({ color: lighten(SHOVEL_WOOD, 0.3), alpha: 0.8 });
-  s.poly([9.6, -46, 17.6, -46, 16.6, -56, 10.6, -56]).fill(SHOVEL_STEEL)
-    .stroke({ width: 1, color: 0x7d8791 });
+  // scoop blade: rounded square with a shallow curve at the mouth
+  s.roundRect(10, -56, 7, 10, 2.4).fill(SHOVEL_STEEL).stroke({ width: 1, color: 0x7d8791 });
+  s.roundRect(11.2, -56, 4.6, 3, 1.2).fill({ color: 0xffffff, alpha: 0.35 }); // glint
   s.ellipse(13.5, 1, 6, 2.4).fill({ color: 0xeaf2fb, alpha: 0.85 });
 
   // work boots + canvas pants
@@ -1781,15 +1785,17 @@ function builderMarker(
   s.roundRect(-13, -30, 2.2, 13, 2).fill({ color: COAT_LT, alpha: 0.4 });
   s.circle(-10, -16.5, 2.4).fill(GLOVE);
 
-  // club-accent knit toque with a pom, no hood — face out in the cold
+  // club-accent knit toque with a pom, no hood — face out in the cold.
+  // (Drawn dome-first so the face and band overlap its lower half; no arc()
+  // chaining, which fans a giant wedge off the open path in Pixi.)
+  s.circle(0, -42.2, 5.2).fill(accent); // toque dome
   s.circle(0, -38.4, 5.2).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
   s.circle(-1.9, -38.2, 0.85).fill(EYE);
   s.circle(2, -38.2, 0.85).fill(EYE);
   // a working man's stubble
   s.rect(-3, -35.6, 6, 1.6).fill({ color: 0x8a6a50, alpha: 0.45 });
-  s.arc(0, -40.4, 5.4, Math.PI, 0).fill(accent);
-  s.roundRect(-5.4, -41.4, 10.8, 2.4, 1.2).fill(darkenBy(accent, 0.25)); // knit band
-  s.circle(0, -46.2, 1.8).fill(lighten(accent, 0.4)); // pom
+  s.roundRect(-5.4, -42.6, 10.8, 2.4, 1.2).fill(darkenBy(accent, 0.25)); // knit band
+  s.circle(0, -47.6, 1.8).fill(lighten(accent, 0.4)); // pom
   return s;
 }
 

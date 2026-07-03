@@ -208,8 +208,12 @@ export function tileKey(x: number, y: number): string {
   return `${x},${y}`;
 }
 
+// The minimal shape LOS/grove helpers need — WorldState satisfies it, and
+// createWorld can call them before the full WorldState exists.
+export type TileGrid = Pick<WorldState, "width" | "height" | "tiles">;
+
 export function tileAt(
-  world: WorldState,
+  world: TileGrid,
   x: number,
   y: number,
 ): WorldTile | undefined {
@@ -244,43 +248,108 @@ function diskKeys(cx: number, cy: number, r: number): string[] {
   return keys;
 }
 
-// Keys revealed by standing at (cx,cy): the vision disk around it.
-function revealKeys(cx: number, cy: number): string[] {
-  return diskKeys(cx, cy, VISION_RADIUS);
+// ---------------------------------------------------------------------------
+// Sight (Civ VI-inspired line of sight)
+// ---------------------------------------------------------------------------
+// Sight levels: 0 = open ground/water, 1 = forest grove, 3 = mountains. Our
+// map has no rendered hills yet, so there is no vantage level — every viewer
+// stands at ground level and forests/mountains block what's behind them.
+// A taller target still shows over a lower blocker (a mountain peeks over a
+// forest), exactly like Civ VI's "level above the obstacle" rule.
+
+export const SCOUT_SIGHT = 3; // recon eyes (Civ scouts/settlers see 3)
+export const FOUNDER_SIGHT = 3;
+export const BUILDER_SIGHT = 2; // work crews watch the ice, not the horizon
+export const HQ_SIGHT = 3;
+export const RINK_SIGHT = 1;
+
+export function sightLevel(world: TileGrid, tile: WorldTile | undefined): number {
+  if (!tile) return 0;
+  if (tile.terrain === "mountain") return 3;
+  if (hasVisibleGrove(world, tile)) return 1;
+  return 0;
 }
 
-// Union the existing revealed (explored) set with the fog around (x,y).
-export function addReveal(revealed: string[], x: number, y: number): string[] {
-  return Array.from(new Set([...revealed, ...revealKeys(x, y)]));
+// Can a viewer at (sx,sy) see the tile at (tx,ty)? Adjacent tiles are always
+// visible; beyond that the highest obstacle strictly between them decides.
+export function losVisible(
+  world: TileGrid,
+  sx: number,
+  sy: number,
+  tx: number,
+  ty: number,
+): boolean {
+  const dist = Math.max(Math.abs(tx - sx), Math.abs(ty - sy));
+  if (dist <= 1) return true;
+  // Sample the segment between the tile centers; every intermediate tile the
+  // ray crosses can block. (2 samples per tile of distance is plenty on a
+  // square grid.)
+  let block = 0;
+  const steps = dist * 2;
+  for (let i = 1; i < steps; i++) {
+    const t = i / steps;
+    const x = Math.round(sx + (tx - sx) * t);
+    const y = Math.round(sy + (ty - sy) * t);
+    if ((x === sx && y === sy) || (x === tx && y === ty)) continue;
+    block = Math.max(block, sightLevel(world, tileAt(world, x, y)));
+    if (block >= 3) break; // mountains: nothing shows over them but mountains
+  }
+  if (block === 0) return true;
+  // Taller targets show over lower blockers (mountain over forest).
+  return sightLevel(world, tileAt(world, tx, ty)) > block;
+}
+
+// Keys a viewer at (cx,cy) can actually SEE within `radius` (LOS-filtered).
+export function visibleKeysFrom(
+  world: TileGrid,
+  cx: number,
+  cy: number,
+  radius: number,
+): string[] {
+  return diskKeys(cx, cy, radius).filter((k) => {
+    const [x, y] = k.split(",").map(Number);
+    return losVisible(world, cx, cy, x, y);
+  });
+}
+
+// Union the existing revealed (explored) set with what a viewer at (x,y) can
+// see. Polytopia rule: once revealed, a tile stays fully lit forever.
+export function addReveal(
+  world: TileGrid,
+  revealed: string[],
+  x: number,
+  y: number,
+  radius = SCOUT_SIGHT,
+): string[] {
+  return Array.from(new Set([...revealed, ...visibleKeysFrom(world, x, y, radius)]));
 }
 
 export function isRevealed(world: WorldState, x: number, y: number): boolean {
   return world.revealed.includes(tileKey(x, y));
 }
 
-// The set of tiles a player can CURRENTLY see (live terrain, units, markers),
-// derived fresh from where their vision sources stand right now: the Club HQ
-// (a permanent bubble once founded), every active Scout, and the pre-founding
-// Founding Group. Tiles that are revealed but not in this set are "explored" —
-// remembered terrain, but no live information. Recomputed on demand (cheap: at
-// most a few sources), so no extra persistent state to keep in sync.
+// The set of tiles a player can CURRENTLY see — used to gate LIVE information
+// (rival unit positions) and the "out of sight" note. Terrain itself stays
+// fully lit once explored (Polytopia rule); only moving enemies need current
+// eyes on them (Civ rule). Recomputed on demand (cheap: a few sources).
 export function visibleTiles(world: WorldState): Set<string> {
   const out = new Set<string>();
-  const add = (s: { x: number; y: number } | null | undefined) => {
+  const add = (
+    s: { x: number; y: number } | null | undefined,
+    radius: number,
+  ) => {
     if (!s) return;
-    for (const k of diskKeys(s.x, s.y, VISION_RADIUS)) out.add(k);
+    for (const k of visibleKeysFrom(world, s.x, s.y, radius)) out.add(k);
   };
-  add(world.hqTile);
-  add(world.founder);
-  // Every active exploration unit grants vision. Mirror allScouts() without the
+  add(world.hqTile, HQ_SIGHT);
+  add(world.founder, FOUNDER_SIGHT);
+  // Every active field unit grants vision. Mirror allScouts() without the
   // import (scoutSystem depends on this module): prefer the scouts[] roster,
   // falling back to the legacy single scout field.
   const scouts = world.scouts?.length ? world.scouts : world.scout ? [world.scout] : [];
-  for (const s of scouts) add(s);
-  // Rinks are small fixed vision sources (radius 1) — a lit sheet at night.
-  for (const rink of world.rinks ?? []) {
-    for (const k of diskKeys(rink.x, rink.y, 1)) out.add(k);
-  }
+  for (const s of scouts) add(s, s.kind === "builder" ? BUILDER_SIGHT : SCOUT_SIGHT);
+  // Rinks are small fixed vision sources — a lit sheet at night.
+  for (const rink of world.rinks ?? []) add(rink, RINK_SIGHT);
   return out;
 }
 
@@ -361,7 +430,12 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
     width: WORLD_WIDTH,
     height: WORLD_HEIGHT,
     tiles,
-    revealed: revealKeys(start.x, start.y),
+    revealed: visibleKeysFrom(
+      { width: WORLD_WIDTH, height: WORLD_HEIGHT, tiles },
+      start.x,
+      start.y,
+      FOUNDER_SIGHT,
+    ),
     hqTile: null,
     founder: {
       x: start.x,
@@ -810,7 +884,7 @@ function isBarrenTerrain(t: WorldTerrain): boolean {
 }
 
 // How much surrounding barrenness thins this tile's foliage.
-export function aridNeighborPenalty(world: WorldState, tile: WorldTile): number {
+export function aridNeighborPenalty(world: TileGrid, tile: WorldTile): number {
   let barren = 0;
   let total = 0;
   for (let dy = -1; dy <= 1; dy++) {
@@ -826,7 +900,7 @@ export function aridNeighborPenalty(world: WorldState, tile: WorldTile): number 
 }
 
 // 0 = no grove renders on this tile; >0 = grove density factor (0..1].
-export function groveIntensity(world: WorldState, tile: WorldTile): number {
+export function groveIntensity(world: TileGrid, tile: WorldTile): number {
   const p = GROVE_PARAMS[tile.terrain];
   if (!p) return 0;
   const density = (tile.foliageDensity ?? 0.5) - aridNeighborPenalty(world, tile);
@@ -836,7 +910,7 @@ export function groveIntensity(world: WorldState, tile: WorldTile): number {
   return Math.min(1, t);
 }
 
-export function hasVisibleGrove(world: WorldState, tile: WorldTile | null | undefined): boolean {
+export function hasVisibleGrove(world: TileGrid, tile: WorldTile | null | undefined): boolean {
   return !!tile && groveIntensity(world, tile) > 0;
 }
 
@@ -1209,7 +1283,7 @@ export function moveFounder(state: GameState, x: number, y: number): GameState {
     world: {
       ...world,
       founder: { ...unit, x, y, movesRemaining: unit.movesRemaining - 1 },
-      revealed: addReveal(world.revealed, x, y),
+      revealed: addReveal(world, world.revealed, x, y, FOUNDER_SIGHT),
       founderSelected: true,
     },
   };
@@ -1247,7 +1321,7 @@ export function foundOnTile(state: GameState): GameState {
       selectedScoutId: null,
       scout,
       scoutSelected: false,
-      revealed: addReveal(world.revealed, hq.x, hq.y),
+      revealed: addReveal(world, world.revealed, hq.x, hq.y, HQ_SIGHT),
     },
   };
 }

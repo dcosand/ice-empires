@@ -1,6 +1,7 @@
 import type { GameState, WorldRink, WorldUnit } from "../types/game";
 import {
   addReveal,
+  BUILDER_SIGHT,
   createBuilderUnit,
   hasMesaLandform,
   hasVisibleGrove,
@@ -87,7 +88,9 @@ export function clearSnow(state: GameState, unitId: string): GameState {
 export function canBuildRink(state: GameState, unitId: string): boolean {
   const world = state.world;
   const unit = actionableBuilder(state, unitId);
-  if (!world || !unit) return false;
+  // Needs moves left: Clear Snow ends the crew's turn, so clearing and then
+  // starting the rink is sequential (next turn), never the same click-storm.
+  if (!world || !unit || unit.movesRemaining <= 0) return false;
   if (!state.completedResearch.includes("outdoor-rinkcraft")) return false;
   const cleared = rinkAt(world, unit.x, unit.y);
   return !!cleared && cleared.level === 0 && cleared.kind === "ice";
@@ -98,7 +101,8 @@ export function canBuildRink(state: GameState, unitId: string): boolean {
 export function canPaveStreetRink(state: GameState, unitId: string): boolean {
   const world = state.world;
   const unit = actionableBuilder(state, unitId);
-  if (!world || !unit || unit.unitDefId !== "asphalt-crew") return false;
+  if (!world || !unit || unit.movesRemaining <= 0) return false;
+  if (unit.unitDefId !== "asphalt-crew") return false;
   if (!state.completedResearch.includes("outdoor-rinkcraft")) return false;
   const tile = tileAt(world, unit.x, unit.y);
   return (
@@ -268,7 +272,7 @@ export function spawnProducedBuilder(
   draft.world = syncLegacyScout(
     {
       ...world,
-      revealed: addReveal(world.revealed, world.hqTile.x, world.hqTile.y),
+      revealed: addReveal(world, world.revealed, world.hqTile.x, world.hqTile.y, BUILDER_SIGHT),
     },
     [...units, builder],
     builder.id ?? null,

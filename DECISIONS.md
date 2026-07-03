@@ -185,3 +185,13 @@ one slower than the human's clear+build). Rivals adjacent to an independent
 gain per-club influence there (`org.rivalInfluence`, +5 contact / +2 courting
 per turn) — the visible seed of Act II's Anchor Club competition. Player
 selectors (club rinks, era checks, income, tryouts) count only player rinks.
+
+## D27 — Sight: Polytopia reveal + Civ VI line of sight
+Explored tiles stay fully lit forever (no memory dimming); current sight only
+gates live information (rival unit positions). Line of sight blocks behind
+mountains (level 3) and visible forest groves (level 1), with the Civ VI
+"taller target shows over a lower blocker" rule; adjacent tiles are always
+visible. No hills are rendered yet, so there is no vantage level — add it when
+elevation becomes visual. Sight radii: scouts/founder/HQ 3, builders 2,
+rinks 1. Verified by a headless LOS test (mountain shields, grove blocks flat,
+mountain shows over grove).

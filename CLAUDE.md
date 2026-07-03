@@ -51,6 +51,12 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
 - **Tech**: 40 techs in `data/research.ts` (branch + era + prereqs). Only pond
   techs gate behavior — the id→gate map is in the comment atop that file.
   Tech-tree screen: `ResearchPanel` (era columns × branch rows, prereq chips).
+- **Sight & fog**: Polytopia + Civ VI hybrid (`world.ts`): explored tiles stay
+  fully lit forever (`world.revealed`); `visibleTiles()` (current line of
+  sight) only gates LIVE info — rival unit positions and the "out of sight"
+  note. LOS (`losVisible`): mountains (level 3) and visible groves (level 1)
+  block; a taller target shows over a lower blocker; adjacent always visible.
+  Sight radii: scouts/founder/HQ 3, builders 2, rinks 1 (SCOUT_SIGHT etc.).
 - **Map units**: all player field units live in `world.scouts: WorldUnit[]`
   with `kind: "scout" | "builder"`; a legacy mirror (`world.scout`) is kept in
   sync by `scoutSystem.syncLegacyScout` — always update units through it.

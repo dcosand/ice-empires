@@ -12,9 +12,11 @@ import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
 import {
   addReveal,
+  BUILDER_SIGHT,
   createScoutUnit,
   isAdjacent,
   regionIdAtTile,
+  SCOUT_SIGHT,
   tileAt,
 } from "./world";
 import { prependLog } from "./log";
@@ -48,7 +50,7 @@ export function recruitScout(state: GameState): GameState {
       selectedScoutId: scout.id ?? null,
       scout,
       scoutSelected: true,
-      revealed: addReveal(world.revealed, at.x, at.y),
+      revealed: addReveal(world, world.revealed, at.x, at.y, SCOUT_SIGHT),
     },
   };
   return prependLog(
@@ -118,13 +120,14 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
   if (!tile || !tile.valid) return state;
   const moved = { ...scout, x, y, movesRemaining: scout.movesRemaining - 1 };
   const nextScouts = scouts.map((s) => (s.id === scout.id ? moved : s));
+  const sight = scout.kind === "builder" ? BUILDER_SIGHT : SCOUT_SIGHT;
 
   return {
     ...state,
     world: syncLegacyScout(
       {
         ...world,
-        revealed: addReveal(world.revealed, x, y),
+        revealed: addReveal(world, world.revealed, x, y, sight),
         hockeyOrgs: world.hockeyOrgs.map((org) =>
           Math.abs(org.x - x) <= 1 && Math.abs(org.y - y) <= 1
             ? { ...org, discovered: true }
@@ -426,7 +429,7 @@ export function spawnProducedScout(
   draft.world = syncLegacyScout(
     {
       ...world,
-      revealed: addReveal(world.revealed, world.hqTile.x, world.hqTile.y),
+      revealed: addReveal(world, world.revealed, world.hqTile.x, world.hqTile.y, SCOUT_SIGHT),
     },
     [...scouts, scout],
     scout.id ?? null,
