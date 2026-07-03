@@ -10,9 +10,6 @@ import {
   trackRivalOrgContacts,
 } from "./independentsSystem";
 import { progressResearch } from "./researchSystem";
-import { resolveDiscovery } from "./discoverySystem";
-import { progressConnection } from "./regionDevelopment";
-import { maybeRivalRumor } from "./rivalSystem";
 import { runRivalTurns } from "./rivalAI";
 import { refreshScoutMoves } from "./scoutSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
@@ -60,9 +57,6 @@ export function endMonth(state: GameState): GameState {
   progressProduction(draft, push);
   progressBuilderWork(draft, push); // map crews: rink builds advance/finish
   progressResearch(draft, push);
-  resolveDiscovery(draft, push); // Local Hockey Search creates leads; units reveal map fog.
-  progressConnection(draft, push); // Establish Local Connection -> influenced
-  maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)

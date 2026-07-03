@@ -195,3 +195,67 @@ visible. No hills are rendered yet, so there is no vantage level — add it when
 elevation becomes visual. Sight radii: scouts/founder/HQ 3, builders 2,
 rinks 1. Verified by a headless LOS test (mountain shields, grove blocks flat,
 mountain shows over grove).
+
+## D28 — Retire the region / "Local Hockey Search" layer (2026-07-03)
+Supersedes D13, D14 (region influence), and D15 (rumor pressure). The legacy
+rumor-region discovery system was a passive backchannel: monthly RNG in the
+event log that produced cards/reputation/region-reveals with no connection to
+what the player was doing on the map. Independents (D21) already are the
+"places that matter" (city-state analogs with a contact→influence ladder), so
+regions were a parallel, redundant progression.
+
+Removed wholesale: `data/regions.ts`, `data/discovery.ts`,
+`engine/discoverySystem.ts`, `engine/regionDevelopment.ts`,
+`engine/rivalSystem.ts` (region-based rumor pressure), `components/
+DiscoveryPanel.tsx`, and the dead legacy `components/WorldMap.tsx`. Types
+dropped from `game.ts`: DiscoveryState/Value, RegionDef, DiscoveryPriorityId/
+Def, RegionConnection, and `GameState.discovery`. Actions dropped:
+SELECT_DISCOVERY_PRIORITY, SURVEY_REGION, ESTABLISH_CONNECTION. Turn-loop
+calls (resolveDiscovery / progressConnection / maybeRivalRumor) and the map's
+Survey/Connect unit orders + region tile-detail + "Local Hockey Search" rail
+task/overlay are gone. The "regions discovered" HQ stat became "independents
+met." No behavior replaces the removed card/rep faucet yet — cards are parked
+(see D29). Kept as inert forward-hooks (do nothing now, pending the scouting
+rework): the `deeperDiscovery` Unlock and `improveDiscovery` UnitEffect union
+members, plus the `"discovery"` event-log category (still used by scout logs).
+
+## D29 — Scouting arc, scout attributes, and fog-of-talent (DESIGNED, NOT CODED)
+Direction locked with the product owner; implementation deferred to a dedicated
+session. Full design in docs/13_ERA_ARC.md → "The scouting arc." Summary:
+- Scouting is an ACTIVE, unit-driven verb that evolves each era (Pond: explore +
+  sign wanderers/tryouts; Club II: build a dedicated Scout, travel it to an
+  independent, park to Establish a Scouting Network → reveals their prospects;
+  Competitive III: a professional/"spy" scout gets intel on rival rosters
+  (pre-scrimmage reports) and you start signing the indies you networked in II;
+  Operations IV: a GM figure (maybe the club leader) flies to indies for
+  affiliates/farm teams + influence; leagues/drafts/agents; Dynasty V: standing
+  amateur scouts assigned across the map).
+- Scouts are NOT equal — two attributes, **Judging Potential** and **Judging
+  Ability**, that improve with experience. HYBRID acquisition model: pay an
+  upfront quality tier at production (EHM-style "pay up for a better scout") AND
+  earn promotions through fieldwork (Civ-XP). This only creates real tension if
+  the economy is tightened first — see D30.
+- **Fog-of-talent**: a scouted player's attributes are ESTIMATES with confidence
+  set by an information-provenance ladder (tightest→loosest): tryout on your own
+  ice (near-exact) > your scout visited the indie (scaled by that scout's
+  Judging ratings) > the indie's own word (vague, oversells) > rumor from
+  another major (secondhand). Potential and Ability are SEPARATE fogs. Every
+  scouted player carries a "known-via" provenance that sets range tightness.
+  Reshapes HockeyCard: attribute bars become confidence ranges (task #6).
+- Talent sources become player-driven, not RNG: campfire goodie huts, tryouts,
+  and (proposed) Level-1 rinks periodically drawing a local hopeful so map rinks
+  matter beyond +funds/tryouts.
+- CARDS are PARKED: the coach/prospect card feature has no clear meaning yet
+  (coaches-on-cards feel odd; nothing puts them on the map). Do not build card
+  triggers. Revisit whether cards become a Civ-VI-style "great people" special
+  unit or are removed. Roster players stay first-class (D24), not cards.
+
+## D30 — Economy: trial Polytopia pay-upfront (DEFERRED)
+Current model is Civ pay-over-time: Funds drip into `ActiveProduction.
+progressFunds` on one slot (productionSystem.ts); only Hockey Knowledge is
+charged upfront. The owner finds funds too plentiful — no "build X or Y"
+tension. Direction: TRIAL a Polytopia-style full-upfront cost for units (at
+least), tighten income, and lean on the D25 upkeep so each purchase is a real
+"spend it or save it" choice. This is the unlock that makes the D29 paid-scout
+tier meaningful. Blast radius is small (~productionSystem.ts + the production
+progress UI), so it is cheap to trial and revert. Deferred to the economy pass.

@@ -16,6 +16,8 @@ export type SfxName =
   | "fanfare" // era reached, first contact — the big ones
   | "check" // era requirement ticked off
   | "recruit" // a player joins
+  | "cardFlip" // flipping a candidate/player card in the tryout pack
+  | "crowd" // PLACEHOLDER: swap for a real crowd-murmur bed (reveal cinematic)
   | "error"; // action refused
 
 const FILES: Record<SfxName, string[]> = {
@@ -28,6 +30,10 @@ const FILES: Record<SfxName, string[]> = {
   fanfare: [`${IS}/confirmation_004.ogg`],
   check: [`${IS}/drop_002.ogg`],
   recruit: [`${IS}/confirmation_003.ogg`],
+  // PLACEHOLDER picks — swap per public/assets/vendor/README.md:
+  //   cardFlip -> a paper/whoosh flip; crowd -> a looping arena murmur bed.
+  cardFlip: [`${UI}/switch2.ogg`, `${UI}/switch7.ogg`],
+  crowd: [`${IS}/bong_001.ogg`],
   error: [`${IS}/error_004.ogg`],
 };
 
@@ -37,6 +43,8 @@ const VOLUME: Partial<Record<SfxName, number>> = {
   back: 0.3,
   endTurn: 0.4,
   fanfare: 0.55,
+  cardFlip: 0.3,
+  crowd: 0.45,
 };
 
 const pools = new Map<string, HTMLAudioElement[]>();

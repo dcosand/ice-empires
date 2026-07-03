@@ -167,7 +167,9 @@ export const DEFAULT_CLUB_ID = arizonaMonsoon.id;
 // Path to a club asset. `kind` is the file stem (logo / leader / background / rink).
 export function clubAsset(
   club: ClubDef,
-  kind: "logo" | "leader" | "background" | "rink",
+  kind: "logo" | "leader" | "background" | "rink" | "scrimmage",
 ): string {
-  return `/assets/clubs/${club.assetKey}/${kind}.png`;
+  // Scrimmage art ships as "<assetKey>-scrimmage.png"; the rest are "<kind>.png".
+  const file = kind === "scrimmage" ? `${club.assetKey}-scrimmage` : kind;
+  return `/assets/clubs/${club.assetKey}/${file}.png`;
 }

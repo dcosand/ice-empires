@@ -1,15 +1,19 @@
 # Ice Empires — Tasks
 
 ## Next up (from the 2026-07-02 playtest)
-- [ ] **Indie art coverage (TODO — assets in progress; wiring shipped 2026-07-03)** — independents read
-      `/assets/independents/<slug>/{card,background}.png` (slug = lowercase,
-      de-accented, dashed display name: "Baie-Comeau" -> `baie-comeau`,
-      "Québec City" -> `quebec-city`). Done: anchorage, baie-comeau, brandon,
-      bratislava, victoria. Everything else falls back to archetype SVG
-      vignettes until its art lands. Wire-up: `src/data/independents.ts`.
+- [x] **Indie art coverage (2026-07-03)** — the worldgen name pool
+      (`HOCKEY_ORG_NAMES` in `engine/world.ts`) is now kept in LOCKSTEP with the
+      art folders under `/assets/independents/<slug>/{card,background}.png`, so
+      every placed independent ships with real art (32 clubs as of 2026-07-03).
+      slug = lowercase, de-accented, dashed display name ("Baie-Comeau" ->
+      `baie-comeau`). To add/remove an indie: drop/remove its folder AND its name
+      in the pool. Archetype SVG fallbacks remain via onError for mid-add gaps.
 - [ ] **Curate SFX + notification/dock icons** — current picks are placeholders;
       swap points documented in `public/assets/vendor/README.md` (FILES map in
       `src/engine/sfx.ts`; `NOTIF_ICONS` + DockButton icons in Dashboard).
+      NEW placeholder slots (2026-07-03): `crowd` (mapped to bong_001 — wants a
+      real arena-murmur bed) and `cardFlip` (ui-audio switch — wants a paper
+      whoosh), used by the player-reveal cinematic + tryout pack.
 - [x] **AI parity pass v1 (2026-07-03)** — builders/rinks + independent courting shipped; tryouts/research playbooks still ahead. Original scope: — rivals currently: found HQs, build
       and wander scouts, make first contact, contact independents, and advance
       eras on a seeded clock. They do NOT yet: research, produce builders,
@@ -23,19 +27,68 @@
       via contracts (Act III). Must keep the pond era forgiving; upkeep should
       arrive with Club Formation so the era transition FEELS like becoming a
       real organization.
-- [ ] **First-tryout cinematic** — the first-ever tryout deserves a meeting-
-      scene-style moment (letterbox, crowd murmur SFX, card-flip reveal of
-      candidates one by one).
-- [ ] **HQ "city" map presence** — the club HQ tile should out-impress the
-      independents' mini-districts: bigger footprint, barn-arena, banner,
-      lights; grows visually per era.
+- [x] **Player-reveal cinematic (2026-07-03)** — shipped as a SHARED reveal
+      (`PlayerRevealScene` + `HockeyCard`): letterbox + crowd-murmur swell +
+      card-flip revealing name/position/attrs/note. Fires for the first-ever
+      player from ANY source and for every goodie-hut wanderer (fullest fanfare
+      when also the first). Subsumes the original "first-tryout cinematic";
+      first tryout also gets the letterbox/crowd framing.
+- [x] **HQ "city" map presence (2026-07-03)** — `hqMarker` draws a per-era city
+      (plaza, timber barn-arena w/ accent dome, buildings, skyscraper TOWERS at
+      higher eras, chimney steam, lit windows, banner) crowned by the leader
+      medallion on a standard; grows across all 5 eras and clearly out-scales the
+      neutral org districts. Rivals share it, keyed to their own era.
 - [ ] **Replace hand-drawn ItemArt with game-icons set** (CC-BY attribution in
       credits screen) where the curated SVGs fit; keep bespoke art for the
       hero pieces.
-- [ ] **Tryout card-flip browsing** — flip through candidate profiles like a
-      pack opening; hockey-card backs using club palette.
-- [ ] **Merge legacy region/"Local Hockey Search" layer into independents**
-      (one "places that matter" system; retire the parallel rumor regions).
+- [x] **Tryout card browsing + roster compare (2026-07-03)** — `TryoutScreen` is
+      a CAROUSEL (glide through hopefuls, focal card centered, neighbours peek;
+      no flip in browsing — the reveal flip is reserved for the first-player
+      cinematic). `HockeyCard` front now has a **headshot slot** (deterministic
+      tinted monogram placeholder now; real art drops into `HEADSHOT_POOL_SIZE`
+      later). Adds a **roster-compare table** stacking the focused hopeful vs
+      your current players at that position (▲ where they beat your best) —
+      answers "is this LW better than my forwards?". Fog-of-talent (confidence
+      ranges) is the deferred follow-up per D29.
+- [x] **Independents detail layout pass (2026-07-03)** — card poster upper-left
+      in a two-column body, the background art is now a blended full-screen
+      backdrop (not a boxed thumbnail), and the prospect pipeline is a scaling
+      TABLE (Pos / Prospect / Word on them) ready for long lists.
+- [x] **Retire legacy region/"Local Hockey Search" layer (2026-07-03)** — done
+      per DECISIONS.md D28. The whole discovery/region backchannel was deleted
+      (files, types, actions, turn-loop calls, map orders, UI); independents are
+      now the sole "places that matter". Not merged INTO a kept search — the
+      passive RNG loop was cut entirely (owner: it was a disconnected backchannel
+      with no player-facing effect). No card/rep replacement yet — cards parked.
+
+## Deferred to a future coding-agent session (fully speced — read first)
+> These are bigger design tasks the owner intentionally deferred. FULL context
+> in DECISIONS.md D29/D30 and docs/13_ERA_ARC.md §6 "The scouting arc". Read
+> those before starting; the direction is locked, only implementation remains.
+
+- [ ] **Economy pass — trial Polytopia pay-upfront (DECISIONS D30).** Current
+      Funds model is Civ pay-over-time (`ActiveProduction.progressFunds`, one
+      slot). Flip units to full upfront cost, tighten income, lean on D25 upkeep
+      so purchases are real trade-offs. Small blast radius (~productionSystem.ts
+      + production progress UI); cheap to trial/revert. Unlocks the paid-scout
+      tier below.
+- [ ] **Scouting system — units, attributes, per-era arc (DECISIONS D29,
+      docs/13 §6).** Active unit-driven scouting that evolves each era; scout
+      Judging-Potential/Judging-Ability attributes; hybrid acquisition (pay
+      upfront for quality + XP promotions). OPEN FORK to settle first: scout
+      ratings on individual scout characters (a "scout roster") vs. club-wide
+      capability.
+- [ ] **Fog-of-talent (DECISIONS D29, docs/13 §6.3).** Scouted player attributes
+      become confidence RANGES set by an info-provenance ladder (tryout > your
+      scout > indie's word > rival rumor); Potential and Ability are separate
+      fogs; players carry a "known-via" provenance. Reshapes HockeyCard (folds
+      into task: Tryout carousel + headshots + roster compare).
+- [ ] **Level-1 rinks draw local talent (proposed, docs/13 §6.4)** — make map
+      rinks periodically surface a tryout hopeful so they matter beyond
+      +1 funds/tryouts. Non-random, structure-driven talent faucet.
+- [ ] **Cards — PARKED (DECISIONS D29).** Feature has no clear meaning yet; do
+      not build card triggers. Revisit as Civ-VI "great people" special unit or
+      remove. Roster players stay first-class (D24).
 
 ## Done
 - [x] M0 — Read docs, write plan, record decisions.

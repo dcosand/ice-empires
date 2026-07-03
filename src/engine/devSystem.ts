@@ -1,5 +1,4 @@
 import type { GameState } from "../types/game";
-import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
 import { RESEARCH } from "../data/research";
 import { createWorld } from "./world";
 import { nearestRivalClubId } from "./rivalAI";
@@ -10,8 +9,8 @@ import { holdTryouts, TRYOUT_COST_FUNDS } from "./tryoutSystem";
 // can jump the game into any configuration for testing.
 
 // Reset the calendar to month 1 while keeping the founded club + generated world.
-// Clears all progress (facilities, research, active jobs, discovery) and reseeds
-// the club's starting resources, so it's a clean "turn 1" of the same game.
+// Clears all progress (facilities, research, active jobs) and reseeds the club's
+// starting resources, so it's a clean "turn 1" of the same game.
 export function devResetTurn1(state: GameState): GameState {
   if (!state.club) return state;
   return {
@@ -26,12 +25,6 @@ export function devResetTurn1(state: GameState): GameState {
     completedResearch: [],
     activeProduction: null,
     activeResearch: null,
-    discovery: {
-      activePriorityId: DEFAULT_DISCOVERY_PRIORITY,
-      regionStates: {},
-      contested: [],
-      connection: null,
-    },
   };
 }
 

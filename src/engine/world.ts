@@ -10,7 +10,6 @@ import type {
   WorldTile,
   WorldUnit,
 } from "../types/game";
-import { REGIONS } from "../data/regions";
 import { POND_ENCOUNTERS } from "../data/pondEncounters";
 import { CLUB_LIST } from "../data/clubs";
 
@@ -89,109 +88,46 @@ function settlementSeparation(
   };
 }
 
+// The independent name pool is kept in lockstep with the art on disk: every
+// name here has a /public/assets/independents/<slug>/ folder (card.png +
+// background.png), so every independent placed at worldgen ships with real art.
+// Add a name here only when its art folder lands; drop names whose art isn't in
+// yet. slug = indieSlug(name) (lowercase, de-accented, dashed).
 const HOCKEY_ORG_NAMES = [
+  // Europe / international
   "Moscow",
-  "Yaroslavl",
-  "Jokerit",
   "Tampere",
+  "Espoo",
   "Lugano",
   "Bratislava",
-  "Iserlohn",
+  "Pardubice",
   "Linköping",
   "Malmö",
+  // North America
   "Anchorage",
+  "Austin",
   "Baie-Comeau",
   "Barrie",
-  "Blainville-Boisbriand",
-  "Brampton",
   "Brandon",
-  "Brantford",
-  "Brookville",
-  "Burlington",
-  "Cape Breton",
-  "Cedar Rapids",
-  "Charlottetown",
-  "Chestnut Hill",
-  "Chicoutimi",
   "Colorado Springs",
-  "Denver",
-  "Des Moines",
-  "Drummondville",
-  "Dubuque",
   "Duluth",
-  "Durham",
-  "Easton",
-  "Edmonton",
-  "Erie",
-  "Everett",
-  "Fairbanks",
-  "Fargo",
-  "Flint",
-  "Gatineau",
   "Grand Forks",
-  "Green Bay",
-  "Guelph",
+  "Henderson",
   "Kamloops",
-  "Kalamazoo",
   "Kelowna",
-  "Kearney",
-  "Kennewick",
   "Kingston",
-  "Kitchener",
-  "Lethbridge",
-  "Lincoln",
-  "London",
-  "Lowell",
-  "Madison",
-  "Medicine Hat",
-  "Moncton",
-  "Moose Jaw",
-  "Muskegon",
-  "Niagara",
-  "North Andover",
-  "North Bay",
+  "Maine",
   "Omaha",
-  "Orono",
-  "Oshawa",
   "Ottawa",
-  "Owen Sound",
-  "Oxford",
-  "Penticton",
-  "Peterborough",
-  "Plymouth",
-  "Portland",
-  "Prince Albert",
-  "Prince George",
   "Providence",
   "Québec City",
   "Red Deer",
   "Regina",
-  "Rimouski",
-  "Rouyn-Noranda",
-  "Saginaw",
-  "Saint John",
-  "Sarnia",
-  "Calgary",
-  "Sault Ste. Marie",
+  "San Diego",
   "Shawinigan",
-  "Sherbrooke",
-  "Sioux City",
-  "Sioux Falls",
-  "Spokane",
-  "St. Charles",
-  "St. Cloud",
-  "St. John’s",
-  "Sudbury",
-  "Swift Current",
   "Tempe",
-  "Tri-City",
-  "Val-d’Or",
-  "Vancouver",
   "Victoria",
-  "Victoriaville",
-  "Waterloo",
-  "Wenatchee",
-  "Windsor",
+  "Winnipeg",
 ];
 const HOCKEY_ORG_NAME_SET = new Set(HOCKEY_ORG_NAMES);
 
@@ -351,15 +287,6 @@ export function visibleTiles(world: WorldState): Set<string> {
   // Rinks are small fixed vision sources — a lit sheet at night.
   for (const rink of world.rinks ?? []) add(rink, RINK_SIGHT);
   return out;
-}
-
-// Which region (if any) sits on a tile.
-export const REGION_BY_TILE: Record<string, string> = Object.fromEntries(
-  REGIONS.map((r) => [tileKey(r.tile.x, r.tile.y), r.id]),
-);
-
-export function regionIdAtTile(x: number, y: number): string | null {
-  return REGION_BY_TILE[tileKey(x, y)] ?? null;
 }
 
 export function createWorld(seed = Date.now(), playerClubId?: string | null): WorldState {

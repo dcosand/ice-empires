@@ -2,10 +2,11 @@ import type { WorldHockeyOrg } from "../types/game";
 import { hockeyOrgDisplayName } from "../engine/world";
 
 // Art for independents lives in /public/assets/independents/<slug>/ with two
-// files: card.png (portrait poster) and background.png (wide scene). Only a
-// handful of indies have art so far — every consumer must keep its fallback
-// (archetype SVG vignette / plain panel) via onError. TODO: full coverage of
-// the ~100-name pool as assets land.
+// files: card.png (portrait poster) and background.png (wide scene). The
+// HOCKEY_ORG_NAMES pool (engine/world.ts) is kept in lockstep with these
+// folders, so every placed independent has art — but consumers should still
+// keep their fallback (archetype SVG vignette / plain panel) via onError in
+// case a folder is mid-add.
 
 // "Baie-Comeau" -> "baie-comeau", "Québec City" -> "quebec-city",
 // "St. John's" -> "st-johns"

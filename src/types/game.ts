@@ -196,65 +196,11 @@ export type ActiveResearch = {
   progressKnowledge: number;
 };
 
-// ---------------------------------------------------------------------------
-// Regions (discovery)
-// ---------------------------------------------------------------------------
-
-// Region/tile lifecycle. `contested` is tracked separately (a rival-interest
-// flag that can overlay discovered/surveyed/influenced regions).
-export type DiscoveryStateValue =
-  | "hidden"
-  | "rumored"
-  | "discovered"
-  | "surveyed"
-  | "influenced";
-
-export type RegionDef = {
-  id: string;
-  name: string;
-  terrain: string;
-  hockeyResource: string;
-  scoutingDifficulty: number;
-  potentialYields: Partial<ResourceSet>;
-  tags: string[];
-  scoutReport: string;
-  unusual: boolean;
-  // The tile this region sits on in the persistent world grid.
-  tile: { x: number; y: number };
-};
-
-// Early-game "Local Hockey Search" options. Deliberately informal — the club
-// has no formal scouting department yet (that unlocks later).
-export type DiscoveryPriorityId =
-  | "find-local-players"
-  | "ask-around-the-rinks"
-  | "search-for-playable-ice"
-  | "recruit-volunteers"
-  | "host-an-open-skate"
-  | "follow-a-local-rumor";
-
-export type DiscoveryPriorityDef = {
-  id: DiscoveryPriorityId;
-  name: string;
-  description: string;
-  flavor: string;
-};
-
-// An in-progress "Establish Local Connection" toward a surveyed region.
-export type RegionConnection = {
-  regionId: string;
-  monthsRemaining: number;
-};
-
-export type DiscoveryState = {
-  activePriorityId: DiscoveryPriorityId;
-  // region id -> current discovery state (regions absent are "hidden")
-  regionStates: Record<string, DiscoveryStateValue>;
-  // region ids flagged with rival interest
-  contested: string[];
-  // the single active local-connection effort, if any
-  connection: RegionConnection | null;
-};
+// NOTE: The legacy "Local Hockey Search" / rumor-region discovery system was
+// retired (2026-07-03) — independents are now the sole "places that matter".
+// See DECISIONS.md D26 and docs/13_ERA_ARC.md for the scouting arc that replaces
+// it. Types removed here: DiscoveryStateValue, RegionDef, DiscoveryPriorityId,
+// DiscoveryPriorityDef, RegionConnection, DiscoveryState.
 
 // ---------------------------------------------------------------------------
 // Cards (staff / prospect / player)
@@ -314,10 +260,23 @@ export type Player = {
 // A tryout attendee who hasn't been recruited yet.
 export type TryoutCandidate = Omit<Player, "hasEquipment" | "joinedMonth">;
 
+// A newly-joined player awaiting their cinematic reveal (letterbox + crowd
+// murmur + card flip). Set when the FIRST-EVER player joins (any source) or
+// whenever a wanderer joins via a goodie hut — the "big moment" of a signing.
+export type PlayerReveal = {
+  player: Player;
+  source: "tryout" | "encounter";
+  // The club's very first player — earns the fullest fanfare copy.
+  firstEver: boolean;
+};
+
 export type PendingTryout = {
   candidates: TryoutCandidate[];
   // ids of candidates already recruited this tryout (kept for the modal UI).
   recruitedIds: string[];
+  // The club's first-ever tryout gets the letterbox cinematic treatment
+  // (crowd murmur, staged card-flip reveal). Set once via state.seenFirstTryout.
+  firstEver?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -325,7 +284,7 @@ export type PendingTryout = {
 // ---------------------------------------------------------------------------
 // One-time early discoveries (wanderers, garage-rink legends, frozen-lake
 // weirdos) that the Scout / Pond Scout can stumble onto. Distinct from the
-// persistent, city-state-like Hockey Regions in /data/regions. Types + sample
+// persistent, city-state-like Independent Hockey Associations. Types + sample
 // data exist now so the encounter system can be wired in without a schema
 // change; nothing reads these yet.
 
@@ -616,12 +575,16 @@ export type GameState = {
   equipment: number;
   roster: Player[]; // recruited players (the actual team)
   pendingTryout: PendingTryout | null; // open tryout modal, if any
+  // A newly-signed player awaiting their reveal cinematic (see PlayerReveal).
+  pendingPlayerReveal: PlayerReveal | null;
+  // One-time flags gating the "first" cinematic beats.
+  seenFirstTryout: boolean; // has the club held a tryout before?
+  seenFirstPlayer: boolean; // has anyone ever joined the roster?
   facilities: string[]; // completed facility ids
   units: OwnedUnit[]; // owned organizational units (HQ roster)
   completedResearch: string[];
   activeProduction: ActiveProduction | null; // one shared facility/unit slot
   activeResearch: ActiveResearch | null;
-  discovery: DiscoveryState;
   cards: CardDef[];
   eventLog: EventLogEntry[];
   rngSeed: number;
@@ -649,15 +612,12 @@ export type GameAction =
   | { type: "CANCEL_PRODUCTION" }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "CANCEL_RESEARCH" }
-  | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }
   | { type: "SELECT_SCOUT"; scoutId?: string }
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
   | { type: "RESOLVE_ENCOUNTER" }
   | { type: "ACKNOWLEDGE_MEETING" }
   | { type: "RESPOND_MEETING"; attitude: "friendly" | "wary" }
-  | { type: "SURVEY_REGION"; regionId: string }
-  | { type: "ESTABLISH_CONNECTION"; regionId: string }
   // ---- builder (map work crew) actions ----
   | { type: "CLEAR_SNOW"; unitId: string }
   | { type: "BUILD_RINK"; unitId: string }
@@ -666,6 +626,8 @@ export type GameAction =
   | { type: "HOLD_TRYOUTS" }
   | { type: "RECRUIT_PLAYER"; candidateId: string }
   | { type: "CLOSE_TRYOUTS" }
+  // Dismiss the first-player / goodie-hut reveal cinematic.
+  | { type: "ACKNOWLEDGE_PLAYER_REVEAL" }
   // ---- independents ----
   | { type: "SEND_INTRODUCTION"; orgId: string }
   | { type: "END_MONTH" }

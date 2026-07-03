@@ -11,7 +11,6 @@ import {
   ALL_UNIT_DEFS_BY_ID,
 } from "../data/clubUniques";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
-import { REGIONS } from "../data/regions";
 import { CARDS_BY_ID } from "../data/cards";
 import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
@@ -48,14 +47,6 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
         income = addResources(income, { [effect.resource]: effect.amount });
       }
     }
-  }
-
-  // Influenced regions each grant Reputation/month (Exploit phase).
-  const influenced = Object.values(state.discovery.regionStates).filter(
-    (s) => s === "influenced",
-  ).length;
-  if (influenced > 0) {
-    income = addResources(income, { reputation: influenced });
   }
 
   // Each club rink (Level >=1, inside HQ radius) yields +1 Funds/month —
@@ -131,25 +122,6 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
       state.activeResearch?.techId !== r.id &&
       r.requiredTechIds.every((id) => state.completedResearch.includes(id)),
   );
-}
-
-export function getDiscoveredRegionIds(state: GameState): string[] {
-  return Object.entries(state.discovery.regionStates)
-    .filter(
-      ([, s]) => s === "discovered" || s === "surveyed" || s === "influenced",
-    )
-    .map(([id]) => id);
-}
-
-export function getDiscoveredCount(state: GameState): number {
-  return getDiscoveredRegionIds(state).length;
-}
-
-export function getHiddenRegionCount(state: GameState): number {
-  return REGIONS.filter((r) => {
-    const s = state.discovery.regionStates[r.id];
-    return !s || s === "hidden";
-  }).length;
 }
 
 // Era-progress requirement checklist for the CURRENT era's exit criteria.

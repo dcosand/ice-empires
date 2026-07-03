@@ -131,7 +131,9 @@ export function holdTryouts(state: GameState): GameState {
 
   const next: GameState = {
     ...working,
-    pendingTryout: { candidates, recruitedIds: [] },
+    // The very first tryout earns the letterbox cinematic framing.
+    pendingTryout: { candidates, recruitedIds: [], firstEver: !state.seenFirstTryout },
+    seenFirstTryout: true,
   };
   return prependLog(
     next,
@@ -162,6 +164,11 @@ export function recruitPlayer(state: GameState, candidateId: string): GameState 
       ...tryout,
       recruitedIds: [...tryout.recruitedIds, candidateId],
     },
+    // The club's first-ever signing gets the shared reveal cinematic.
+    seenFirstPlayer: true,
+    pendingPlayerReveal: state.seenFirstPlayer
+      ? state.pendingPlayerReveal
+      : { player, source: "tryout", firstEver: true },
   };
   return prependLog(
     next,

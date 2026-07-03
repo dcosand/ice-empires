@@ -1,13 +1,12 @@
 import type { Dispatch } from "react";
 import type { GameAction, GameState } from "../types/game";
-import { DISCOVERY_BY_ID } from "../data/discovery";
 import {
   getAvailableFacilities,
   getAvailableResearch,
 } from "../engine/selectors";
 
 // First-turn guidance + turn discipline. The month cannot end until a build and
-// a research project are active (a Local Hockey Search always has a default).
+// a research project are active.
 // If a project completed last month, its slot is empty again and must be re-set.
 // If no options remain (not expected in year-one content), the slot is satisfied.
 export function ThisMonthPanel({
@@ -18,7 +17,6 @@ export function ThisMonthPanel({
   dispatch: Dispatch<GameAction>;
 }) {
   const firstMonth = state.month === 1;
-  const focus = DISCOVERY_BY_ID[state.discovery.activePriorityId];
 
   const buildOptions = getAvailableFacilities(state).length;
   const researchOptions = getAvailableResearch(state).length;
@@ -26,8 +24,7 @@ export function ThisMonthPanel({
   // "Ready" = an active project OR nothing left to choose.
   const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
-  const discoveryReady = !!focus;
-  const canEndMonth = buildReady && researchReady && discoveryReady;
+  const canEndMonth = buildReady && researchReady;
 
   const steps = [
     {
@@ -59,12 +56,6 @@ export function ThisMonthPanel({
           : !researchReady
             ? "Last tech finished — pick the next research."
             : undefined,
-    },
-    {
-      key: "discovery",
-      label: "Set your Local Hockey Search",
-      done: discoveryReady,
-      hint: `Currently: ${focus?.name}.`,
     },
   ];
 

@@ -2,7 +2,6 @@ import type { GameAction, GameState } from "../types/game";
 import { beginFounding, createInitialState } from "./initialState";
 import { cancelProduction, startProduction } from "./productionSystem";
 import { cancelResearch, selectResearch } from "./researchSystem";
-import { selectDiscoveryPriority } from "./discoverySystem";
 import {
   createWorld,
   endFoundingTurn,
@@ -10,11 +9,11 @@ import {
   moveFounder,
 } from "./world";
 import {
+  allScouts,
   moveScout,
   recruitScout,
   resolvePendingEncounter,
   selectScout,
-  surveyRegion,
   triggerPondEncounter,
 } from "./scoutSystem";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
@@ -23,7 +22,6 @@ import {
   sendIntroduction,
   triggerIndependentContact,
 } from "./independentsSystem";
-import { establishConnection } from "./regionDevelopment";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
 import {
@@ -45,6 +43,26 @@ import {
 // (rivalAI.runRivalTurns), and triggers a leader meeting on first contact. Full
 // strategic AI, diplomacy/negotiation, and any human multiplayer (hotseat or
 // async networking) still need their own design pass.
+
+// Drain any queued first-contact that a higher-priority popup pre-empted. When
+// a scout lands on a goodie hut next to an unmet org, the encounter wins the
+// one-popup rule and the contact is skipped that move; once the encounter (and
+// any player reveal) is dismissed we re-check every unit's tile so the meeting
+// fires immediately instead of waiting for the End-Month sweep.
+function retryContactAtUnits(state: GameState): GameState {
+  const world = state.world;
+  if (!world) return state;
+  if (state.pendingMeeting || state.pendingEncounter || state.pendingPlayerReveal) {
+    return state;
+  }
+  for (const u of allScouts(world)) {
+    const afterRival = triggerRivalContact(state, u.x, u.y);
+    if (afterRival !== state) return afterRival;
+    const afterIndie = triggerIndependentContact(state, u.x, u.y);
+    if (afterIndie !== state) return afterIndie;
+  }
+  return state;
+}
 
 export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
@@ -136,9 +154,6 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "CANCEL_RESEARCH":
       return cancelResearch(state);
 
-    case "SELECT_DISCOVERY_PRIORITY":
-      return selectDiscoveryPriority(state, action.priorityId);
-
     case "RECRUIT_SCOUT":
       return recruitScout(state);
 
@@ -185,19 +200,24 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return sendIntroduction(state, action.orgId);
 
     case "RESOLVE_ENCOUNTER":
-      return resolvePendingEncounter(state);
+      // Resolving may stage a player reveal (wanderer); if so the retry bails
+      // and the contact fires when that reveal is dismissed instead.
+      return retryContactAtUnits(resolvePendingEncounter(state));
+
+    case "ACKNOWLEDGE_PLAYER_REVEAL":
+      return retryContactAtUnits({ ...state, pendingPlayerReveal: null });
 
     case "ACKNOWLEDGE_MEETING":
-      return { ...state, pendingMeeting: null };
+      return retryContactAtUnits({ ...state, pendingMeeting: null });
 
     case "RESPOND_MEETING": {
       // Store the chosen greeting on the rival being met, then close the scene.
       const meeting = state.pendingMeeting;
       const world = state.world;
       if (!meeting || meeting.kind !== "rival" || !world) {
-        return { ...state, pendingMeeting: null };
+        return retryContactAtUnits({ ...state, pendingMeeting: null });
       }
-      return {
+      return retryContactAtUnits({
         ...state,
         pendingMeeting: null,
         world: {
@@ -206,14 +226,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             r.clubId === meeting.id ? { ...r, attitude: action.attitude } : r,
           ),
         },
-      };
+      });
     }
-
-    case "SURVEY_REGION":
-      return surveyRegion(state, action.regionId);
-
-    case "ESTABLISH_CONNECTION":
-      return establishConnection(state, action.regionId);
 
     case "END_MONTH":
       return endMonth(state);

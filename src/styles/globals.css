@@ -5129,29 +5129,71 @@ button {
   position: relative;
   overflow: hidden;
 }
-.indy-detail-hero {
+/* Blended full-screen backdrop (the org's wide scene). */
+.indy-detail-bg {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: min(360px, 32%);
-  height: auto;
-  max-height: 480px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: top center;
-  border-radius: 0 0 0 16px;
-  border-left: 1px solid var(--border-bright);
-  border-bottom: 1px solid var(--border-bright);
-  box-shadow: -12px 12px 40px rgba(0, 0, 0, 0.45);
-  mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+  opacity: 0.16;
+  filter: saturate(0.85) brightness(0.7);
+  mask-image: linear-gradient(180deg, #000 0%, #000 42%, transparent 94%);
+  pointer-events: none;
 }
-.indy-detail-head,
-.indy-detail-blurb,
-.indy-detail .indy-influence {
-  max-width: calc(100% - min(380px, 34%));
+.indy-back { position: relative; }
+/* Card poster on the left, everything else to its right. */
+.indy-detail-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(200px, 290px) 1fr;
+  gap: 26px;
+  align-items: start;
+  margin-top: 14px;
 }
-@media (max-width: 900px) {
-  .indy-detail-hero { display: none; }
-  .indy-detail-head, .indy-detail-blurb, .indy-detail .indy-influence { max-width: none; }
+.indy-detail-card {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border-bright);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+  object-fit: cover;
+}
+.indy-detail-main { min-width: 0; }
+
+/* Prospect pipeline as a scaling table (grows to a long list over the eras). */
+.indy-prospect-scroll { overflow-x: auto; }
+.indy-prospect-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.indy-prospect-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 2px 10px 8px;
+}
+.indy-prospect-table td {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+.indy-prospect-table .pp-pos { width: 1%; white-space: nowrap; }
+.indy-prospect-table tr.fogged .pp-name {
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+}
+.indy-prospect-table tr.fogged .pos-badge { filter: grayscale(0.5) brightness(0.8); }
+.pp-name { font-weight: 700; color: var(--text); white-space: nowrap; }
+.pp-teaser { font-style: italic; color: var(--text-dim); }
+
+@media (max-width: 720px) {
+  .indy-detail-body { grid-template-columns: 1fr; }
+  .indy-detail-card { max-width: 260px; }
 }
 
 /* Instant styled tooltips for HUD chrome (native title is too slow/small) */
@@ -5220,4 +5262,363 @@ button {
   margin: 8px 0 14px;
   font-size: 13.5px;
   color: var(--text-dim);
+}
+
+/* ===========================================================================
+   Hockey card (shared flip card) — tryout pack browsing + player reveal
+   =========================================================================== */
+.hockey-card {
+  --card-w: 300px;
+  width: var(--card-w);
+  max-width: 82vw;
+  aspect-ratio: 3 / 4.15;
+  perspective: 1500px;
+  flex: 0 0 auto;
+}
+.hc-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hc-inner.flipped { transform: rotateY(180deg); }
+.hc-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 46px rgba(0, 0, 0, 0.5);
+}
+/* BACK — club crest over the club palette, like a real card's reverse */
+.hc-back {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #fff;
+  border: 2px solid color-mix(in srgb, var(--club-secondary, #38bdf8) 55%, #000);
+  background:
+    radial-gradient(120% 85% at 50% 22%,
+      color-mix(in srgb, var(--club-secondary, #38bdf8) 42%, var(--club-primary, #0b1f3a)) 0%,
+      var(--club-primary, #0b1f3a) 72%);
+}
+.hc-back::after {
+  /* subtle diagonal sheen so the back reads as a printed card */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -35deg,
+    rgba(255, 255, 255, 0.05) 0 2px,
+    transparent 2px 12px
+  );
+  pointer-events: none;
+}
+.hc-back-crest {
+  width: 46%;
+  max-height: 46%;
+  object-fit: contain;
+  opacity: 0.92;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+.hc-back-mark {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  opacity: 0.55;
+}
+.hc-back-label {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+/* FRONT — the profile */
+.hc-front {
+  transform: rotateY(180deg);
+  padding: 0 0 14px;
+  gap: 8px;
+  border: 1.5px solid var(--border);
+  border-top: 3px solid var(--club-accent, var(--accent));
+  background: linear-gradient(180deg, #13273a 0%, #0e1c2b 100%);
+}
+/* Headshot portrait banner — real art will slot in here later (placeholder now) */
+.hc-portrait {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.hc-headshot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 95% at 50% 12%,
+      hsl(var(--hue, 210) 45% 44%) 0%,
+      hsl(var(--hue, 210) 42% 20%) 78%);
+}
+.hc-headshot-silhouette {
+  position: absolute;
+  bottom: 0;
+  width: 66%;
+  height: 92%;
+  fill: rgba(255, 255, 255, 0.14);
+}
+.hc-initials {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.hc-portrait .pos-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.hc-ident { padding: 2px 14px 0; }
+.hc-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 19px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.hc-meta { font-size: 12px; color: var(--text-dim); }
+.hc-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 0 14px;
+}
+.hc-note {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-dim);
+  line-height: 1.45;
+  flex: 1;
+  padding: 0 14px;
+}
+.hc-footer { margin-top: auto; padding: 0 14px; }
+
+/* Tryout carousel: glide through hopefuls, focus one, peek the neighbours */
+.tryout-carousel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 2px;
+}
+.carousel-viewport {
+  flex: 1;
+  overflow: hidden;
+}
+.carousel-track {
+  display: flex;
+  gap: 26px;
+  align-items: center;
+  /* 50% padding resolves against the viewport width → focal cell centres */
+  padding: 0 calc(50% - 150px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.carousel-cell {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease;
+}
+.carousel-cell .hockey-card { --card-w: 300px; }
+.carousel-cell.side {
+  transform: scale(0.84);
+  opacity: 0.4;
+  filter: saturate(0.7);
+  cursor: pointer;
+}
+.carousel-cell.focal { transform: scale(1); opacity: 1; }
+.pack-nav {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(13, 24, 36, 0.85);
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pack-nav:hover:not(:disabled) { background: rgba(30, 48, 68, 0.95); transform: scale(1.06); }
+.pack-nav:disabled { opacity: 0.3; cursor: default; }
+.pack-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+.pack-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(120, 150, 180, 0.3);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pack-dot.active { background: var(--club-accent, var(--accent)); transform: scale(1.2); }
+.pack-dot.recruited { background: var(--good); }
+
+/* Roster compare table: "is this hopeful better than my current line?" */
+.tryout-compare {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+.compare-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.compare-sub { font-weight: 400; opacity: 0.8; }
+.compare-scroll { overflow-x: auto; }
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.compare-table th,
+.compare-table td {
+  padding: 6px 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+.compare-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.compare-table .c-name { text-align: left; }
+.compare-table tbody tr { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.compare-table .c-candidate {
+  background: color-mix(in srgb, var(--club-accent, #38bdf8) 12%, transparent);
+}
+.c-candidate .c-name { font-weight: 700; color: var(--text); }
+.c-badge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--club-accent, #38bdf8);
+  color: #06121d;
+  padding: 1px 5px;
+  border-radius: 5px;
+  margin-left: 4px;
+  font-weight: 800;
+}
+.c-better { color: var(--good); font-weight: 700; }
+.c-arrow { font-size: 10px; }
+
+/* ===========================================================================
+   Player reveal cinematic — the signing moment (first player / goodie hut)
+   =========================================================================== */
+.reveal-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 50% 38%, var(--meet-primary, #10202f) 0%, #05090f 78%);
+  animation: meeting-fade-in 0.5s ease both;
+  overflow: hidden;
+}
+/* Darkened scrimmage photo behind the signing stage (club "<key>-scrimmage.png"). */
+.reveal-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+  filter: saturate(0.85) brightness(0.7);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 82%);
+  mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 82%);
+  animation: reveal-bg-in 1.4s ease both;
+  pointer-events: none;
+}
+@keyframes reveal-bg-in {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 0.28; transform: scale(1); }
+}
+.reveal-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(320px, 460px);
+  align-items: center;
+  gap: 0 44px;
+  width: min(940px, 94vw);
+}
+.reveal-stage .hockey-card {
+  --card-w: 340px;
+  z-index: 1;
+  animation: reveal-card-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes reveal-card-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.reveal-panel {
+  align-self: center;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-panel.ready { opacity: 1; transform: translateY(0); }
+.reveal-eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--meet-accent, var(--accent));
+  margin-bottom: 8px;
+}
+.reveal-headline {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  color: var(--text);
+}
+.reveal-line {
+  color: var(--text);
+  opacity: 0.92;
+  font-size: 16.5px;
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+@media (max-width: 720px) {
+  .reveal-stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 22px 0;
+  }
+  .reveal-stage .hockey-card { --card-w: 260px; }
+  .reveal-panel { text-align: center; }
 }

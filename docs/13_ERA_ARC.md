@@ -177,3 +177,77 @@ island/remote starts stop being a trap.
 - **V Dynasty**: pro systems, international/global reach, farm system,
   Hall of Fame culture, Mega Arena, and a legacy victory condition
   (Dynasty Infrastructure).
+
+---
+
+## 6. The scouting arc (designed 2026-07-03, not yet coded)
+
+Locked with the product owner; see DECISIONS.md D28–D30. This is the spine that
+replaces the retired "Local Hockey Search" backchannel. **Core principle:**
+scouting is always something the player *actively does on the map*, and it means
+something different in each era. There should be a scouting "thing to do" every
+turn.
+
+### 6.1 Per-era scouting
+
+| Era | Scouting is… | Active verb | Unit | Tangible payoff |
+|---|---|---|---|---|
+| I Pond | finding hockey exists at all | move your scout; sign wanderers off huts; hold tryouts near your rink | founder / basic scout | bodies on the roster + map reveal |
+| II Club | networking with a *place* | build a **dedicated Scout**, travel it to an independent, **park it to Establish a Scouting Network** (must be made clearly required) | Scout | that indie's fogged prospects become real, recruitable names |
+| III Competitive | sizing up *opponents* | travel a **professional / "spy" scout** to rival HQs for intel; pre-game / pre-scrimmage scouting reports | Pro Scout | dated roster intel; begin signing the indies you networked in II |
+| IV Operations | running a scouting *department* | a **GM** figure (possibly the club leader) flies to indies for affiliates / farm teams + influence; leagues, drafts, free agents, agent negotiations | GM | prospect pipeline + drafting |
+| V Dynasty | global reach | **permanent amateur scouts** assigned across the map | standing scout network | find gems others miss; beat/steal signings from majors |
+
+Emotional payoff shifts by phase: early = **explore & discover**; mid = **make
+strategic bets on independents + build your roster**; late = **draft, discover
+talent others miss, beat majors to big-name signings, "steal" players from other
+majors**.
+
+### 6.2 Scout attributes (scouts are not equal)
+
+Two attributes, both improving with experience:
+- **Judging Potential** — projecting a young player's ceiling.
+- **Judging Ability** — reading current skill accurately.
+
+**Acquisition = hybrid** (see D30, gated on the economy pass):
+- **Pay upfront for a quality tier** at production (EHM job-market feel: splurge
+  on an ace vs. field two cheap eyes). Requires scarcer funds to matter.
+- **Earn promotions** through fieldwork (Civ-XP: networking indies, hut
+  campfires). Every scout grows an arc.
+
+Open question for the implementing agent: do scout ratings live on **individual
+scout characters** (a "scout roster" like the player roster — the owner leaned
+this way) or a **club-wide capability** derived from reputation/hockey knowledge?
+Decide before building.
+
+### 6.3 Fog-of-talent (information provenance)
+
+A scouted player's attributes are **estimates**, not exact numbers. Confidence is
+set by *how* you learned about them — tightest to loosest:
+
+1. **Tryout on your own ice** → near-exact (you watched them play).
+2. **Your scout visited the indie** → good; tightness scales with that scout's
+   Judging Potential / Judging Ability.
+3. **The indie's own word** (just contacted) → vague and *biased* — they oversell
+   their own kids.
+4. **Rumor from another major** → variable/secondhand.
+
+**Potential and Ability are separate fogs** (a scout can read current skill
+tightly but whiff on ceiling). Every scouted player carries a **"known-via"
+provenance** that sets range tightness. This reshapes the HockeyCard: attribute
+bars become **confidence ranges** that sharpen as better intel arrives — a dud
+can look like a gem until you get eyes on him. (Ties to task #6.)
+
+### 6.4 Talent sources (all player-driven, no RNG backchannel)
+
+- Campfire **goodie huts** (active map discovery) — keep.
+- **Tryouts** near your rink — keep (and the most accurate intel, per 6.3).
+- **Level-1 rinks periodically draw a local hopeful** — PROPOSED, so map rinks
+  matter beyond +1 funds/tryouts. A structure-driven, non-random faucet.
+
+### 6.5 Cards — PARKED
+
+The coach/prospect **card** feature has no clear meaning yet (coaches-on-cards
+feel odd; nothing puts them on the map). Do **not** build card triggers. Revisit
+later whether cards become a Civ-VI-style "great people" special unit or are
+removed entirely. Roster players stay first-class (D24), never cards.

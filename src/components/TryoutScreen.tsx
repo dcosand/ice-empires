@@ -1,17 +1,28 @@
+import { useEffect, useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
-import type {
-  GameAction,
-  GameState,
-  PlayerAttrs,
-  TryoutCandidate,
-} from "../types/game";
+import type { GameAction, GameState, Player, PlayerAttrs } from "../types/game";
 import { ROSTER_CAP } from "../engine/tryoutSystem";
 import { turnDateLabel } from "../engine/calendar";
 import { playSfx } from "../engine/sfx";
+import {
+  HockeyCard,
+  POSITION_LABEL,
+  attrsForPosition,
+} from "./HockeyCard";
 
-// The tryout: curious locals wobble onto your rink and you pick a team.
-// Rendered whenever state.pendingTryout is set; closing dispatches
-// CLOSE_TRYOUTS. Recruiting is per-candidate, capped by ROSTER_CAP.
+// AttrBar lives with the shared card now; re-exported so ClubHQScreen's import
+// (`from "./TryoutScreen"`) keeps working.
+export { AttrBar } from "./HockeyCard";
+
+// One card width + gap, in px — the carousel translates the track by whole
+// cells to centre the focused hopeful.
+const CELL = 300;
+const GAP = 26;
+
+// The tryout: curious locals wobble onto your rink and you glide through them
+// like a carousel of hockey cards, comparing each against the players you
+// already have. Rendered whenever state.pendingTryout is set; closing dispatches
+// CLOSE_TRYOUTS. The club's very first tryout gets letterbox + crowd framing.
 export function TryoutScreen({
   state,
   dispatch,
@@ -21,36 +32,72 @@ export function TryoutScreen({
 }) {
   const tryout = state.pendingTryout;
   const club = state.club;
+
+  const [index, setIndex] = useState(0);
+
+  const cinematic = !!tryout?.firstEver;
+  useEffect(() => {
+    if (cinematic) playSfx("crowd");
+  }, [cinematic]);
+
   if (!tryout) return null;
 
+  const candidates = tryout.candidates;
   const rosterFull = state.roster.length >= ROSTER_CAP;
-  const remaining = tryout.candidates.filter(
+  const remaining = candidates.filter(
     (c) => !tryout.recruitedIds.includes(c.id),
   );
+  const current = candidates[Math.min(index, candidates.length - 1)];
+  const isRecruited = current
+    ? tryout.recruitedIds.includes(current.id)
+    : false;
+
+  const go = (delta: number) => {
+    setIndex((i) => {
+      const next = Math.max(0, Math.min(candidates.length - 1, i + delta));
+      if (next !== i) playSfx("cardFlip");
+      return next;
+    });
+  };
 
   const sheetStyle = {
     "--club-accent": club?.accent ?? "#38bdf8",
   } as CSSProperties;
 
+  // Centre the focused cell: the track carries 50%-of-viewport side padding
+  // (percentage padding resolves against the viewport width), so a px-only
+  // shift of one cell per index keeps the focal card dead-centre.
+  const trackShift = `translateX(-${index * (CELL + GAP)}px)`;
+
   return (
     <div
-      className="tryout-screen"
+      className={`tryout-screen${cinematic ? " cinematic" : ""}`}
       style={sheetStyle}
       role="dialog"
       aria-modal="true"
       aria-label="Local tryouts"
     >
-      <div className="founding-moment-scrim" />
+      {cinematic ? (
+        <>
+          <div className="meeting-letterbox top" />
+          <div className="meeting-letterbox bottom" />
+        </>
+      ) : (
+        <div className="founding-moment-scrim" />
+      )}
       <div className="tryout-sheet">
         <div className="tryout-head">
           <div>
-            <div className="eyebrow">Local Tryouts · {turnDateLabel(state.month)}</div>
+            <div className="eyebrow">
+              {cinematic ? "Your First Tryout · " : "Local Tryouts · "}
+              {turnDateLabel(state.month)}
+            </div>
             <h2>Whoever Shows Up</h2>
             <p className="muted" style={{ margin: 0 }}>
               The flyer said "Bring skates. Or courage." They mostly brought
-              courage. Recruiting is free — in the pond era everyone plays for
-              the love of it (wages arrive with real contracts, eras from now).
-              Each recruit takes 1 Equipment from the shed to gear up.
+              courage. Slide through the hopefuls, weigh each against the players
+              you have, and pick your team — recruiting is free in the pond era.
+              Each recruit takes 1 Equipment from the shed.
             </p>
             <p className="muted" style={{ margin: "6px 0 0", fontWeight: 700 }}>
               Roster {state.roster.length}/{ROSTER_CAP} · Equipment in shed:{" "}
@@ -65,20 +112,88 @@ export function TryoutScreen({
           </button>
         </div>
 
-        <div className="tryout-gallery">
-          {tryout.candidates.map((c) => (
-            <CandidateCard
+        <div className="tryout-carousel">
+          <button
+            className="pack-nav prev"
+            onClick={() => go(-1)}
+            disabled={index <= 0}
+            aria-label="Previous hopeful"
+          >
+            ‹
+          </button>
+
+          <div className="carousel-viewport">
+            <div className="carousel-track" style={{ transform: trackShift }}>
+              {candidates.map((c, i) => {
+                const recruited = tryout.recruitedIds.includes(c.id);
+                const focal = i === index;
+                return (
+                  <div
+                    key={c.id}
+                    className={`carousel-cell${focal ? " focal" : " side"}`}
+                    style={{ width: CELL }}
+                    aria-hidden={!focal}
+                    onClick={() => !focal && setIndex(i)}
+                  >
+                    <HockeyCard
+                      subject={c}
+                      club={club}
+                      flipped
+                      recruited={recruited}
+                      footer={
+                        recruited ? (
+                          <div className="tryout-joined">✓ Joined the club</div>
+                        ) : focal ? (
+                          <button
+                            className="btn btn-gold btn-block"
+                            disabled={rosterFull}
+                            onClick={() => {
+                              playSfx("recruit");
+                              dispatch({
+                                type: "RECRUIT_PLAYER",
+                                candidateId: c.id,
+                              });
+                            }}
+                          >
+                            Recruit
+                          </button>
+                        ) : undefined
+                      }
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button
+            className="pack-nav next"
+            onClick={() => go(1)}
+            disabled={index >= candidates.length - 1}
+            aria-label="Next hopeful"
+          >
+            ›
+          </button>
+        </div>
+
+        <div className="pack-dots" role="tablist" aria-label="Hopefuls">
+          {candidates.map((c, i) => (
+            <button
               key={c.id}
-              candidate={c}
-              recruited={tryout.recruitedIds.includes(c.id)}
-              disabled={rosterFull}
-              onRecruit={() => {
-                playSfx("recruit");
-                dispatch({ type: "RECRUIT_PLAYER", candidateId: c.id });
-              }}
+              className={`pack-dot${i === index ? " active" : ""}${
+                tryout.recruitedIds.includes(c.id) ? " recruited" : ""
+              }`}
+              onClick={() => setIndex(i)}
+              aria-label={`Hopeful ${i + 1}${
+                tryout.recruitedIds.includes(c.id) ? " (recruited)" : ""
+              }`}
             />
           ))}
         </div>
+
+        {current && !isRecruited && (
+          <RosterCompare candidate={current} roster={state.roster} />
+        )}
 
         {rosterFull && remaining.length > 0 && (
           <div className="tryout-foot muted">
@@ -90,85 +205,70 @@ export function TryoutScreen({
   );
 }
 
-const ATTR_LABELS: { key: keyof PlayerAttrs; label: string }[] = [
-  { key: "skating", label: "Skating" },
-  { key: "shooting", label: "Shooting" },
-  { key: "passing", label: "Passing" },
-  { key: "checking", label: "Checking" },
-  { key: "goaltending", label: "Goaltending" },
-];
-
-const POSITION_LABEL: Record<string, string> = {
-  F: "Forward",
-  D: "Defense",
-  G: "Goalie",
-};
-
-function CandidateCard({
+// "Is this left winger better than my current forwards?" — a compact table
+// stacking the focused hopeful against the players you already have at their
+// position, with an arrow where the hopeful beats your best current number.
+function RosterCompare({
   candidate,
-  recruited,
-  disabled,
-  onRecruit,
+  roster,
 }: {
-  candidate: TryoutCandidate;
-  recruited: boolean;
-  disabled: boolean;
-  onRecruit: () => void;
+  candidate: { name: string; position: Player["position"]; attrs: PlayerAttrs };
+  roster: Player[];
 }) {
-  // Goalies show goaltending; skaters hide the (always-1) crease number.
-  const attrs = ATTR_LABELS.filter(
-    (a) => candidate.position === "G" || a.key !== "goaltending",
-  );
-  return (
-    <div className={`tryout-card${recruited ? " recruited" : ""}`}>
-      <div className="tryout-card-top">
-        <span className={`pos-badge pos-${candidate.position}`}>
-          {candidate.position}
-        </span>
-        <div>
-          <div className="tryout-card-name">{candidate.name}</div>
-          <div className="tryout-card-meta">
-            {POSITION_LABEL[candidate.position]} · Age {candidate.age}
-          </div>
-        </div>
-      </div>
-      <div className="tryout-attrs">
-        {attrs.map((a) => (
-          <AttrBar
-            key={a.key}
-            label={a.label}
-            value={candidate.attrs[a.key]}
-          />
-        ))}
-      </div>
-      <div className="tryout-note">“{candidate.note}”</div>
-      {recruited ? (
-        <div className="tryout-joined">✓ Joined the club</div>
-      ) : (
-        <button
-          className="btn btn-gold btn-block"
-          disabled={disabled}
-          onClick={onRecruit}
-        >
-          Recruit
-        </button>
-      )}
-    </div>
-  );
-}
+  const attrs = attrsForPosition(candidate.position);
+  const samePos = roster.filter((p) => p.position === candidate.position);
+  const posWord = `${POSITION_LABEL[candidate.position]}s`;
 
-// A 20-point attribute bar. Pond-era values (1–6) read as honestly tiny.
-export function AttrBar({ label, value }: { label: string; value: number }) {
+  const bestOf = (key: keyof PlayerAttrs) =>
+    samePos.length
+      ? Math.max(...samePos.map((p) => p.attrs[key]))
+      : -Infinity;
+
   return (
-    <div className="attr-row">
-      <span className="attr-label">{label}</span>
-      <span className="attr-bar">
-        <span
-          className="attr-fill"
-          style={{ width: `${Math.min(100, (value / 20) * 100)}%` }}
-        />
-      </span>
-      <span className="attr-value">{value}</span>
+    <div className="tryout-compare">
+      <div className="compare-head">
+        How they'd stack up against your {posWord}
+        {samePos.length === 0 && (
+          <span className="compare-sub"> — you have none yet, so anyone's a start.</span>
+        )}
+      </div>
+      <div className="compare-scroll">
+        <table className="compare-table">
+          <thead>
+            <tr>
+              <th className="c-name">Player</th>
+              {attrs.map((a) => (
+                <th key={a.key}>{a.label.slice(0, 4)}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="c-candidate">
+              <td className="c-name">
+                {candidate.name} <span className="c-badge">new</span>
+              </td>
+              {attrs.map((a) => {
+                const v = candidate.attrs[a.key];
+                const beatsBest = v > bestOf(a.key) && samePos.length > 0;
+                return (
+                  <td key={a.key} className={beatsBest ? "c-better" : undefined}>
+                    {v}
+                    {beatsBest && <span className="c-arrow"> ▲</span>}
+                  </td>
+                );
+              })}
+            </tr>
+            {samePos.map((p) => (
+              <tr key={p.id}>
+                <td className="c-name">{p.name}</td>
+                {attrs.map((a) => (
+                  <td key={a.key}>{p.attrs[a.key]}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

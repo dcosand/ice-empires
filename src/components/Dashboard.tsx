@@ -7,7 +7,6 @@ import type {
   PendingEncounter,
 } from "../types/game";
 import { Onboarding } from "./Onboarding";
-import { DISCOVERY_BY_ID } from "../data/discovery";
 import { ERAS, ERA_UNLOCK_MESSAGES } from "../data/eras";
 import { CLUBS, clubAsset } from "../data/clubs";
 import {
@@ -18,7 +17,6 @@ import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { TopBar } from "./TopBar";
 import { IsoWorldMap } from "./IsoWorldMap";
-import { DiscoveryPanel } from "./DiscoveryPanel";
 import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
 import { RivalMeetingScreen } from "./RivalMeetingScreen";
 import { ResearchPanel } from "./ResearchPanel";
@@ -41,6 +39,7 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { TryoutScreen } from "./TryoutScreen";
+import { PlayerRevealScene } from "./PlayerRevealScene";
 import { playSfx } from "../engine/sfx";
 import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
 import { IndependentsScreen } from "./IndependentsScreen";
@@ -48,7 +47,6 @@ import { IndependentsScreen } from "./IndependentsScreen";
 type OverlayView =
   | "build"
   | "research"
-  | "search"
   | "club"
   | "independents"
   | "cards"
@@ -188,7 +186,6 @@ export function Dashboard({
           }}
         >
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
-          {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "independents" && (
             <IndependentsScreen
               state={state}
@@ -219,6 +216,14 @@ export function Dashboard({
       )}
 
       {state.pendingTryout && <TryoutScreen state={state} dispatch={dispatch} />}
+
+      {state.pendingPlayerReveal && (
+        <PlayerRevealScene
+          reveal={state.pendingPlayerReveal}
+          club={state.club}
+          dispatch={dispatch}
+        />
+      )}
 
       {state.pendingMeeting?.kind === "rival" && (
         <RivalMeetingScreen
@@ -283,7 +288,6 @@ function CommandRail({
   const researchOptions = getAvailableResearch(state).length;
   const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
-  const discoveryReady = !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
   const scouts = allScouts(state.world);
   const selectedScout = activeScout(state.world);
   const scoutMovesRemaining = scouts.reduce((sum, s) => sum + s.movesRemaining, 0);
@@ -304,14 +308,6 @@ function CommandRail({
       onClick={() => open("research")}
     />
   );
-  const discoveryTask = (
-    <TaskButton
-      done={discoveryReady}
-      label="Local search"
-      detail={DISCOVERY_BY_ID[state.discovery.activePriorityId]?.name}
-      onClick={() => open("search")}
-    />
-  );
 
   // ---- The founding turn (Month 1, before the HQ is planted) ----
   // Research is already in play; production stays locked until the club is
@@ -323,7 +319,6 @@ function CommandRail({
       <aside className="command-rail">
         <div className="rail-title">Found Your Club · {turnDateLabel(state.month)}</div>
         {researchTask}
-        {discoveryTask}
         <button
           className="btn btn-gold btn-block rail-end"
           disabled={!founder || !club}
@@ -348,7 +343,7 @@ function CommandRail({
     );
   }
 
-  const canEndMonth = buildReady && researchReady && discoveryReady;
+  const canEndMonth = buildReady && researchReady;
   const selectScout = () => {
     if (!selectedScout && scouts[0]?.id) {
       dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });
@@ -375,7 +370,6 @@ function CommandRail({
         onClick={() => open("build")}
       />
       {researchTask}
-      {discoveryTask}
       {scouts.length > 0 && (
         <TaskButton
           done={scoutReady}
@@ -656,7 +650,6 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
   const titles: Record<Exclude<OverlayView, null>, string> = {
     build: "Choose Production",
     research: "Choose Research",
-    search: "Local Hockey Search",
     club: "Club HQ",
     independents: "Independents",
     cards: "Cards",

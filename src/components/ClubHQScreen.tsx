@@ -17,7 +17,6 @@ import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
   getMonthlyUpkeep,
-  getDiscoveredCount,
   getEraProgress,
 } from "../engine/selectors";
 import {
@@ -158,7 +157,8 @@ export function ClubHQScreen({
 function OverviewTab({ state }: { state: GameState }) {
   const income = getMonthlyIncome(state);
   const upkeep = getMonthlyUpkeep(state);
-  const discovered = getDiscoveredCount(state);
+  const independentsMet =
+    state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
   const eraProgress = getEraProgress(state);
   const prod = state.activeProduction;
 
@@ -218,8 +218,8 @@ function OverviewTab({ state }: { state: GameState }) {
 
         <div className="hq-card">
           <div className="hq-card-title">Hockey World</div>
-          <div className="hq-stat-big">{discovered}</div>
-          <div className="hq-stat-sub">regions discovered</div>
+          <div className="hq-stat-big">{independentsMet}</div>
+          <div className="hq-stat-sub">independents met</div>
         </div>
 
         <div className="hq-card hq-era-card">
@@ -622,7 +622,7 @@ function UnitsTab({ state }: { state: GameState }) {
               <div className="hq-built-desc">
                 At ({scout.x}, {scout.y}) · {scout.movesRemaining}/{scout.movesPerTurn} moves this turn
               </div>
-              <div className="hq-built-effects">Reveals the map and surveys hockey regions.</div>
+              <div className="hq-built-effects">Reveals the map and reaches independents and rival clubs.</div>
             </div>
           </div>
         </div>
