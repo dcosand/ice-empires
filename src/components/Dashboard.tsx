@@ -59,6 +59,8 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const [overlay, setOverlay] = useState<OverlayView>(null);
+  // Deep link from an independent meeting straight to that org's detail page.
+  const [ledgerFocusOrgId, setLedgerFocusOrgId] = useState<string | null>(null);
   // Production now lives inside the Club HQ screen: the "build" task deep-links
   // straight to its Production tab instead of opening a separate panel.
   const [hqInitialTab, setHqInitialTab] = useState<HQTab>("overview");
@@ -126,13 +128,20 @@ export function Dashboard({
       {overlay && overlay !== "club" && (
         <TaskOverlay
           title={overlayTitle(overlay)}
-          wide={overlay === "research"}
-          onClose={() => setOverlay(null)}
+          wide={overlay === "research" || overlay === "independents"}
+          onClose={() => {
+            setOverlay(null);
+            setLedgerFocusOrgId(null);
+          }}
         >
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "independents" && (
-            <IndependentsScreen state={state} dispatch={dispatch} />
+            <IndependentsScreen
+              state={state}
+              dispatch={dispatch}
+              initialOrgId={ledgerFocusOrgId}
+            />
           )}
           {overlay === "cards" && <CardsPanel state={state} />}
           {overlay === "era" && <EraProgressPanel state={state} />}
@@ -171,7 +180,10 @@ export function Dashboard({
           state={state}
           orgId={state.pendingMeeting.id}
           dispatch={dispatch}
-          onOpenLedger={() => setOverlay("independents")}
+          onOpenLedger={(orgId) => {
+            setLedgerFocusOrgId(orgId);
+            setOverlay("independents");
+          }}
         />
       )}
 

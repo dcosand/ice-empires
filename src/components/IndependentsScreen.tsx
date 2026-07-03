@@ -1,8 +1,11 @@
+import { useState } from "react";
 import type { Dispatch } from "react";
 import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { hockeyOrgDisplayName } from "../engine/world";
+import { turnDateLabel } from "../engine/calendar";
 import {
+  ARCHETYPE_BLURBS,
   ARCHETYPE_LABELS,
   canSendIntroduction,
   INFLUENCE_THRESHOLDS,
@@ -12,46 +15,59 @@ import {
   tierName,
 } from "../engine/independentsSystem";
 
-// The Independents ledger — the city-state / suzerain surface (v1). Lists every
-// org you've met: relationship tier, influence progress, which rival majors
-// have also made contact, and their prospect pipeline behind fog. Act 2 adds
-// scouting networks (prospect reveal) and Anchor Club competition.
+// The Independents ledger — list view (one row per org, built to scale to a
+// dozen-plus contacts) with a detail view per independent holding the prospect
+// pipeline, rival contacts, and relationship actions.
 export function IndependentsScreen({
   state,
   dispatch,
+  initialOrgId = null,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
+  initialOrgId?: string | null;
 }) {
   const orgs = state.world?.hockeyOrgs ?? [];
   const contacted = orgs.filter((o) => o.playerContacted);
   const known = orgs.filter((o) => o.discovered && !o.playerContacted);
   const hiddenCount = orgs.length - contacted.length - known.length;
 
+  const [openOrgId, setOpenOrgId] = useState<string | null>(initialOrgId);
+  const openOrg = contacted.find((o) => o.id === openOrgId) ?? null;
+
+  if (openOrg) {
+    return (
+      <IndependentDetail
+        state={state}
+        org={openOrg}
+        dispatch={dispatch}
+        onBack={() => setOpenOrgId(null)}
+      />
+    );
+  }
+
   return (
     <div className="panel independents-panel">
-      <div className="panel-sub">
+      <div className="panel-sub indy-sub">
         Independents are neutral hockey ecosystems — nobody's farm team, yet.
         Grow influence to climb Contacted → Friendly → Partner → Affiliate.
-        Rival crests show who else is courting them. {hiddenCount > 0 && (
-          <>Somewhere out there: {hiddenCount} more, still undiscovered.</>
-        )}
+        Click one for its prospect pipeline and relationship details.
+        {hiddenCount > 0 && <> Somewhere out there: {hiddenCount} more, undiscovered.</>}
       </div>
 
       {contacted.length === 0 && (
-        <div className="faint" style={{ padding: "18px 4px" }}>
+        <div className="faint indy-empty">
           You haven't met any independents yet. Move a unit next to one of the
           neutral hockey settlements on the map to make first contact.
         </div>
       )}
 
-      <div className="indy-list">
+      <div className="indy-rowlist">
         {contacted.map((org) => (
-          <IndependentCard
+          <IndependentRow
             key={org.id}
-            state={state}
             org={org}
-            dispatch={dispatch}
+            onOpen={() => setOpenOrgId(org.id)}
           />
         ))}
       </div>
@@ -72,14 +88,99 @@ export function IndependentsScreen({
   );
 }
 
-function IndependentCard({
+// ---- List row --------------------------------------------------------------
+
+function influenceFraction(points: number): number {
+  const max = INFLUENCE_THRESHOLDS[INFLUENCE_THRESHOLDS.length - 1] * 1.1;
+  return Math.min(1, points / max);
+}
+
+function IndependentRow({
+  org,
+  onOpen,
+}: {
+  org: WorldHockeyOrg;
+  onOpen: () => void;
+}) {
+  const rivalCount = org.contactedByClubIds.length;
+  return (
+    <div
+      className="indy-row"
+      role="button"
+      tabIndex={0}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+    >
+      <div className="indy-row-main">
+        <div className="indy-row-name">{hockeyOrgDisplayName(org)}</div>
+        <div className="indy-row-meta">
+          {ARCHETYPE_LABELS[org.archetype]} · {org.prospects.length} prospects in
+          the pipeline
+        </div>
+      </div>
+
+      <div className="indy-row-influence" title={`${org.influencePoints} influence`}>
+        <span
+          className="indy-row-influence-fill"
+          style={{ width: `${influenceFraction(org.influencePoints) * 100}%` }}
+        />
+      </div>
+
+      <span className={`indy-tier tier-${org.relationshipLevel}`}>
+        {tierName(org.relationshipLevel)}
+      </span>
+
+      {/* Rival-contact infographic: stacked crests (details on the org page). */}
+      <div
+        className="indy-row-rivals"
+        title={
+          rivalCount === 0
+            ? "No rival club has reached them yet"
+            : `${rivalCount} rival club${rivalCount === 1 ? "" : "s"} in contact`
+        }
+      >
+        {org.contactedByClubIds.slice(0, 3).map((clubId) => {
+          const club = CLUBS[clubId];
+          return club ? (
+            <img
+              key={clubId}
+              className="indy-row-crest"
+              src={clubAsset(club, "logo")}
+              alt={club.name}
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
+          ) : null;
+        })}
+        {rivalCount > 3 && <span className="indy-row-more">+{rivalCount - 3}</span>}
+        {rivalCount === 0 && <span className="indy-row-none">—</span>}
+      </div>
+
+      <span className="indy-row-chevron" aria-hidden>
+        ›
+      </span>
+    </div>
+  );
+}
+
+// ---- Detail view -----------------------------------------------------------
+
+function IndependentDetail({
   state,
   org,
   dispatch,
+  onBack,
 }: {
   state: GameState;
   org: WorldHockeyOrg;
   dispatch: Dispatch<GameAction>;
+  onBack: () => void;
 }) {
   const gate = introGate(state, org.id);
   const nextThreshold =
@@ -88,18 +189,25 @@ function IndependentCard({
   const barMax = maxThreshold * 1.1;
 
   return (
-    <div className="indy-card">
-      <div className="indy-card-head">
+    <div className="panel independents-panel indy-detail">
+      <button className="btn indy-back" onClick={onBack}>
+        ← All Independents
+      </button>
+
+      <div className="indy-detail-head">
         <div>
-          <div className="indy-name">{hockeyOrgDisplayName(org)}</div>
-          <div className="indy-meta">
-            {ARCHETYPE_LABELS[org.archetype]} · met Month {org.contactMonth}
+          <h2 className="indy-detail-name">{hockeyOrgDisplayName(org)}</h2>
+          <div className="indy-detail-meta">
+            {ARCHETYPE_LABELS[org.archetype]} · first contact{" "}
+            {turnDateLabel(org.contactMonth ?? 1)}
           </div>
         </div>
-        <span className={`indy-tier tier-${org.relationshipLevel}`}>
+        <span className={`indy-tier indy-tier-big tier-${org.relationshipLevel}`}>
           {tierName(org.relationshipLevel)}
         </span>
       </div>
+
+      <p className="indy-detail-blurb">{ARCHETYPE_BLURBS[org.archetype]}</p>
 
       <div className="indy-influence">
         <div className="indy-influence-bar">
@@ -120,16 +228,35 @@ function IndependentCard({
         </div>
         <div className="indy-influence-label">
           {org.influencePoints} influence
-          {nextThreshold !== null && <> · next tier at {nextThreshold}</>}
+          {nextThreshold !== null && (
+            <>
+              {" "}
+              · next tier ({tierName((org.relationshipLevel + 1) as 0 | 1 | 2 | 3)})
+              at {nextThreshold}
+            </>
+          )}
         </div>
       </div>
 
-      <div className="indy-cols">
-        <div>
+      <button
+        className="btn btn-primary indy-intro-btn"
+        disabled={!canSendIntroduction(state, org.id)}
+        title={introGateHint(gate)}
+        onClick={() => dispatch({ type: "SEND_INTRODUCTION", orgId: org.id })}
+      >
+        Send Introduction ({INTRO_COST_FUNDS} Fund · +5 influence)
+      </button>
+      {gate !== "ok" && <div className="indy-gate-hint">{introGateHint(gate)}</div>}
+
+      <div className="indy-detail-cols">
+        <section>
           <div className="indy-col-title">Prospect pipeline</div>
           <div className="indy-prospects">
             {org.prospects.map((p) => (
-              <div key={p.id} className={`indy-prospect${p.revealed ? "" : " fogged"}`}>
+              <div
+                key={p.id}
+                className={`indy-prospect${p.revealed ? "" : " fogged"}`}
+              >
                 <span className={`pos-badge pos-${p.position}`}>{p.position}</span>
                 <div>
                   <div className="indy-prospect-name">
@@ -140,14 +267,15 @@ function IndependentCard({
               </div>
             ))}
           </div>
-          <div className="faint" style={{ fontSize: 11, marginTop: 4 }}>
+          <div className="faint indy-foot-note">
             A scouting network (next era) reveals who they actually are.
           </div>
-        </div>
-        <div>
+        </section>
+
+        <section>
           <div className="indy-col-title">Also in contact</div>
           {org.contactedByClubIds.length === 0 ? (
-            <div className="faint" style={{ fontSize: 12 }}>
+            <div className="faint indy-foot-note">
               No rival club has reached them. Yet.
             </div>
           ) : (
@@ -156,30 +284,22 @@ function IndependentCard({
                 const club = CLUBS[clubId];
                 if (!club) return null;
                 return (
-                  <img
-                    key={clubId}
-                    className="indy-rival-crest"
-                    src={clubAsset(club, "logo")}
-                    alt={club.name}
-                    title={`${club.name} has made contact`}
-                    onError={(e) => {
-                      e.currentTarget.style.display = "none";
-                    }}
-                  />
+                  <div key={clubId} className="indy-rival-line">
+                    <img
+                      className="indy-rival-crest"
+                      src={clubAsset(club, "logo")}
+                      alt=""
+                      onError={(e) => {
+                        e.currentTarget.style.display = "none";
+                      }}
+                    />
+                    <span>{club.name}</span>
+                  </div>
                 );
               })}
             </div>
           )}
-          <button
-            className="btn btn-primary btn-block"
-            style={{ marginTop: 10 }}
-            disabled={!canSendIntroduction(state, org.id)}
-            title={introGateHint(gate)}
-            onClick={() => dispatch({ type: "SEND_INTRODUCTION", orgId: org.id })}
-          >
-            Send Introduction ({INTRO_COST_FUNDS} Fund)
-          </button>
-        </div>
+        </section>
       </div>
     </div>
   );

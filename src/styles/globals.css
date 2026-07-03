@@ -4680,3 +4680,115 @@ button {
   top: 50%;
   transform: translateY(-50%);
 }
+
+/* Independents ledger v2 — list rows + roomy detail view */
+.indy-sub { font-size: 14.5px; line-height: 1.55; }
+.indy-empty { padding: 24px 6px; font-size: 15px; }
+.indy-rowlist { display: flex; flex-direction: column; gap: 8px; }
+.indy-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(13, 24, 36, 0.75);
+  cursor: pointer;
+  transition: border-color 0.08s ease, background 0.08s ease;
+}
+.indy-row:hover { border-color: var(--accent); background: rgba(20, 36, 52, 0.85); }
+.indy-row-main { flex: 1; min-width: 0; }
+.indy-row-name {
+  font-family: var(--font-display);
+  font-size: 19px;
+  color: var(--text);
+}
+.indy-row-meta { font-size: 13px; color: var(--text-dim); margin-top: 2px; }
+.indy-row-influence {
+  position: relative;
+  width: 120px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(10, 16, 24, 0.85);
+  overflow: hidden;
+  flex: 0 0 120px;
+}
+.indy-row-influence-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #38bdf8, #5fd08a);
+}
+.indy-row-rivals {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 96px;
+  justify-content: flex-end;
+}
+.indy-row-crest {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: rgba(10, 16, 24, 0.7);
+  padding: 2px;
+  margin-left: -6px;
+}
+.indy-row-crest:first-child { margin-left: 0; }
+.indy-row-more { font-size: 12px; font-weight: 700; color: var(--text-dim); }
+.indy-row-none { color: var(--text-dim); opacity: 0.5; }
+.indy-row-chevron { font-size: 22px; color: var(--text-dim); }
+
+.indy-detail { font-size: 15px; }
+.indy-back { margin-bottom: 14px; }
+.indy-detail-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+.indy-detail-name {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--text);
+}
+.indy-detail-meta { font-size: 14px; color: var(--text-dim); margin-top: 4px; }
+.indy-tier-big { font-size: 14px; padding: 8px 16px; }
+.indy-detail-blurb {
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--text);
+  opacity: 0.9;
+  max-width: 760px;
+  margin: 14px 0 18px;
+}
+.indy-detail .indy-influence-label { font-size: 13.5px; margin-top: 8px; }
+.indy-intro-btn { margin: 16px 0 4px; font-size: 15px; padding: 10px 18px; }
+.indy-gate-hint { font-size: 13px; color: var(--text-dim); margin-top: 6px; }
+.indy-detail-cols {
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  gap: 28px;
+  margin-top: 24px;
+}
+.indy-detail .indy-col-title { font-size: 12.5px; margin-bottom: 10px; }
+.indy-detail .indy-prospect { padding: 10px 12px; gap: 12px; }
+.indy-detail .indy-prospect-name { font-size: 15px; }
+.indy-detail .indy-prospect-teaser { font-size: 13px; }
+.indy-foot-note { font-size: 13px; margin-top: 8px; }
+.indy-rival-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 14.5px;
+  color: var(--text);
+  padding: 6px 0;
+}
+.indy-detail .indy-rival-crest { width: 40px; height: 40px; }
+@media (max-width: 760px) {
+  .indy-detail-cols { grid-template-columns: 1fr; }
+  .indy-row { flex-wrap: wrap; }
+}

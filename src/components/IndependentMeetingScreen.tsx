@@ -19,7 +19,7 @@ export function IndependentMeetingScreen({
   state: GameState;
   orgId: string;
   dispatch: Dispatch<GameAction>;
-  onOpenLedger: () => void;
+  onOpenLedger: (orgId: string) => void;
 }) {
   const org = state.world?.hockeyOrgs.find((o) => o.id === orgId);
   if (!org) return null;
@@ -71,7 +71,7 @@ export function IndependentMeetingScreen({
               className="btn btn-primary meeting-choice"
               onClick={() => {
                 close();
-                onOpenLedger();
+                onOpenLedger(org.id);
               }}
             >
               Open the Independents Ledger
