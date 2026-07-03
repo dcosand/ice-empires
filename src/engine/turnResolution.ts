@@ -17,7 +17,7 @@ import { runRivalTurns } from "./rivalAI";
 import { refreshScoutMoves } from "./scoutSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
-import { getMonthlyEquipment } from "./selectors";
+import { getMonthlyEquipment, getMonthlyUpkeep } from "./selectors";
 import { makeLog } from "./log";
 import { turnDateLabel } from "./calendar";
 
@@ -40,12 +40,18 @@ export function endMonth(state: GameState): GameState {
   // 1. Income (plus equipment shed stock — inventory, not a currency).
   const income = getMonthlyIncome(draft);
   draft.resources = addResources(draft.resources, income);
+  // A drained treasury bottoms out at zero — no debt spiral (yet).
+  draft.resources.funds = Math.max(0, draft.resources.funds);
   const equipmentGain = getMonthlyEquipment(draft);
   draft.equipment += equipmentGain;
+  const upkeep = getMonthlyUpkeep(draft);
   push(
     "resource",
     `${turnDateLabel(draft.month)} income`,
     incomeSummary(income) +
+      (upkeep.total > 0
+        ? ` (after ${upkeep.total} Funds upkeep: ${upkeep.units} units, ${upkeep.rinks} rink maintenance)`
+        : "") +
       (equipmentGain > 0 ? ` +${equipmentGain} Equipment (shed).` : ""),
   );
   autoEquipRoster(draft, push); // hand shed stock to ungeared players FIFO

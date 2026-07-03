@@ -16,6 +16,7 @@ import { clubAsset } from "../data/clubs";
 import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
+  getMonthlyUpkeep,
   getDiscoveredCount,
   getEraProgress,
 } from "../engine/selectors";
@@ -156,6 +157,7 @@ export function ClubHQScreen({
 // ---- Overview ------------------------------------------------------------
 function OverviewTab({ state }: { state: GameState }) {
   const income = getMonthlyIncome(state);
+  const upkeep = getMonthlyUpkeep(state);
   const discovered = getDiscoveredCount(state);
   const eraProgress = getEraProgress(state);
   const prod = state.activeProduction;
@@ -179,6 +181,20 @@ function OverviewTab({ state }: { state: GameState }) {
           </div>
         ))}
       </div>
+      {upkeep.total > 0 ? (
+        <div className="hq-upkeep-note">
+          Funds income shown is net of <strong>{upkeep.total} upkeep</strong>/turn
+          ({upkeep.units} for field units beyond the first, {upkeep.rinks} for
+          rink maintenance). A real club has real bills.
+        </div>
+      ) : (
+        state.eraId === "pond-hockey" && (
+          <div className="hq-upkeep-note faint">
+            No upkeep in the Pond Hockey era — everyone volunteers. Bills arrive
+            with the Club Formation era.
+          </div>
+        )
+      )}
 
       <div className="hq-overview-cols">
         <div className="hq-card">

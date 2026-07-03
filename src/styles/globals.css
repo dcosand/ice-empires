@@ -5215,3 +5215,9 @@ button {
   font-size: 13px;
   color: var(--text-dim);
 }
+
+.hq-upkeep-note {
+  margin: 8px 0 14px;
+  font-size: 13.5px;
+  color: var(--text-dim);
+}

@@ -65,7 +65,38 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
     if (rinkCount > 0) income = addResources(income, { funds: rinkCount });
   }
 
+  // Upkeep nets against Funds income (free in the pond era; see
+  // getMonthlyUpkeep). Income CAN go negative — the treasury drains.
+  const upkeep = getMonthlyUpkeep(state);
+  if (upkeep.total > 0) {
+    income = addResources(income, { funds: -upkeep.total });
+  }
+
   return income;
+}
+
+// Monthly upkeep in Funds. The pond era is free — everyone's a volunteer and
+// the rinks are shoveled by love. From Club Formation on, the club is a real
+// organization: field units beyond the first cost 1/turn (travel, sandwiches)
+// and every 2 club rinks cost 1/turn (boards, water, patching).
+export type UpkeepBreakdown = {
+  total: number;
+  units: number;
+  rinks: number;
+};
+
+export function getMonthlyUpkeep(state: GameState): UpkeepBreakdown {
+  if (state.eraId === "pond-hockey" || !state.world) {
+    return { total: 0, units: 0, rinks: 0 };
+  }
+  const fieldUnits = state.world.scouts?.length
+    ? state.world.scouts.length
+    : state.world.scout
+      ? 1
+      : 0;
+  const units = Math.max(0, fieldUnits - 1);
+  const rinks = Math.floor(getClubRinks(state.world).length / 2);
+  return { total: units + rinks, units, rinks };
 }
 
 // Equipment inventory gained each month (shed stock; not a ResourceSet key).

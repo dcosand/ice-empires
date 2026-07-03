@@ -168,3 +168,20 @@ drawing — cheaper, and readable at any width.
 opportunities. Tryouts are the Act-I recruiting verb: tech + club rink +
 3 funds → 3–5 seeded candidates. Era exit wants 6 geared players including a
 goalie (`hasFullLine`).
+
+## D25 — Upkeep arrives with Club Formation
+The Pond Hockey era stays free (volunteers, shoveled-by-love rinks) so the
+opening never punishes exploration. From Club Formation on, Funds income is
+net of upkeep: 1/turn per field unit beyond the first, plus 1/turn per 2 club
+rinks. Income can go negative; the treasury clamps at zero (no debt spiral in
+this era). Rationale: the era transition should FEEL like becoming a real
+organization — real bills are part of the fantasy. Player wages arrive with
+contracts in a later era.
+
+## D26 — Rival rinks and the favor race (AI parity v1)
+`WorldRink.ownerClubId` (undefined = player). Rival build order: two scouts,
+then one builder crew that raises up to 3 rinks near home (3 months each,
+one slower than the human's clear+build). Rivals adjacent to an independent
+gain per-club influence there (`org.rivalInfluence`, +5 contact / +2 courting
+per turn) — the visible seed of Act II's Anchor Club competition. Player
+selectors (club rinks, era checks, income, tryouts) count only player rinks.
