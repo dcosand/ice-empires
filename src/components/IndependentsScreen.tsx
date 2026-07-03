@@ -4,6 +4,7 @@ import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { hockeyOrgDisplayName } from "../engine/world";
 import { turnDateLabel } from "../engine/calendar";
+import { indieAsset } from "../data/independents";
 import {
   ARCHETYPE_BLURBS,
   ARCHETYPE_LABELS,
@@ -116,6 +117,15 @@ function IndependentRow({
         }
       }}
     >
+      <img
+        className="indy-row-thumb"
+        src={indieAsset(org, "card")}
+        alt=""
+        aria-hidden
+        onError={(e) => {
+          e.currentTarget.style.visibility = "hidden";
+        }}
+      />
       <div className="indy-row-main">
         <div className="indy-row-name">{hockeyOrgDisplayName(org)}</div>
         <div className="indy-row-meta">
@@ -193,6 +203,15 @@ function IndependentDetail({
 
   return (
     <div className="panel independents-panel indy-detail">
+      <img
+        className="indy-detail-hero"
+        src={indieAsset(org, "card")}
+        alt=""
+        aria-hidden
+        onError={(e) => {
+          e.currentTarget.style.display = "none";
+        }}
+      />
       <button className="btn indy-back" onClick={onBack}>
         ← All Independents
       </button>

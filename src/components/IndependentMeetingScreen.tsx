@@ -1,6 +1,8 @@
+import { useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
 import { hockeyOrgDisplayName } from "../engine/world";
+import { indieAsset } from "../data/independents";
 import { turnDateLabel } from "../engine/calendar";
 import {
   ARCHETYPE_BLURBS,
@@ -22,6 +24,9 @@ export function IndependentMeetingScreen({
   onOpenLedger: (orgId: string) => void;
 }) {
   const org = state.world?.hockeyOrgs.find((o) => o.id === orgId);
+  // Bespoke art when this indie has assets; archetype SVG otherwise.
+  const [cardFailed, setCardFailed] = useState(false);
+  const [bgFailed, setBgFailed] = useState(false);
   if (!org) return null;
 
   const palette = ARCHETYPE_PALETTES[org.archetype];
@@ -41,12 +46,30 @@ export function IndependentMeetingScreen({
       aria-modal="true"
       aria-label={`First contact with ${hockeyOrgDisplayName(org)}`}
     >
+      {!bgFailed && (
+        <img
+          className="meeting-backdrop"
+          src={indieAsset(org, "background")}
+          alt=""
+          aria-hidden
+          onError={() => setBgFailed(true)}
+        />
+      )}
       <div className="meeting-letterbox top" />
       <div className="meeting-letterbox bottom" />
       <div className="meeting-stage">
         <div className="meeting-glow" />
         <div className="meeting-vignette">
-          <ArchetypeScene archetype={org.archetype} accent={palette.accent} />
+          {!cardFailed ? (
+            <img
+              className="meeting-indie-card"
+              src={indieAsset(org, "card")}
+              alt={hockeyOrgDisplayName(org)}
+              onError={() => setCardFailed(true)}
+            />
+          ) : (
+            <ArchetypeScene archetype={org.archetype} accent={palette.accent} />
+          )}
         </div>
         <div className="meeting-panel">
           <div className="meeting-eyebrow">

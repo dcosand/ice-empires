@@ -473,6 +473,14 @@ function InfoDock({
   );
 }
 
+const DOCK_TIPS: Record<string, string> = {
+  HQ: "Club HQ — overview, team, production, facilities",
+  Indies: "Independents ledger — relationships, influence, prospect pipelines",
+  Cards: "Cards — staff and opportunities you've collected",
+  Era: "Era progress — your checklist to the next era",
+  Log: "Event log — everything that has happened",
+};
+
 function DockButton({
   icon,
   label,
@@ -487,7 +495,11 @@ function DockButton({
   onClick: () => void;
 }) {
   return (
-    <button className="dock-btn" title={label} onClick={onClick}>
+    <button
+      className="dock-btn has-tip"
+      data-tip={DOCK_TIPS[label] ?? label}
+      onClick={onClick}
+    >
       <img src={`/assets/vendor/game-icons/svg/${icon}.svg`} alt="" aria-hidden />
       <span className="dock-btn-label">{label}</span>
       {count !== undefined && (
@@ -599,8 +611,9 @@ function NotificationRail({
       {thisTurn.map((e) => (
         <button
           key={e.id}
-          className={`notif-chip notif-${e.type}`}
-          title={`${e.title} — ${e.message}`}
+          className={`notif-chip notif-${e.type} has-tip tip-left`}
+          data-tip={`${e.title} — ${e.message}`}
+          aria-label={e.title}
           onClick={onOpenLog}
         >
           <img

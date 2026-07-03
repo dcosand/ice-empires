@@ -5095,3 +5095,110 @@ button {
 }
 .indy-detail .indy-rival-crest { width: 56px; height: 56px; }
 .indy-rival-line { font-size: 16px; gap: 12px; }
+
+/* Independent bespoke art (assets/independents/<slug>/{card,background}.png) */
+.meeting-backdrop {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.45;
+  filter: saturate(0.9);
+  mask-image: radial-gradient(120% 90% at 50% 45%, #000 40%, transparent 100%);
+}
+.meeting-indie-card {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.7);
+}
+.indy-row-thumb {
+  width: 52px;
+  height: 64px;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  flex: 0 0 52px;
+}
+.indy-detail {
+  position: relative;
+  overflow: hidden;
+}
+.indy-detail-hero {
+  position: absolute;
+  top: 0;
+  right: 0;
+  width: min(360px, 32%);
+  height: auto;
+  max-height: 480px;
+  object-fit: cover;
+  object-position: top center;
+  border-radius: 0 0 0 16px;
+  border-left: 1px solid var(--border-bright);
+  border-bottom: 1px solid var(--border-bright);
+  box-shadow: -12px 12px 40px rgba(0, 0, 0, 0.45);
+  mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+}
+.indy-detail-head,
+.indy-detail-blurb,
+.indy-detail .indy-influence {
+  max-width: calc(100% - min(380px, 34%));
+}
+@media (max-width: 900px) {
+  .indy-detail-hero { display: none; }
+  .indy-detail-head, .indy-detail-blurb, .indy-detail .indy-influence { max-width: none; }
+}
+
+/* Instant styled tooltips for HUD chrome (native title is too slow/small) */
+.has-tip { position: relative; }
+.has-tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: 50%;
+  left: calc(100% + 10px);
+  transform: translateY(-50%) translateX(-4px);
+  width: max-content;
+  max-width: 280px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border-bright);
+  background: rgba(8, 14, 22, 0.97);
+  color: var(--text);
+  font-size: 13.5px;
+  font-weight: 600;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: var(--shadow);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  z-index: 40;
+}
+.has-tip:hover::after {
+  opacity: 1;
+  transform: translateY(-50%) translateX(0);
+}
+/* Chips on the right edge flip their tooltip to the left. */
+.has-tip.tip-left::after {
+  left: auto;
+  right: calc(100% + 10px);
+  transform: translateY(-50%) translateX(4px);
+}
+.has-tip.tip-left:hover::after {
+  transform: translateY(-50%) translateX(0);
+}
+/* Dock tooltips read better below the button (the dock hugs the top edge). */
+.dock-btn.has-tip::after {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%) translateY(-4px);
+}
+.dock-btn.has-tip:hover::after {
+  transform: translateX(-50%) translateY(0);
+}

@@ -1,6 +1,15 @@
 # Ice Empires — Tasks
 
 ## Next up (from the 2026-07-02 playtest)
+- [ ] **Indie art coverage (TODO — assets in progress)** — independents read
+      `/assets/independents/<slug>/{card,background}.png` (slug = lowercase,
+      de-accented, dashed display name: "Baie-Comeau" -> `baie-comeau`,
+      "Québec City" -> `quebec-city`). Done: anchorage, baie-comeau, brandon,
+      bratislava, victoria. Everything else falls back to archetype SVG
+      vignettes until its art lands. Wire-up: `src/data/independents.ts`.
+- [ ] **Curate SFX + notification/dock icons** — current picks are placeholders;
+      swap points documented in `public/assets/vendor/README.md` (FILES map in
+      `src/engine/sfx.ts`; `NOTIF_ICONS` + DockButton icons in Dashboard).
 - [ ] **AI parity pass (Act II priority)** — rivals currently: found HQs, build
       and wander scouts, make first contact, contact independents, and advance
       eras on a seeded clock. They do NOT yet: research, produce builders,
