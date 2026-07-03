@@ -77,7 +77,9 @@ function rollCandidate(state: GameState, index: number): TryoutCandidate {
     state.rngSeed = roll.seed;
     return roll.value;
   };
-  const attr = () => POND_ATTR_MIN + Math.floor(draw() * (POND_ATTR_SPAN + 1));
+  // A Rink Evangelist raises the floor: nobody shows up completely hopeless.
+  const floor = ownsUnit(state, "rink-evangelist") ? POND_ATTR_MIN + 1 : POND_ATTR_MIN;
+  const attr = () => floor + Math.floor(draw() * (POND_ATTR_SPAN + 1));
 
   const goalieCut = ownsUnit(state, "goalie-whisperer") ? 0.6 : 0.78;
   const posRoll = draw();
@@ -118,9 +120,12 @@ export function holdTryouts(state: GameState): GameState {
   };
   const roll = nextRandom(working.rngSeed);
   working.rngSeed = roll.seed;
-  // Minnesota's Warming-House Crew draws one extra hopeful to every tryout.
-  const bonus = ownsUnit(state, "warming-house-crew") ? 1 : 0;
-  const count = 3 + Math.floor(roll.value * 3) + bonus; // 3..5 (+1 with crew)
+  // Extra hopefuls: Minnesota's Warming-House Crew and the Rink Evangelist
+  // each draw one more local to every tryout.
+  const bonus =
+    (ownsUnit(state, "warming-house-crew") ? 1 : 0) +
+    (ownsUnit(state, "rink-evangelist") ? 1 : 0);
+  const count = 3 + Math.floor(roll.value * 3) + bonus; // 3..5 (+bonuses)
   const candidates: TryoutCandidate[] = [];
   for (let i = 0; i < count; i++) candidates.push(rollCandidate(working, i));
 
@@ -181,6 +186,45 @@ export function closeTryouts(state: GameState): GameState {
       ? `${recruited} recruit${recruited === 1 ? "" : "s"} joined; ${passed} went home with a story to tell.`
       : "Nobody made the cut. The flyers stay up.",
   );
+}
+
+// A wanderer from a map encounter joins the roster directly (no tryout).
+// Slightly better than tryout locals — they've clearly done this before.
+// Returns null if the roster is full.
+export function createWandererPlayer(
+  draft: GameState,
+  position: PlayerPosition,
+  name: string,
+): Player | null {
+  if (draft.roster.length >= ROSTER_CAP) return null;
+  const draw = () => {
+    const roll = nextRandom(draft.rngSeed);
+    draft.rngSeed = roll.seed;
+    return roll.value;
+  };
+  const attr = () => 2 + Math.floor(draw() * 7); // 2..8
+  const geared = draft.equipment >= 1;
+  if (geared) draft.equipment -= 1;
+  const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
+  const player: Player = {
+    id: `wanderer-${draft.month}-${Math.floor(draw() * 1e6)}`,
+    name,
+    position,
+    age: 16 + Math.floor(draw() * 8),
+    attrs: {
+      skating: attr(),
+      shooting: attr(),
+      passing: attr(),
+      checking: attr(),
+      goaltending: position === "G" ? Math.max(4, attr()) : 1,
+    },
+    hasEquipment: geared,
+    joinedMonth: draft.month,
+    origin: "map encounter",
+    note: notes[Math.floor(draw() * notes.length)],
+  };
+  draft.roster.push(player);
+  return player;
 }
 
 // Monthly pass: gear up ungeared players FIFO while shed stock lasts, so

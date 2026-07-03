@@ -1,6 +1,7 @@
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
 import { hockeyOrgDisplayName } from "../engine/world";
+import { turnDateLabel } from "../engine/calendar";
 import {
   ARCHETYPE_BLURBS,
   ARCHETYPE_LABELS,
@@ -49,7 +50,7 @@ export function IndependentMeetingScreen({
         </div>
         <div className="meeting-panel">
           <div className="meeting-eyebrow">
-            First Contact · Independent · Month {state.month}
+            First Contact · Independent · {turnDateLabel(state.month)}
           </div>
           <div className="meeting-crest-row">
             <div>

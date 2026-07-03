@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
 import type { GameAction } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { turnDateLabel } from "../engine/calendar";
 
 // The first-contact "leader scene" — a Civ-style cinematic beat. Full-viewport
 // letterbox, the rival's palette floods the stage, their leader strides in, and
@@ -53,7 +54,7 @@ export function RivalMeetingScreen({
           onError={hideOnError}
         />
         <div className="meeting-panel">
-          <div className="meeting-eyebrow">First Contact · Month {month}</div>
+          <div className="meeting-eyebrow">First Contact · {turnDateLabel(month)}</div>
           <div className="meeting-crest-row">
             <img
               className="meeting-crest"

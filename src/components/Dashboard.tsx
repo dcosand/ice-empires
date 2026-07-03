@@ -28,6 +28,7 @@ import {
 } from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
 import { techPayoff } from "../engine/researchSystem";
+import { turnDateLabel, turnDateLong } from "../engine/calendar";
 import { ItemArt } from "./ItemArt";
 import {
   canHoldTryouts,
@@ -106,8 +107,8 @@ export function Dashboard({
         <div className="teaser-banner">
           <strong>The opening scenario is behind you.</strong>{" "}
           {state.club?.name} made it through Year One — and you are already into
-          Month {state.month}. The deeper hockey world, and the eras beyond it,
-          are waiting.
+          It is {turnDateLong(state.month)}. The deeper hockey world, and the eras
+          beyond it, are waiting.
         </div>
       )}
 
@@ -255,7 +256,7 @@ function CommandRail({
     const club = state.club;
     return (
       <aside className="command-rail">
-        <div className="rail-title">Found Your Club · Month {state.month}</div>
+        <div className="rail-title">Found Your Club · {turnDateLabel(state.month)}</div>
         {researchTask}
         {discoveryTask}
         <button
@@ -334,7 +335,7 @@ function CommandRail({
         disabled={!canEndMonth}
         onClick={() => dispatch({ type: "END_MONTH" })}
       >
-        End Month {state.month}
+        End Turn — {turnDateLabel(state.month)}
       </button>
       {!canEndMonth && (
         <div className="rail-blocked">Needs: {missing.join(", ")}</div>

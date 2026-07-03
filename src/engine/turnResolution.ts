@@ -19,6 +19,7 @@ import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
 import { getMonthlyEquipment } from "./selectors";
 import { makeLog } from "./log";
+import { turnDateLabel } from "./calendar";
 
 // Pure-ish end-of-month resolver. Clones state, advances one month, then runs
 // each system in order. Each system appends readable log lines.
@@ -43,7 +44,7 @@ export function endMonth(state: GameState): GameState {
   draft.equipment += equipmentGain;
   push(
     "resource",
-    `Month ${draft.month} income`,
+    `${turnDateLabel(draft.month)} income`,
     incomeSummary(income) +
       (equipmentGain > 0 ? ` +${equipmentGain} Equipment (shed).` : ""),
   );

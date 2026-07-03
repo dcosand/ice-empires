@@ -6,6 +6,7 @@ import type {
   WorldUnit,
 } from "../types/game";
 import { CARDS_BY_ID } from "../data/cards";
+import { FIRST_NAMES, LAST_NAMES } from "../data/playerNames";
 import { REGIONS_BY_ID } from "../data/regions";
 import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
@@ -18,6 +19,7 @@ import {
 } from "./world";
 import { prependLog } from "./log";
 import { grantCard, grantRandomCard } from "./cardSystem";
+import { createWandererPlayer } from "./tryoutSystem";
 import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
 
@@ -224,6 +226,18 @@ export function resolvePendingEncounter(state: GameState): GameState {
     const draft: GameState = structuredClone(next);
     grantCard(draft, effect.cardId, () => undefined);
     next = draft;
+  } else if (effect.type === "addRosterPlayer") {
+    const draft: GameState = structuredClone(next);
+    const player = createWandererPlayer(
+      draft,
+      effect.position,
+      wandererName(draft, pe.name),
+    );
+    if (!player) {
+      // Roster full: the wanderer nods and moves on; the story still pays.
+      draft.resources.reputation += 1;
+    }
+    next = draft;
   } else if (effect.type === "grantTech") {
     if (!next.completedResearch.includes(effect.techId)) {
       const draft: GameState = structuredClone(next);
@@ -269,6 +283,13 @@ function describeOutcome(effect: EncounterEffect): {
         tone: "good",
       };
     }
+    case "addRosterPlayer":
+      return {
+        outcome: `They join your roster as a ${
+          effect.position === "G" ? "goalie" : effect.position === "D" ? "defenseman" : "forward"
+        } — see Club HQ → Team.`,
+        tone: "good",
+      };
     case "teamAttribute":
       return {
         outcome: `+${effect.amount} future ${effect.attribute} development.`,
@@ -292,6 +313,17 @@ function describeOutcome(effect: EncounterEffect): {
     default:
       return { outcome: "A useful rumor for the scouting files.", tone: "neutral" };
   }
+}
+
+// A wanderer gets a real name from the player pools (seeded), with the
+// encounter name kept as their note-worthy origin story.
+function wandererName(draft: GameState, _encounterName: string): string {
+  const r1 = nextRandom(draft.rngSeed);
+  const r2 = nextRandom(r1.seed);
+  draft.rngSeed = r2.seed;
+  return `${FIRST_NAMES[Math.floor(r1.value * FIRST_NAMES.length)]} ${
+    LAST_NAMES[Math.floor(r2.value * LAST_NAMES.length)]
+  }`;
 }
 
 function resourceLabel(resource: ResourceKey): string {

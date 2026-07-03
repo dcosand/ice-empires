@@ -324,7 +324,9 @@ function unitOption(state: GameState, unitId: string): ProductionOption {
     kind: "unit",
     id: unitId,
     name: def.name,
-    categoryLabel: titleCase(def.category),
+    categoryLabel: `${titleCase(def.category)} · ${
+      def.spawnsMapUnit ? "Map unit" : "HQ staff"
+    }`,
     description: def.description,
     fundsCost: productionFundsCost("unit", unitId),
     upfrontCost: productionUpfrontCost("unit", unitId),

@@ -331,6 +331,8 @@ export type PendingTryout = {
 
 export type EncounterEffect =
   | { type: "addCard"; cardId: string }
+  // A wanderer/local actually joins the roster as a playable (bad) player.
+  | { type: "addRosterPlayer"; position: PlayerPosition }
   | { type: "addResource"; resource: ResourceKey; amount: number }
   | { type: "teamAttribute"; attribute: string; amount: number }
   // A free, fully-completed technology (and its unlocks). The "discovery of a

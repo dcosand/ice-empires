@@ -53,14 +53,17 @@ export const UNITS: UnitDef[] = [
     category: "recruiting",
     eraId: "pond-hockey",
     description:
-      "Spreads the idea of hockey so wanderers and local believers are likelier to join the club. Not a formal recruiter.",
+      "Preaches hockey door to door. More (and braver) locals show up to your tryouts, and word of the club spreads.",
     cost: { funds: 10 },
     buildMonths: 2,
     // Local Notice Board OR Basic Skating — whichever the player reached first.
     requiredAnyOf: ["local-notice-board", "basic-skating"],
-    effects: [{ type: "improveEncounters" }],
+    effects: [
+      { type: "monthlyIncome", resource: "reputation", amount: 1 },
+      { type: "improveEncounters" },
+    ],
     abilitySummary:
-      "Raises the chance random wanderers join your club (future assignment).",
+      "+1 Reputation/mo · +1 candidate at tryouts, and nobody shows up completely hopeless.",
     flavor:
       "Carries sticks, rules nobody understands, and the bold claim that standing on ice can become a civilization.",
   },

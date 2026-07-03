@@ -4,6 +4,7 @@ import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { getMonthlyIncome } from "../engine/selectors";
+import { turnDateLabel } from "../engine/calendar";
 
 // Two currencies + the reputation standing stat, folded into the header as
 // icon + number indicators. Equipment is inventory, shown in Team contexts.
@@ -77,10 +78,7 @@ export function TopBar({
 }) {
   const era = ERAS[state.eraId];
   const club = state.club;
-  const monthLabel =
-    state.month > state.maxMonths
-      ? `Month ${state.month}`
-      : `Month ${state.month} of ${state.maxMonths}`;
+  const monthLabel = turnDateLabel(state.month);
 
   const income = getMonthlyIncome(state);
 
@@ -137,7 +135,7 @@ export function TopBar({
         ))}
       </div>
       <div className="meta">
-        <span className="pill">
+        <span className="pill" title={`Turn ${state.month}`}>
           <strong>{monthLabel}</strong>
         </span>
         <span className="pill pill-era">{era?.name}</span>

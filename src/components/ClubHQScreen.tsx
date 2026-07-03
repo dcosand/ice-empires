@@ -21,6 +21,7 @@ import {
 } from "../engine/selectors";
 import { productionItemName } from "../engine/productionSystem";
 import { allScouts } from "../engine/scoutSystem";
+import { turnDateLabel } from "../engine/calendar";
 import {
   canHoldTryouts,
   TRYOUT_COST_FUNDS,
@@ -112,7 +113,7 @@ export function ClubHQScreen({
               <div>
                 <div className="hq-head-name">{club?.name ?? "Club HQ"}</div>
                 <div className="hq-head-sub">
-                  {era?.name} · Month {state.month} · {club?.leaderArchetype}
+                  {era?.name} · {turnDateLabel(state.month)} · {club?.leaderArchetype}
                 </div>
               </div>
             </div>
@@ -374,7 +375,7 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
         <div>
           <div className="line-name">{player.name}</div>
           <div className="line-meta">
-            Age {player.age} · Joined M{player.joinedMonth}
+            Age {player.age} · Joined {turnDateLabel(player.joinedMonth)}
           </div>
         </div>
         <span

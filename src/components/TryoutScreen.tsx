@@ -6,6 +6,7 @@ import type {
   TryoutCandidate,
 } from "../types/game";
 import { ROSTER_CAP } from "../engine/tryoutSystem";
+import { turnDateLabel } from "../engine/calendar";
 
 // The tryout: curious locals wobble onto your rink and you pick a team.
 // Rendered whenever state.pendingTryout is set; closing dispatches
@@ -42,7 +43,7 @@ export function TryoutScreen({
       <div className="tryout-sheet">
         <div className="tryout-head">
           <div>
-            <div className="eyebrow">Local Tryouts · Month {state.month}</div>
+            <div className="eyebrow">Local Tryouts · {turnDateLabel(state.month)}</div>
             <h2>Whoever Shows Up</h2>
             <p className="muted" style={{ margin: 0 }}>
               The flyer said "Bring skates. Or courage." They mostly brought

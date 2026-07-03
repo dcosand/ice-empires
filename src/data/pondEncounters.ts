@@ -14,8 +14,8 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     description:
       "A frozen-lake wanderer agrees to stand in net. Nobody is sure why.",
     possibleEffects: [
+      { type: "addRosterPlayer", position: "G" },
       { type: "addCard", cardId: "local-coach" },
-      { type: "flavorOnly" },
     ],
   },
   {
@@ -24,7 +24,7 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     kind: "wanderer",
     description:
       "A garage-rink kid joins practice and immediately becomes your best skater.",
-    possibleEffects: [{ type: "teamAttribute", attribute: "skating", amount: 2 }],
+    possibleEffects: [{ type: "addRosterPlayer", position: "F" }],
   },
   {
     id: "suspicious-equipment",

@@ -33,10 +33,15 @@ function revealRegion(draft: GameState, region: RegionDef, push: PushLog): void 
   draft.discovery.regionStates[region.id] = "discovered";
   draft.resources = addResources(draft.resources, region.potentialYields);
 
+  const yields = Object.entries(region.potentialYields)
+    .map(([k, v]) => `+${v} ${k === "hockeyKnowledge" ? "Hockey Knowledge" : k[0].toUpperCase() + k.slice(1)}`)
+    .join(", ");
   push(
     "discovery",
-    `Discovered ${region.name}`,
-    `${region.scoutReport} (${region.hockeyResource}) Your map fog did not change; send a unit to physically chart the area.`,
+    `Word of ${region.name}`,
+    `Your monthly Local Hockey Search turns up a lead: ${region.scoutReport} (${region.hockeyResource}.)${
+      yields ? ` The connection pays ${yields} now.` : ""
+    } It's a rumor on paper, not a place on your map — future scouting eras will turn leads like this into pipelines.`,
   );
 
   const nontraditional =
