@@ -7,7 +7,9 @@ import type {
   ResourceSet,
 } from "../types/game";
 import {
+  canCancelProduction,
   getProductionOptions,
+  productionItemName,
   type ProductionOption,
 } from "../engine/productionSystem";
 import { getMonthlyIncome } from "../engine/selectors";
@@ -86,6 +88,11 @@ export function ProductionPanel({
     setSelectedKey(null);
   };
 
+  const cancellable = canCancelProduction(state);
+  const activeName = state.activeProduction
+    ? productionItemName(state.activeProduction.kind, state.activeProduction.itemId)
+    : "";
+
   const renderRows = (options: ProductionOption[]) =>
     options.map((opt) => (
       <ProductionRow
@@ -115,9 +122,12 @@ export function ProductionPanel({
       <ConfirmBar
         selected={selected}
         slotBusy={slotBusy}
+        activeName={activeName}
+        cancellable={cancellable}
         estMonths={selected ? monthsFor(selected.fundsCost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedKey(null)}
+        onCancelActive={() => dispatch({ type: "CANCEL_PRODUCTION" })}
       />
 
       {detail && (
@@ -234,22 +244,35 @@ function ProductionRow({
 function ConfirmBar({
   selected,
   slotBusy,
+  activeName,
+  cancellable,
   estMonths,
   onConfirm,
   onCancel,
+  onCancelActive,
 }: {
   selected: ProductionOption | null;
   slotBusy: boolean;
+  activeName: string;
+  cancellable: boolean;
   estMonths: number;
   onConfirm: () => void;
   onCancel: () => void;
+  onCancelActive: () => void;
 }) {
   if (slotBusy) {
     return (
       <div className="prod-confirm busy">
         <span className="faint">
-          HQ slot is busy — finish the current project before starting another.
+          {cancellable
+            ? `Building ${activeName} — you can still change your mind before ending the turn.`
+            : `Building ${activeName} — work has begun; see it through.`}
         </span>
+        {cancellable && (
+          <button className="btn" onClick={onCancelActive}>
+            Cancel {activeName}
+          </button>
+        )}
       </div>
     );
   }

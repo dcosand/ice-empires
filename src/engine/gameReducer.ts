@@ -1,7 +1,7 @@
 import type { GameAction, GameState } from "../types/game";
 import { beginFounding, createInitialState } from "./initialState";
-import { startProduction } from "./productionSystem";
-import { selectResearch } from "./researchSystem";
+import { cancelProduction, startProduction } from "./productionSystem";
+import { cancelResearch, selectResearch } from "./researchSystem";
 import { selectDiscoveryPriority } from "./discoverySystem";
 import {
   createWorld,
@@ -127,8 +127,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "START_PRODUCTION":
       return startProduction(state, action.kind, action.itemId);
 
+    case "CANCEL_PRODUCTION":
+      return cancelProduction(state);
+
     case "SELECT_RESEARCH":
       return selectResearch(state, action.techId);
+
+    case "CANCEL_RESEARCH":
+      return cancelResearch(state);
 
     case "SELECT_DISCOVERY_PRIORITY":
       return selectDiscoveryPriority(state, action.priorityId);

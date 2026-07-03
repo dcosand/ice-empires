@@ -130,6 +130,23 @@ export function startProduction(
   };
 }
 
+// A production pick can be taken back until the first End Turn applies Funds
+// toward it. Any upfront cost charged on start is refunded in full.
+export function canCancelProduction(state: GameState): boolean {
+  return !!state.activeProduction && state.activeProduction.progressFunds === 0;
+}
+
+export function cancelProduction(state: GameState): GameState {
+  if (!canCancelProduction(state)) return state;
+  const prod = state.activeProduction!;
+  const upfront = productionUpfrontCost(prod.kind, prod.itemId);
+  const resources = { ...state.resources };
+  for (const [res, amt] of Object.entries(upfront) as [ResourceKey, number][]) {
+    resources[res] += amt;
+  }
+  return { ...state, resources, activeProduction: null };
+}
+
 // Apply this month's Funds production toward the active item.
 export function progressProduction(draft: GameState, push: PushLog): void {
   const prod = draft.activeProduction;

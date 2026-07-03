@@ -19,7 +19,10 @@ import {
   getDiscoveredCount,
   getEraProgress,
 } from "../engine/selectors";
-import { productionItemName } from "../engine/productionSystem";
+import {
+  canCancelProduction,
+  productionItemName,
+} from "../engine/productionSystem";
 import { allScouts } from "../engine/scoutSystem";
 import { turnDateLabel } from "../engine/calendar";
 import {
@@ -539,6 +542,15 @@ function ProductionTab({
                       ? "needs Funds income"
                       : `~${turnsLeft} turn${turnsLeft === 1 ? "" : "s"} left`}
                   </span>
+                  {canCancelProduction(state) && (
+                    <button
+                      className="btn"
+                      title="You can change your mind until the turn ends and work begins."
+                      onClick={() => dispatch({ type: "CANCEL_PRODUCTION" })}
+                    >
+                      Cancel
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

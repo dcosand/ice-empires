@@ -637,7 +637,10 @@ export type GameAction =
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
   | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
+  // Change of heart — allowed until the first End Turn applies progress.
+  | { type: "CANCEL_PRODUCTION" }
   | { type: "SELECT_RESEARCH"; techId: string }
+  | { type: "CANCEL_RESEARCH" }
   | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }
   | { type: "SELECT_SCOUT"; scoutId?: string }

@@ -22,6 +22,17 @@ export function selectResearch(state: GameState, techId: string): GameState {
   };
 }
 
+// A research pick can be taken back until the first End Turn applies progress
+// toward it — after that, the club has committed real work.
+export function canCancelResearch(state: GameState): boolean {
+  return !!state.activeResearch && state.activeResearch.progressKnowledge === 0;
+}
+
+export function cancelResearch(state: GameState): GameState {
+  if (!canCancelResearch(state)) return state;
+  return { ...state, activeResearch: null };
+}
+
 // Apply this month's Hockey Knowledge income toward the active tech.
 export function progressResearch(draft: GameState, push: PushLog): void {
   const research = draft.activeResearch;

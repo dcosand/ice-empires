@@ -4,6 +4,7 @@ import type { GameAction, GameState, ResearchBranch } from "../types/game";
 import { RESEARCH_BY_ID } from "../data/research";
 import { ERAS, ERA_ORDER } from "../data/eras";
 import {
+  canCancelResearch,
   getResearchOptions,
   type ResearchOption,
   type ResearchStatus,
@@ -103,7 +104,19 @@ export function ResearchPanel({
 
       {active && activeDef && (
         <div className="active-banner">
-          <div className="active-name">Researching: {activeDef.name}</div>
+          <div className="active-name">
+            Researching: {activeDef.name}
+            {canCancelResearch(state) && (
+              <button
+                className="btn"
+                style={{ marginLeft: 12 }}
+                title="You can change your mind until the turn ends and work begins."
+                onClick={() => dispatch({ type: "CANCEL_RESEARCH" })}
+              >
+                Cancel
+              </button>
+            )}
+          </div>
           <ProgressBar
             fraction={active.progressKnowledge / activeDef.cost}
             left={`${active.progressKnowledge}/${activeDef.cost} Hockey Knowledge`}
@@ -148,6 +161,7 @@ export function ResearchPanel({
       <ConfirmBar
         selected={selected}
         slotBusy={slotBusy}
+        cancellable={canCancelResearch(state)}
         estMonths={selected ? monthsFor(selected.cost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedId(null)}
@@ -292,12 +306,14 @@ function TechNode({
 function ConfirmBar({
   selected,
   slotBusy,
+  cancellable,
   estMonths,
   onConfirm,
   onCancel,
 }: {
   selected: ResearchOption | null;
   slotBusy: boolean;
+  cancellable: boolean;
   estMonths: number;
   onConfirm: () => void;
   onCancel: () => void;
@@ -306,7 +322,9 @@ function ConfirmBar({
     return (
       <div className="prod-confirm busy">
         <span className="faint">
-          Research is already underway — finish it before starting another.
+          {cancellable
+            ? "Research is underway — cancel it (banner above) if you've changed your mind before ending the turn."
+            : "Research is underway and work has begun — finish it before starting another."}
         </span>
       </div>
     );
