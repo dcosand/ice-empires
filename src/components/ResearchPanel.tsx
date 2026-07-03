@@ -251,22 +251,27 @@ function TechNode({
         onDetails();
       }}
     >
-      <div className="tech-node-head">
-        <span className="tech-node-name">{opt.name}</span>
-        {badge && <span className="tech-node-badge">{badge}</span>}
-        <button
-          type="button"
-          className="tech-node-info"
-          aria-label={`${opt.name} details`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onDetails();
-          }}
-        >
-          ⓘ
-        </button>
+      <div className="tech-node-body">
+        <ItemArt kind="research" id={opt.id} className="tech-node-art" />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div className="tech-node-head">
+            <span className="tech-node-name">{opt.name}</span>
+            {badge && <span className="tech-node-badge">{badge}</span>}
+            <button
+              type="button"
+              className="tech-node-info"
+              aria-label={`${opt.name} details`}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDetails();
+              }}
+            >
+              ⓘ
+            </button>
+          </div>
+          <div className="tech-node-cost">{opt.cost} HK</div>
+        </div>
       </div>
-      <div className="tech-node-cost">{opt.cost} HK</div>
       {opt.prereqs.length > 0 && (
         <div className="tech-node-prereqs">
           {opt.prereqs.map((p) => (

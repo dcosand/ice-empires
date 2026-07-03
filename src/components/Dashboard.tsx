@@ -27,6 +27,8 @@ import {
   startableProductionCount,
 } from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
+import { techPayoff } from "../engine/researchSystem";
+import { ItemArt } from "./ItemArt";
 import {
   canHoldTryouts,
   TRYOUT_COST_FUNDS,
@@ -121,7 +123,11 @@ export function Dashboard({
       <InfoDock state={state} open={openView} />
 
       {overlay && overlay !== "club" && (
-        <TaskOverlay title={overlayTitle(overlay)} onClose={() => setOverlay(null)}>
+        <TaskOverlay
+          title={overlayTitle(overlay)}
+          wide={overlay === "research"}
+          onClose={() => setOverlay(null)}
+        >
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
           {overlay === "search" && <DiscoveryPanel state={state} dispatch={dispatch} />}
           {overlay === "independents" && (
@@ -385,15 +391,17 @@ function TaskOverlay({
   title,
   children,
   onClose,
+  wide = false,
 }: {
   title: string;
   children: ReactNode;
   onClose: () => void;
+  wide?: boolean;
 }) {
   return (
     <div className="task-overlay" role="dialog" aria-modal="true" aria-label={title}>
       <button className="overlay-scrim" aria-label="Close overlay" onClick={onClose} />
-      <div className="overlay-sheet">
+      <div className={`overlay-sheet${wide ? " wide" : ""}`}>
         <div className="overlay-head">
           <h2>{title}</h2>
           <button className="btn" onClick={onClose}>Close</button>
@@ -505,7 +513,11 @@ function CompletionOverlay({
       <button className="overlay-scrim" aria-label="Close completion" onClick={onClose} />
       <div className="completion-sheet">
         <div className={`completion-art ${detail.kind}`}>
-          <span className="completion-icon">{detail.icon}</span>
+          <ItemArt
+            kind={detail.kind === "build" ? "facility" : "research"}
+            id={detail.id ?? ""}
+            className="completion-item-art"
+          />
           <span className="completion-glow" />
         </div>
         <div className="completion-copy">
@@ -527,7 +539,7 @@ function CompletionOverlay({
 
 function completionDetail(event: EventLogEntry): {
   eyebrow: string;
-  icon: string;
+  id?: string;
   kind: "build" | "research";
   name: string;
   value: string;
@@ -538,7 +550,7 @@ function completionDetail(event: EventLogEntry): {
     );
     return {
       eyebrow: "Build Complete",
-      icon: facilityIcon(def?.id),
+      id: def?.id,
       kind: "build",
       name: def?.name ?? event.title,
       value: def ? facilityValue(def.id) : "New club infrastructure is online.",
@@ -550,10 +562,11 @@ function completionDetail(event: EventLogEntry): {
   );
   return {
     eyebrow: "Research Complete",
-    icon: researchIcon(def?.id),
+    id: def?.id,
     kind: "research",
     name: def?.name ?? event.title,
-    value: def ? researchValue(def.id) : "New hockey knowledge unlocked.",
+    // "You can now …" — the concrete payoff, not a vague foundation line.
+    value: def ? techPayoff(def) : "New hockey knowledge unlocked.",
   };
 }
 
@@ -570,37 +583,5 @@ function facilityValue(id: string): string {
   return effects.length > 0 ? effects.join(" · ") : "Adds a new club capability";
 }
 
-function researchValue(id: string): string {
-  const def = RESEARCH_BY_ID[id];
-  if (!def) return "New hockey knowledge unlocked.";
-  const unlocks = def.unlocks.map((unlock) => {
-    if (unlock.type === "card") return "Adds a staff card opportunity";
-    if (unlock.type === "deeperDiscovery") return "Improves discovery leads";
-    if (unlock.type === "prospectGeneration") return "Unlocks prospect generation";
-    if (unlock.type === "goalieEvents") return "Unlocks goalie prospect events";
-    return "Unlocks new options";
-  });
-  return unlocks.length > 0 ? unlocks.join(" · ") : "Improves your hockey foundation";
-}
 
-function facilityIcon(id: string | undefined): string {
-  if (id === "equipment-shed") return "GEAR";
-  if (id === "clubhouse") return "HQ";
-  if (id === "volunteer-coaching-bench") return "COACH";
-  if (id === "local-notice-board") return "POST";
-  return "BUILD";
-}
 
-function researchIcon(id: string | undefined): string {
-  if (id === "basic-skating") return "EDGE";
-  if (id === "stick-gear-basics") return "STICK";
-  if (id === "ice-surveying") return "ICE";
-  if (id === "outdoor-rinkcraft") return "RINK";
-  if (id === "local-tryouts") return "TRY";
-  if (id === "scouting-rumors") return "EAR";
-  if (id === "first-contact") return "WAVE";
-  if (id === "rules-of-the-game") return "RULES";
-  if (id === "organized-practice") return "DRILL";
-  if (id === "scouting-reports") return "FILE";
-  return "TECH";
-}

@@ -3085,6 +3085,7 @@ button {
 .prod-confirm {
   position: sticky;
   bottom: 0;
+  z-index: 6;
   margin-top: 16px;
   padding: 12px 14px;
   border: 1px solid var(--border);
@@ -3883,8 +3884,8 @@ button {
 }
 .tech-tree {
   display: grid;
-  grid-template-columns: 170px repeat(var(--tech-eras, 5), minmax(210px, 1fr));
-  min-width: calc(170px + var(--tech-eras, 5) * 218px);
+  grid-template-columns: 190px repeat(var(--tech-eras, 5), minmax(250px, 1fr));
+  min-width: calc(190px + var(--tech-eras, 5) * 258px);
 }
 .tech-corner {
   position: sticky;
@@ -3904,12 +3905,12 @@ button {
 }
 .tech-era-name {
   font-family: var(--font-display);
-  font-size: 14px;
+  font-size: 17px;
   letter-spacing: 0.04em;
   color: var(--text);
 }
 .tech-era-q {
-  font-size: 11px;
+  font-size: 13px;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -3920,7 +3921,7 @@ button {
   display: flex;
   align-items: center;
   padding: 10px 12px;
-  font-size: 12px;
+  font-size: 13.5px;
   font-weight: 700;
   color: var(--branch-color, var(--accent));
   background: var(--panel);
@@ -3974,7 +3975,7 @@ button {
   gap: 6px;
 }
 .tech-node-name {
-  font-size: 13px;
+  font-size: 15px;
   font-weight: 700;
   color: var(--text);
   flex: 1;
@@ -3995,7 +3996,7 @@ button {
   color: var(--accent);
 }
 .tech-node-cost {
-  font-size: 11px;
+  font-size: 12.5px;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -4006,7 +4007,7 @@ button {
   margin-top: 6px;
 }
 .tech-prereq-chip {
-  font-size: 10px;
+  font-size: 11px;
   line-height: 1;
   padding: 3px 6px;
   border-radius: 999px;
@@ -4539,4 +4540,33 @@ button {
   border-radius: 999px;
   padding: 1px 6px;
   vertical-align: middle;
+}
+
+
+/* Full-size overlay variant (tech tree) + tech node art */
+.overlay-sheet.wide {
+  width: min(1760px, 97vw);
+  max-height: 94vh;
+  height: 94vh;
+}
+.tech-node-body {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+}
+.tech-node-art {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  border-radius: 8px;
+}
+.tech-node .panel-sub { font-size: 13px; }
+
+/* Completion overlay uses real item art now (was a text-code chip). */
+.completion-item-art {
+  width: 96px;
+  height: 96px;
+  border-radius: 16px;
+  position: relative;
+  z-index: 1;
 }
