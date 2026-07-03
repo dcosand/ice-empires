@@ -47,6 +47,7 @@ import {
   canClearSnow,
   canHarvestBranches,
   canPaveStreetRink,
+  HARVEST_MIN_FOLIAGE,
 } from "../engine/builderSystem";
 import { getClubRinks, rinkAt } from "../engine/rinkSystem";
 
@@ -1775,10 +1776,12 @@ export function IsoWorldMap({
   state,
   dispatch,
   onOpenHQ,
+  onOpenIndependent,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onOpenHQ?: () => void;
+  onOpenIndependent?: (orgId: string) => void;
 }) {
   const activeClub = getActiveClub(state);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -1869,6 +1872,14 @@ export function IsoWorldMap({
     }
 
     const hqHere = !!w.hqTile && w.hqTile.x === gx && w.hqTile.y === gy;
+    const contactedOrgHere = w.hockeyOrgs.find(
+      (o) => o.playerContacted && o.x === gx && o.y === gy,
+    );
+    if (contactedOrgHere && onOpenIndependent) {
+      setSelectedKey(key);
+      onOpenIndependent(contactedOrgHere.id);
+      return;
+    }
 
     // Civ behavior: clicking your HQ tile never MOVES a unit onto it — that
     // click means "open the city", not "walk there". Units still step onto
@@ -2278,10 +2289,11 @@ export function IsoWorldMap({
       </div>
       <div className="iso-stage">
         <div ref={hostRef} className="iso-canvas" />
+        <MapControls state={state} selectedKey={selectedKey} />
         <UnitOverlay state={state} dispatch={dispatch} />
         <MiniMap state={state} cameraRef={cameraRef} />
       </div>
-      <MapControls state={state} dispatch={dispatch} selectedKey={selectedKey} />
+
     </div>
   );
 }
@@ -2647,18 +2659,58 @@ function UnitOverlay({
 }
 
 // ---- Side controls (scout + selected-tile detail) ------------------------
+
+// Player-facing terrain names + what's actually on the tile.
+const TERRAIN_LABELS: Record<string, string> = {
+  coastal: "Coastal Shore",
+  desert: "Desert",
+  "high-desert": "High Desert",
+  ice: "Snowfield",
+  mountain: "Mountains",
+  plains: "Plains",
+  pond: "Frozen Pond",
+  tropical: "Tropical Green",
+  water: "Open Water",
+};
+
+function terrainLabel(tile: WorldTile): string {
+  let label = TERRAIN_LABELS[tile.terrain] ?? "Terrain";
+  if (tile.terrain === "pond" && tile.surfaceState !== "frozen") {
+    label = tile.surfaceState === "thin-ice" ? "Pond (thin ice)" : "Pond (open water)";
+  }
+  return label;
+}
+
+function terrainNotes(tile: WorldTile, state: GameState): string {
+  const notes: string[] = [];
+  if ((tile.foliageDensity ?? 0) >= HARVEST_MIN_FOLIAGE) {
+    notes.push(
+      state.completedResearch.includes("stick-gear-basics")
+        ? "Dense trees — Rink Rats can Harvest Branches here."
+        : "Dense trees — harvestable for stickwood once you know Stick & Gear Basics.",
+    );
+  } else if ((tile.foliageDensity ?? 0) > 0.15) {
+    notes.push("Scattered trees, too thin to harvest.");
+  }
+  if (tile.feature === "river") notes.push("A river runs through it.");
+  if (tile.feature === "lake") notes.push("Lake water — impassable.");
+  if (tile.terrain === "pond" && tile.surfaceState === "frozen") {
+    notes.push("Skateable ice: clear the snow and a rink can rise here.");
+  }
+  if ((tile.terrain === "desert" || tile.terrain === "high-desert") && tile.valid) {
+    notes.push("Paveable flat — street rinks live here (Asphalt Crew).");
+  }
+  if (!tile.valid) notes.push("Impassable for units.");
+  return notes.length ? notes.join(" ") : "Nothing of hockey interest here yet.";
+}
+
 function MapControls({
   state,
-  dispatch,
   selectedKey,
 }: {
   state: GameState;
-  dispatch: Dispatch<GameAction>;
   selectedKey: string | null;
 }) {
-  const scouts = allScouts(state.world);
-  const selectedScout = activeScout(state.world);
-  const founder = state.world?.founder;
   const sel = selectedKey ? selectedKey.split(",").map(Number) : null;
   const regionId = sel ? regionIdAtTile(sel[0], sel[1]) : null;
   const region = regionId ? REGIONS_BY_ID[regionId] : null;
@@ -2677,6 +2729,8 @@ function MapControls({
         (m) => !m.investigated && m.x === sel[0] && m.y === sel[1],
       )
     : null;
+  const selTile =
+    sel && state.world ? tileAt(state.world, sel[0], sel[1]) : null;
   const selRink = sel && state.world ? rinkAt(state.world, sel[0], sel[1]) : null;
   const selRinkIsClub =
     selRink && state.world
@@ -2689,48 +2743,7 @@ function MapControls({
 
   return (
     <div className="iso-controls">
-      {founder && !state.world?.hqTile && (
-        <div className="scout-bar">
-          <span>
-            👤 <strong>Leader</strong> · {founder.movesRemaining}/{founder.movesPerTurn} moves
-          </span>
-          <button
-            className={`btn${state.world?.founderSelected ? " btn-primary" : ""}`}
-            onClick={() => dispatch({ type: "SELECT_FOUNDING_UNIT" })}
-          >
-            {state.world?.founderSelected ? "Selected — click a tile" : "Select Leader"}
-          </button>
-        </div>
-      )}
-
-      {scouts.length > 0 && (
-        <div className="scout-bar">
-          <span>
-            🔍 <strong>{selectedScout?.name ?? "Pond Scouts"}</strong> ·{" "}
-            {selectedScout
-              ? `${selectedScout.movesRemaining}/${selectedScout.movesPerTurn} moves`
-              : `${scouts.length} units`}
-          </span>
-          <button
-            className={`btn${selectedScout ? " btn-primary" : ""}`}
-            onClick={() =>
-              dispatch({
-                type: "SELECT_SCOUT",
-                scoutId: selectedScout?.id ?? scouts[0]?.id,
-              })
-            }
-          >
-            {selectedScout ? "Selected — click a tile" : "Select Scout"}
-          </button>
-        </div>
-      )}
-
-      {!sel && (
-        <div className="map-detail faint">
-          Click a tile to inspect it. Moving a unit reveals the destination and
-          the surrounding sightline.
-        </div>
-      )}
+      {!sel && null}
 
       {sel && revealed && org && (
         <div className="map-detail">
@@ -2778,11 +2791,16 @@ function MapControls({
               to investigate. It resolves on arrival, then disappears.
             </span>
           ) : revealed ? (
-            selVisible ? (
-              <span className="muted">Open terrain — nothing of hockey interest here yet.</span>
-            ) : (
-              <span className="faint">Explored terrain — last charted earlier; no current sightline here.</span>
-            )
+            <>
+              <div className="detail-head">
+                <strong>{selTile ? terrainLabel(selTile) : "Terrain"}</strong>
+                {!selVisible && <span className="region-resource">out of sight</span>}
+              </div>
+              <div className="region-report">
+                {selTile ? terrainNotes(selTile, state) : ""}
+                {!selVisible && " Last charted earlier — no current sightline."}
+              </div>
+            </>
           ) : (
             <span className="faint">Unexplored — shrouded in fog.</span>
           )}

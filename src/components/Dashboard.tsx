@@ -21,7 +21,7 @@ import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
-import { getAvailableResearch } from "../engine/selectors";
+import { getAvailableResearch, getEraProgress } from "../engine/selectors";
 import {
   productionItemName,
   startableProductionCount,
@@ -137,11 +137,15 @@ export function Dashboard({
           state={state}
           dispatch={dispatch}
           onOpenHQ={() => openView("club")}
+          onOpenIndependent={(orgId) => {
+            setLedgerFocusOrgId(orgId);
+            setOverlay("independents");
+          }}
         />
         <CommandRail state={state} dispatch={dispatch} open={openView} />
+        <InfoDock state={state} open={openView} />
+        <NotificationRail state={state} onOpenLog={() => openView("log")} />
       </div>
-
-      <InfoDock state={state} open={openView} />
 
       {overlay && overlay !== "club" && (
         <TaskOverlay
@@ -405,15 +409,108 @@ function InfoDock({
 }) {
   const contactedOrgs =
     state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
+  const eraProgress = getEraProgress(state);
+  const eraDone = eraProgress.filter((r) => r.met).length;
   return (
-    <div className="info-dock">
-      <button onClick={() => open("club")}>HQ</button>
-      <button onClick={() => open("independents")}>
-        Independents {contactedOrgs}
-      </button>
-      <button onClick={() => open("cards")}>Cards {state.cards.length}</button>
-      <button onClick={() => open("era")}>Era</button>
-      <button onClick={() => open("log")}>Log {state.eventLog.length}</button>
+    <div className="info-dock" role="toolbar" aria-label="Club screens">
+      <DockButton icon="family-house" label="HQ" onClick={() => open("club")} />
+      <DockButton
+        icon="village"
+        label="Indies"
+        count={contactedOrgs}
+        onClick={() => open("independents")}
+      />
+      <DockButton
+        icon="checklist"
+        label="Cards"
+        count={state.cards.length}
+        onClick={() => open("cards")}
+      />
+      <DockButton
+        icon="flag-objective"
+        label="Era"
+        count={eraDone}
+        countOf={eraProgress.length}
+        onClick={() => open("era")}
+      />
+      <DockButton
+        icon="archive-research"
+        label="Log"
+        onClick={() => open("log")}
+      />
+    </div>
+  );
+}
+
+function DockButton({
+  icon,
+  label,
+  count,
+  countOf,
+  onClick,
+}: {
+  icon: string;
+  label: string;
+  count?: number;
+  countOf?: number;
+  onClick: () => void;
+}) {
+  return (
+    <button className="dock-btn" title={label} onClick={onClick}>
+      <img src={`/assets/vendor/game-icons/svg/${icon}.svg`} alt="" aria-hidden />
+      <span className="dock-btn-label">{label}</span>
+      {count !== undefined && (
+        <span className="dock-btn-count">
+          {count}
+          {countOf !== undefined ? `/${countOf}` : ""}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// Civ-VI-style notification rail: one icon chip per event from the current
+// turn, newest on top, hover for the story, click to open the full log.
+// Major beats (era, meetings, completions) still get full-screen treatments —
+// this rail is the quiet running tally.
+const NOTIF_ICONS: Record<string, string> = {
+  resource: "coins",
+  build: "barn",
+  research: "archive-research",
+  discovery: "spyglass",
+  card: "checklist",
+  era: "trophy-cup",
+  rival: "flag-objective",
+  flavor: "hockey",
+};
+
+function NotificationRail({
+  state,
+  onOpenLog,
+}: {
+  state: GameState;
+  onOpenLog: () => void;
+}) {
+  const thisTurn = state.eventLog
+    .filter((e) => e.month === state.month)
+    .slice(0, 8);
+  if (thisTurn.length === 0) return null;
+  return (
+    <div className="notif-rail" aria-label="This turn's events">
+      {thisTurn.map((e) => (
+        <button
+          key={e.id}
+          className={`notif-chip notif-${e.type}`}
+          title={`${e.title} — ${e.message}`}
+          onClick={onOpenLog}
+        >
+          <img
+            src={`/assets/vendor/game-icons/svg/${NOTIF_ICONS[e.type] ?? "hockey"}.svg`}
+            alt=""
+            aria-hidden
+          />
+        </button>
+      ))}
     </div>
   );
 }

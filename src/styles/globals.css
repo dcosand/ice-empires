@@ -2091,7 +2091,24 @@ button {
   z-index: 12;
 }
 .iso-controls {
-  margin-top: 12px;
+  /* Floating tile inspector: subtle card overlaid on the map, top-left,
+     below the screen-dock rail. */
+  position: absolute;
+  left: 12px;
+  top: 130px;
+  z-index: 7;
+  width: min(340px, calc(100% - 24px));
+  pointer-events: none;
+}
+.iso-controls .map-detail {
+  pointer-events: auto;
+  background: rgba(12, 20, 30, 0.88);
+  border: 1px solid var(--border-bright);
+  border-radius: 10px;
+  padding: 12px 14px;
+  backdrop-filter: blur(6px);
+  box-shadow: var(--shadow);
+  font-size: 14px;
 }
 
 /* ---------- Selected-unit overlay (floats over the map) ---------- */
@@ -2249,7 +2266,7 @@ button {
   margin-bottom: 10px;
 }
 .map-stage .iso-canvas {
-  height: calc(100vh - 230px);
+  height: calc(100vh - 170px);
   min-height: 560px;
   max-height: 1400px;
 }
@@ -4792,3 +4809,100 @@ button {
   .indy-detail-cols { grid-template-columns: 1fr; }
   .indy-row { flex-wrap: wrap; }
 }
+
+
+/* ===========================================================================
+   Screen dock (map overlay, top-left) + notification rail (right edge)
+   =========================================================================== */
+.info-dock {
+  position: absolute;
+  top: 82px;
+  left: 12px;
+  z-index: 8;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid var(--border-bright);
+  border-radius: 12px;
+  background: rgba(12, 20, 30, 0.9);
+  backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+}
+.dock-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  min-width: 56px;
+  padding: 7px 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.dock-btn:hover {
+  border-color: var(--accent);
+  background: rgba(56, 189, 248, 0.08);
+}
+.dock-btn img {
+  width: 26px;
+  height: 26px;
+  /* game-icons ship black; invert to match the dark UI */
+  filter: invert(0.88) sepia(0.1) saturate(1.2);
+}
+.dock-btn-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+.dock-btn-count {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #0a1018;
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 1px 5px;
+}
+.notif-rail {
+  position: absolute;
+  right: 14px;
+  top: 52%;
+  transform: translateY(-50%);
+  z-index: 7;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.notif-chip {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 2px solid var(--border-bright);
+  background: rgba(12, 20, 30, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.08s ease, border-color 0.08s ease;
+  animation: notif-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.notif-chip:hover { transform: scale(1.12); border-color: var(--accent); }
+.notif-chip img {
+  width: 22px;
+  height: 22px;
+  filter: invert(0.88);
+}
+@keyframes notif-pop {
+  from { opacity: 0; transform: scale(0.5); }
+  to { opacity: 1; transform: scale(1); }
+}
+.notif-chip.notif-era { border-color: var(--gold); }
+.notif-chip.notif-rival { border-color: #ef6f6f; }
+.notif-chip.notif-discovery { border-color: #7dd3fc; }
+.notif-chip.notif-card { border-color: #5fd08a; }
+.notif-chip.notif-build { border-color: #e0a06b; }
