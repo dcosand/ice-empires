@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import type { ReactNode, SyntheticEvent } from "react";
 import type { GameState } from "../types/game";
 import { CLUB_LIST, clubAsset } from "../data/clubs";
+import { turnDateLong } from "../engine/calendar";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
@@ -32,18 +33,32 @@ function buildSlides(state: GameState): Slide[] {
     />
   );
 
+  const desertClub = club.cityRegion.toLowerCase().includes("desert");
+
   return [
     {
       icon: "✦",
       title: `${club.name} Founded`,
       tagline: "Your dynasty begins now.",
       lines: [
-        `Month ${state.month}. The first home ice is claimed and the ${club.name} take shape.`,
-        "From this shed on the pond, you will build a hockey civilization that lasts.",
+        `${turnDateLong(state.month)}. The first home ice is claimed and the ${club.name} take shape.`,
+        desertClub
+          ? "From a rare sheet of desert ice, you will build a hockey civilization no one saw coming."
+          : "From this shed on the pond, you will build a hockey civilization that lasts.",
       ],
       hero: (
         <>
-          {art("founded", "Pond hockey at sunrise")}
+          {/* Prefer the club's own backdrop (right vibe per market); fall back
+              to the shared sunrise pond if the club has no background art. */}
+          <img
+            className="onb-hero-img"
+            src={clubAsset(club, "background")}
+            alt={`${club.name} home`}
+            onError={(e) => {
+              e.currentTarget.src = "/assets/onboarding/founded.jpg";
+              e.currentTarget.onerror = null;
+            }}
+          />
           <img
             className="onb-hero-logo"
             src={clubAsset(club, "logo")}
