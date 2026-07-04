@@ -5,10 +5,10 @@ import {
   getAvailableResearch,
 } from "../engine/selectors";
 
-// First-turn guidance + turn discipline. The month cannot end until a build and
-// a research project are active.
-// If a project completed last month, its slot is empty again and must be re-set.
-// If no options remain (not expected in year-one content), the slot is satisfied.
+// First-turn guidance + turn discipline. The month cannot end until a research
+// project is active (an empty tech slot wastes HK income). Production is a
+// SUGGESTION, not a gate: costs are paid upfront (D30), so ending the month
+// without building — saving for something bigger — is a legitimate play.
 export function ThisMonthPanel({
   state,
   dispatch,
@@ -24,7 +24,7 @@ export function ThisMonthPanel({
   // "Ready" = an active project OR nothing left to choose.
   const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
-  const canEndMonth = buildReady && researchReady;
+  const canEndMonth = researchReady;
 
   const steps = [
     {
@@ -33,13 +33,13 @@ export function ThisMonthPanel({
         ? "Build project selected"
         : buildOptions === 0
           ? "All builds complete"
-          : "Choose a build project",
+          : "Choose a build project (optional)",
       done: buildReady,
       hint:
         !buildReady && firstMonth
-          ? "Local Notice Board is cheapest (3 Operations) and finishes in 1 month."
+          ? "Local Notice Board is cheapest (3 Funds) and finishes in 1 month."
           : !buildReady
-            ? "Last project finished — pick the next build."
+            ? "Costs are paid upfront — it's fine to save Funds and build later."
             : undefined,
     },
     {
@@ -60,7 +60,6 @@ export function ThisMonthPanel({
   ];
 
   const missing: string[] = [];
-  if (!buildReady) missing.push("a build project");
   if (!researchReady) missing.push("a research project");
 
   const endLabel =

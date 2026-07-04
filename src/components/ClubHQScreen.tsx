@@ -208,7 +208,7 @@ function OverviewTab({ state }: { state: GameState }) {
                   {productionItemName(prod.kind, prod.itemId)}
                 </div>
                 <div className="faint">
-                  {prod.fundsRemaining} Funds remaining
+                  {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} remaining
                 </div>
               </div>
             </div>
@@ -504,17 +504,12 @@ function ProductionTab({
   dispatch: Dispatch<GameAction>;
 }) {
   const prod = state.activeProduction;
-  const fundsPerMonth = getMonthlyIncome(state).funds;
 
   return (
     <div className="hq-tabpane">
       {prod ? (
         (() => {
-          const total = prod.fundsRemaining + prod.progressFunds;
-          const turnsLeft =
-            fundsPerMonth > 0
-              ? Math.max(1, Math.ceil(prod.fundsRemaining / fundsPerMonth))
-              : Infinity;
+          const monthsDone = prod.totalMonths - prod.monthsRemaining;
           return (
             <div className="hq-now-building">
               <ItemArt kind={prod.kind} id={prod.itemId} className="hq-build-art" />
@@ -527,18 +522,14 @@ function ProductionTab({
                   <div
                     className="hq-now-fill"
                     style={{
-                      width: `${Math.round((prod.progressFunds / total) * 100)}%`,
+                      width: `${Math.round((monthsDone / prod.totalMonths) * 100)}%`,
                     }}
                   />
                 </div>
                 <div className="hq-now-meta">
+                  <span>Paid in full — the crew is on it.</span>
                   <span>
-                    {prod.progressFunds}/{total} Funds
-                  </span>
-                  <span>
-                    {turnsLeft === Infinity
-                      ? "needs Funds income"
-                      : `~${turnsLeft} turn${turnsLeft === 1 ? "" : "s"} left`}
+                    {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} left
                   </span>
                   {canCancelProduction(state) && (
                     <button

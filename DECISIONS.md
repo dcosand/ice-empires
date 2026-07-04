@@ -250,7 +250,7 @@ session. Full design in docs/13_ERA_ARC.md → "The scouting arc." Summary:
   triggers. Revisit whether cards become a Civ-VI-style "great people" special
   unit or are removed. Roster players stay first-class (D24), not cards.
 
-## D30 — Economy: trial Polytopia pay-upfront (DEFERRED)
+## D30 — Economy: trial Polytopia pay-upfront (SHIPPED 2026-07-03)
 Current model is Civ pay-over-time: Funds drip into `ActiveProduction.
 progressFunds` on one slot (productionSystem.ts); only Hockey Knowledge is
 charged upfront. The owner finds funds too plentiful — no "build X or Y"
@@ -259,3 +259,15 @@ least), tighten income, and lean on the D25 upkeep so each purchase is a real
 "spend it or save it" choice. This is the unlock that makes the D29 paid-scout
 tier meaningful. Blast radius is small (~productionSystem.ts + the production
 progress UI), so it is cheap to trial and revert. Deferred to the economy pass.
+
+**Shipped 2026-07-03**: full cost (funds + HK) charged at start for BOTH units
+and facilities — one model, and it removes the income double-count (the old
+drip counted funds income twice: into the treasury AND as production progress).
+`ActiveProduction` is now a `monthsRemaining/totalMonths` timer driven by the
+item's `buildMonths`; cancel refunds in full until the first End Month. Base
+funds income tightened 5 → 3/mo (rinks still +1/mo each). Research keeps the
+HK drip — out of scope. Turn discipline (D10) relaxed to match: production no
+longer gates End Turn — with upfront costs, saving for a bigger purchase is a
+legitimate play, so forcing a build would punish it. Research still gates.
+Revert = make `productionUpfrontCost` HK-only and restore the income-fed
+progress loop in `progressProduction`.

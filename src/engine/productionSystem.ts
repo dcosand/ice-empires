@@ -14,7 +14,6 @@ import {
 } from "../data/clubUniques";
 import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "./resources";
-import { getMonthlyIncome } from "./selectors";
 import { hasClubRink } from "./rinkSystem";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
@@ -22,10 +21,9 @@ import { spawnProducedScout } from "./scoutSystem";
 import { spawnProducedBuilder } from "./builderSystem";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
-// slot. Funds income each month funds the item (see DECISIONS.md D2, revised
-// for the two-currency economy); any hockeyKnowledge cost is charged upfront.
-
-const FUNDS: ResourceKey = "funds";
+// slot. The FULL cost (Funds + any hockeyKnowledge) is charged upfront when
+// production starts (Polytopia-style, DECISIONS D30); the slot then works the
+// item for its buildMonths.
 
 export function productionItemName(kind: ProductionKind, itemId: string): string {
   return kind === "facility"
@@ -33,15 +31,15 @@ export function productionItemName(kind: ProductionKind, itemId: string): string
     : ALL_UNIT_DEFS_BY_ID[itemId]?.name ?? itemId;
 }
 
-// The Funds production total needed to complete the item.
+// The item's full Funds price (charged upfront at start).
 export function productionFundsCost(kind: ProductionKind, itemId: string): number {
   const cost =
     kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId]?.cost : ALL_UNIT_DEFS_BY_ID[itemId]?.cost;
   return cost?.funds ?? 0;
 }
 
-// Non-Funds cost paid upfront when production starts (rare; reputation is a
-// standing stat and should never appear as a cost).
+// The full cost charged when production starts (reputation is a standing stat
+// and should never appear as a cost).
 export function productionUpfrontCost(
   kind: ProductionKind,
   itemId: string,
@@ -50,6 +48,7 @@ export function productionUpfrontCost(
     kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId]?.cost : ALL_UNIT_DEFS_BY_ID[itemId]?.cost;
   if (!cost) return {};
   const upfront: Partial<ResourceSet> = {};
+  if (cost.funds) upfront.funds = cost.funds;
   if (cost.hockeyKnowledge) upfront.hockeyKnowledge = cost.hockeyKnowledge;
   return upfront;
 }
@@ -104,7 +103,7 @@ export function canStartProduction(
   return !!def && unitRequirementsMet(state, def);
 }
 
-// Start producing an item: validate, charge upfront resources, open the slot.
+// Start producing an item: validate, charge the full cost, open the slot.
 export function startProduction(
   state: GameState,
   kind: ProductionKind,
@@ -118,22 +117,29 @@ export function startProduction(
     resources[res] = Math.max(0, resources[res] - amt);
   }
 
+  const def =
+    kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId] : ALL_UNIT_DEFS_BY_ID[itemId];
+  const months = Math.max(1, def?.buildMonths ?? 1);
+
   return {
     ...state,
     resources,
     activeProduction: {
       kind,
       itemId,
-      fundsRemaining: productionFundsCost(kind, itemId),
-      progressFunds: 0,
+      monthsRemaining: months,
+      totalMonths: months,
     },
   };
 }
 
-// A production pick can be taken back until the first End Turn applies Funds
-// toward it. Any upfront cost charged on start is refunded in full.
+// A production pick can be taken back until the first End Turn starts the
+// work. The full cost charged on start is refunded.
 export function canCancelProduction(state: GameState): boolean {
-  return !!state.activeProduction && state.activeProduction.progressFunds === 0;
+  return (
+    !!state.activeProduction &&
+    state.activeProduction.monthsRemaining === state.activeProduction.totalMonths
+  );
 }
 
 export function cancelProduction(state: GameState): GameState {
@@ -147,30 +153,21 @@ export function cancelProduction(state: GameState): GameState {
   return { ...state, resources, activeProduction: null };
 }
 
-// Apply this month's Funds production toward the active item.
+// Advance the active item by one month of work (the cost was paid on start).
 export function progressProduction(draft: GameState, push: PushLog): void {
   const prod = draft.activeProduction;
   if (!prod) return;
 
   const name = productionItemName(prod.kind, prod.itemId);
-  const cost = productionFundsCost(prod.kind, prod.itemId);
-  if (cost <= 0) {
-    // Malformed item — drop it rather than loop forever.
-    draft.activeProduction = null;
-    return;
-  }
+  prod.monthsRemaining -= 1;
 
-  const fundsPerMonth = getMonthlyIncome(draft)[FUNDS];
-  prod.progressFunds += fundsPerMonth;
-  prod.fundsRemaining = Math.max(0, cost - prod.progressFunds);
-
-  if (prod.progressFunds < cost) {
+  if (prod.monthsRemaining > 0) {
     push(
       "build",
       `${name} underway`,
-      `${name} is ${Math.round(
-        (prod.progressFunds / cost) * 100,
-      )}% complete (${prod.progressFunds}/${cost} Funds).`,
+      `${name} is ${prod.monthsRemaining} month${
+        prod.monthsRemaining === 1 ? "" : "s"
+      } from completion.`,
     );
     return;
   }

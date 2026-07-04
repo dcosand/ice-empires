@@ -92,6 +92,7 @@ function moveRivalUnits(draft: GameState, rival: RivalClub, push: PushLog): void
       continue;
     }
     unit.movesRemaining = unit.movesPerTurn;
+    consumePondMarkerAt(draft, unit.x, unit.y);
     while (unit.movesRemaining > 0) {
       const candidates = wanderCandidates(unit, rival.hqTile, draft);
       if (candidates.length === 0) break;
@@ -101,6 +102,7 @@ function moveRivalUnits(draft: GameState, rival: RivalClub, push: PushLog): void
       unit.x = pick.x;
       unit.y = pick.y;
       unit.movesRemaining -= 1;
+      consumePondMarkerAt(draft, unit.x, unit.y);
     }
   }
 }
@@ -116,6 +118,7 @@ function runRivalBuilder(
   push: PushLog,
 ): void {
   const world = draft.world!;
+  consumePondMarkerAt(draft, unit.x, unit.y);
 
   // Mid-build: keep at it.
   if (unit.workingMonths !== undefined) {
@@ -162,6 +165,7 @@ function runRivalBuilder(
     unit.x = step.x;
     unit.y = step.y;
     unit.movesRemaining -= 1;
+    consumePondMarkerAt(draft, unit.x, unit.y);
     if (unit.x === target.x && unit.y === target.y) {
       unit.movesRemaining = 0;
       unit.workingMonths = RIVAL_RINK_BUILD_MONTHS;
@@ -250,6 +254,23 @@ function wanderCandidates(
     (t) => Math.hypot(t.x - hq.x, t.y - hq.y) >= curD,
   );
   return outward.length ? outward : all;
+}
+
+// Rival units consume campfire/goodie-hut markers exactly like the human does
+// from the world perspective: once a unit steps onto the tile, the marker is
+// spent and disappears for every club. Rivals do not stage the human encounter
+// popup or receive its player-facing reward yet; this is shared-map denial.
+function consumePondMarkerAt(draft: GameState, x: number, y: number): boolean {
+  const world = draft.world;
+  if (!world) return false;
+  const marker = world.pondMarkers.find(
+    (m) => !m.investigated && m.x === x && m.y === y,
+  );
+  if (!marker) return false;
+  world.pondMarkers = world.pondMarkers.map((m) =>
+    m.id === marker.id ? { ...m, investigated: true } : m,
+  );
+  return true;
 }
 
 // After rival movement, a rival may have walked onto/next to a human scout. Open

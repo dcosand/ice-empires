@@ -175,17 +175,11 @@ export function allEraRequirementsMet(state: GameState): boolean {
   return reqs.every((req) => isRequirementMet(state, req.id));
 }
 
-// Production progress as a 0..1 fraction for the active item (Funds produced).
+// Production progress as a 0..1 fraction for the active item (months worked).
 export function getActiveProductionProgress(state: GameState): number {
   const prod = state.activeProduction;
-  if (!prod) return 0;
-  const def =
-    prod.kind === "facility"
-      ? ALL_FACILITY_DEFS_BY_ID[prod.itemId]
-      : ALL_UNIT_DEFS_BY_ID[prod.itemId];
-  const cost = def?.cost.funds ?? 0;
-  if (cost === 0) return 0;
-  return prod.progressFunds / cost;
+  if (!prod || prod.totalMonths <= 0) return 0;
+  return (prod.totalMonths - prod.monthsRemaining) / prod.totalMonths;
 }
 
 export function getActiveResearchProgress(state: GameState): number {

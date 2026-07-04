@@ -11,8 +11,8 @@ import type { UnitDef } from "../types/game";
 //                         tech ids, facility ids, or the pseudo-id "club-rink"
 //                         (>=1 rink within the club's HQ radius).
 //
-// Cost model: `cost.funds` is the production total funded by Funds income each
-// month (like facilities).
+// Cost model: `cost.funds` is charged IN FULL when production starts (D30
+// pay-upfront); the HQ slot then works the unit for `buildMonths`.
 
 export const UNITS: UnitDef[] = [
   {

@@ -12,7 +12,6 @@ import {
   productionItemName,
   type ProductionOption,
 } from "../engine/productionSystem";
-import { getMonthlyIncome } from "../engine/selectors";
 import { ItemArt } from "./ItemArt";
 import { playSfx } from "../engine/sfx";
 
@@ -48,11 +47,8 @@ export function ProductionPanel({
   dispatch: Dispatch<GameAction>;
 }) {
   const opts = getProductionOptions(state);
-  const fundsPerMonth = getMonthlyIncome(state).funds;
+  const funds = state.resources.funds;
   const slotBusy = !!state.activeProduction;
-
-  const monthsFor = (cost: number) =>
-    fundsPerMonth > 0 ? Math.max(1, Math.ceil(cost / fundsPerMonth)) : Infinity;
 
   const unitOptions = useMemo(() => sortOptions(opts.units), [opts]);
   const facilityOptions = useMemo(() => sortOptions(opts.facilities), [opts]);
@@ -102,7 +98,6 @@ export function ProductionPanel({
         opt={opt}
         selected={keyOf(opt) === selectedKey}
         selectable={selectable(opt)}
-        estMonths={monthsFor(opt.fundsCost)}
         onClick={() => onRowClick(opt)}
         onDetails={() => setDetailKey(keyOf(opt))}
       />
@@ -111,8 +106,8 @@ export function ProductionPanel({
   return (
     <div className="panel production-panel">
       <div className="panel-sub">
-        One project at a time; Funds income (+{fundsPerMonth}/turn) flows into
-        it. Click a row to select, then confirm. ⓘ for details.
+        One project at a time; the full cost is paid when work starts (treasury:{" "}
+        {funds} Funds). Click a row to select, then confirm. ⓘ for details.
       </div>
 
       <div className="prod-list-title">Units</div>
@@ -126,24 +121,17 @@ export function ProductionPanel({
         slotBusy={slotBusy}
         activeName={activeName}
         cancellable={cancellable}
-        estMonths={selected ? monthsFor(selected.fundsCost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedKey(null)}
         onCancelActive={() => dispatch({ type: "CANCEL_PRODUCTION" })}
       />
 
-      {detail && (
-        <DetailsModal
-          opt={detail}
-          estMonths={monthsFor(detail.fundsCost)}
-          onClose={() => setDetailKey(null)}
-        />
-      )}
+      {detail && <DetailsModal opt={detail} onClose={() => setDetailKey(null)} />}
     </div>
   );
 }
 
-function statusText(opt: ProductionOption, estMonths: number): string {
+function statusText(opt: ProductionOption): string {
   switch (opt.status) {
     case "active":
       return "Building…";
@@ -152,9 +140,7 @@ function statusText(opt: ProductionOption, estMonths: number): string {
     case "locked":
       return opt.lockReason ?? "Locked";
     default:
-      return estMonths === Infinity
-        ? "needs Funds"
-        : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`;
+      return `${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`;
   }
 }
 
@@ -162,18 +148,15 @@ function ProductionRow({
   opt,
   selected,
   selectable,
-  estMonths,
   onClick,
   onDetails,
 }: {
   opt: ProductionOption;
   selected: boolean;
   selectable: boolean;
-  estMonths: number;
   onClick: () => void;
   onDetails: () => void;
 }) {
-  const upfront = upfrontChips(opt.upfrontCost);
   const unaffordable = opt.status === "available" && !opt.affordable;
 
   return (
@@ -215,13 +198,8 @@ function ProductionRow({
         <div className="prod-row-effect">{opt.effectSummary}</div>
       </div>
       <div className="prod-row-cost">
-        <div>
-          {opt.fundsCost} Funds
-          {upfront ? ` + ${upfront}` : ""}
-        </div>
-        <div className={`prod-row-status s-${opt.status}`}>
-          {statusText(opt, estMonths)}
-        </div>
+        <div>{upfrontChips(opt.upfrontCost) || "Free"}</div>
+        <div className={`prod-row-status s-${opt.status}`}>{statusText(opt)}</div>
       </div>
       {selected && (
         <span className="prod-row-check" aria-hidden>
@@ -248,7 +226,6 @@ function ConfirmBar({
   slotBusy,
   activeName,
   cancellable,
-  estMonths,
   onConfirm,
   onCancel,
   onCancelActive,
@@ -257,7 +234,6 @@ function ConfirmBar({
   slotBusy: boolean;
   activeName: string;
   cancellable: boolean;
-  estMonths: number;
   onConfirm: () => void;
   onCancel: () => void;
   onCancelActive: () => void;
@@ -294,10 +270,8 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {selected.fundsCost} Funds{upfront ? ` + ${upfront}` : ""} ·{" "}
-            {estMonths === Infinity
-              ? "needs Funds income"
-              : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`}
+            {upfront || "Free"} upfront · {selected.buildMonths} month
+            {selected.buildMonths === 1 ? "" : "s"} to build
           </div>
         </div>
       </div>
@@ -324,11 +298,9 @@ function confirmGuard(fn: () => void): () => void {
 
 function DetailsModal({
   opt,
-  estMonths,
   onClose,
 }: {
   opt: ProductionOption;
-  estMonths: number;
   onClose: () => void;
 }) {
   const upfront = upfrontChips(opt.upfrontCost);
@@ -360,17 +332,10 @@ function DetailsModal({
         {opt.flavor && <p className="prod-detail-flavor">{opt.flavor}</p>}
         <div className="prod-detail-rows">
           <DetailRow label="Does" value={opt.effectSummary} tone="good" />
-          <DetailRow
-            label="Cost"
-            value={`${opt.fundsCost} Funds${upfront ? ` + ${upfront} upfront` : ""}`}
-          />
+          <DetailRow label="Cost" value={`${upfront || "Free"} — paid upfront`} />
           <DetailRow
             label="Build time"
-            value={
-              estMonths === Infinity
-                ? "Needs Funds income"
-                : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`
-            }
+            value={`${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`}
           />
           <DetailRow
             label="Requirements"

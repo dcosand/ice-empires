@@ -66,12 +66,12 @@
 > in DECISIONS.md D29/D30 and docs/13_ERA_ARC.md §6 "The scouting arc". Read
 > those before starting; the direction is locked, only implementation remains.
 
-- [ ] **Economy pass — trial Polytopia pay-upfront (DECISIONS D30).** Current
-      Funds model is Civ pay-over-time (`ActiveProduction.progressFunds`, one
-      slot). Flip units to full upfront cost, tighten income, lean on D25 upkeep
-      so purchases are real trade-offs. Small blast radius (~productionSystem.ts
-      + production progress UI); cheap to trial/revert. Unlocks the paid-scout
-      tier below.
+- [x] **Economy pass — trial Polytopia pay-upfront (2026-07-03)** — shipped per
+      D30 (see the Shipped note there): full upfront cost for units AND
+      facilities, `ActiveProduction` is a months timer, base income 5 → 3/mo,
+      full refund on pre-work cancel, and End Turn no longer requires a
+      production pick (saving up is a legitimate play; research still gates).
+      Validated headless (20 assertions).
 - [ ] **Scouting system — units, attributes, per-era arc (DECISIONS D29,
       docs/13 §6).** Active unit-driven scouting that evolves each era; scout
       Judging-Potential/Judging-Ability attributes; hybrid acquisition (pay

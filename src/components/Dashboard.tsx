@@ -343,7 +343,10 @@ function CommandRail({
     );
   }
 
-  const canEndMonth = buildReady && researchReady;
+  // Production never blocks End Turn: with pay-upfront costs (D30), saving
+  // funds for a bigger purchase is a legitimate play. Research still gates —
+  // an empty tech slot just wastes HK income.
+  const canEndMonth = researchReady;
   const selectScout = () => {
     if (!selectedScout && scouts[0]?.id) {
       dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });
@@ -351,7 +354,6 @@ function CommandRail({
   };
 
   const missing: string[] = [];
-  if (!buildReady) missing.push("build");
   if (!researchReady) missing.push("research");
 
   return (
@@ -364,7 +366,7 @@ function CommandRail({
             ? "Production active"
             : buildOptions === 0
               ? "Nothing to build"
-              : "Choose production"
+              : "Choose production (or save up)"
         }
         detail={activeProductionName(state)}
         onClick={() => open("build")}

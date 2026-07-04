@@ -40,9 +40,10 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
 ## Core systems cheat sheet
 
 - **Economy**: `ResourceSet = { funds, hockeyKnowledge, reputation }`. Funds is
-  the single production/purchase currency (Civ production+gold merged);
-  HK funds research (science-per-turn); **reputation is never spent** — actions
-  require thresholds. **Equipment** is a separate `state.equipment` inventory
+  the single purchase currency, charged IN FULL when production starts
+  (Polytopia-style, D30); the HQ slot then works the item for its `buildMonths`
+  (`ActiveProduction` is a months timer). HK funds research (science-per-turn);
+  **reputation is never spent** — actions require thresholds. **Equipment** is a separate `state.equipment` inventory
   (harvests, Equipment Shed) consumed 1-per-player to gear recruits.
 - **Eras**: 5-act arc in `data/eras.ts` (`ERA_ORDER`, `ERA_REQUIREMENTS`).
   A club advances when its CURRENT era's checklist is met

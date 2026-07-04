@@ -10,8 +10,10 @@ const SHARED_START = {
     hockeyKnowledge: 5,
     reputation: 9,
   },
+  // Tightened for the D30 pay-upfront economy: with full costs charged at
+  // purchase, 5/mo made every option affordable at once. Rinks add +1/mo each.
   monthlyBaseIncome: {
-    funds: 5,
+    funds: 3,
     hockeyKnowledge: 1,
     reputation: 1,
   },

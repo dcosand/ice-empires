@@ -118,7 +118,7 @@ export type UnitDef = {
   eraId: string;
   description: string;
   cost: Partial<ResourceSet>;
-  buildMonths: number; // descriptive; real time derives from Operations/mo
+  buildMonths: number; // actual build duration once paid (D30)
   requiredTechIds?: string[]; // ALL must be completed
   requiredFacilityIds?: string[]; // ALL must be built
   // Requirement met if ANY of these tech-or-facility ids is completed/built.
@@ -151,13 +151,14 @@ export type OwnedUnit = {
 
 export type ProductionKind = "facility" | "unit";
 
-// Production is funded by Funds income each month (not paid upfront).
-// Mirrors ActiveResearch so Funds reads as production-toward-the-item.
+// Production is paid in FULL when it starts (Polytopia-style, DECISIONS D30);
+// the HQ slot then works the item for its buildMonths. monthsRemaining ticks
+// down each End Month; totalMonths drives progress bars.
 export type ActiveProduction = {
   kind: ProductionKind;
   itemId: string;
-  fundsRemaining: number;
-  progressFunds: number;
+  monthsRemaining: number;
+  totalMonths: number;
 };
 
 // ---------------------------------------------------------------------------
