@@ -499,10 +499,24 @@ export type WorldPondMarker = {
   investigated: boolean;
 };
 
+// Fog-of-talent (D29, docs/13 §6.3): how the club learned about a player sets
+// how tightly their attributes are known. Tryouts are near-exact (you watched
+// them); a scout's network visit yields RANGES scaled by that scout's judging;
+// the indie's own word is a vague teaser; rival rumors come later (Act II
+// roster snapshots).
+export type KnownVia = "tryout" | "scout-network" | "org-word" | "rumor";
+
+// An estimated attribute: the truth is guaranteed to be inside [low, high],
+// but the center is seeded off-true — a dud can look like a gem.
+export type AttrEstimate = { low: number; high: number };
+
+export type AttrEstimates = Record<keyof PlayerAttrs, AttrEstimate>;
+
 // A prospect in an independent's pipeline. Seeded at worldgen; `revealed`
-// stays false until an Act-2 scouting network uncovers the details — the
-// ledger shows a fogged "???" slot with only position + teaser. Establishing
-// a network fills in the real identity (name/age/attrs).
+// stays false until a scouting network uncovers the details — the ledger
+// shows a fogged "???" slot with only position + teaser. Establishing a
+// network fills in the identity, TRUE values (hidden from the UI), and the
+// scouted ESTIMATES the UI actually shows.
 export type OrgProspect = {
   id: string;
   revealed: boolean;
@@ -510,7 +524,14 @@ export type OrgProspect = {
   teaser: string;
   name?: string;
   age?: number;
+  knownVia?: KnownVia;
+  // True values — engine-only; never render these directly.
   attrs?: PlayerAttrs;
+  potential?: number; // true ceiling, 1–20
+  // What your scout believes (render these): width scales with the
+  // establishing scout's Judging Ability / Judging Potential.
+  attrEstimates?: AttrEstimates;
+  potentialEstimate?: AttrEstimate;
 };
 
 // Relationship ladder with an independent (Civ city-state analog):

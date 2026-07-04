@@ -298,3 +298,22 @@ fog-of-talent (D29 task) will blur them by the scout's judging ratings.
 NOT yet: rival networks / Anchor Club race, recruiting revealed prospects
 (Act III per docs/13 §6.1), era requirement wiring (club-formation exit list
 is still empty by design — a partial checklist would advance the era early).
+
+## D32 — Fog-of-talent v1: estimate ranges with honest bounds (SHIPPED 2026-07-03)
+docs/13 §6.3 implemented for the provenance rungs that exist today:
+- **Tryout (rung 1)**: near-exact — roster players and tryout candidates keep
+  exact displayed attributes (you watched them play). Unchanged.
+- **Scout network (rung 2)**: revealed prospects store TRUE attrs + a true
+  ceiling (`potential`) engine-side, but the UI only ever renders
+  `attrEstimates`/`potentialEstimate` ranges (`engine/talentFog.ts`). Range
+  half-width = `max(1, round((16 - judging)/3))` — ability ranges use the
+  establishing scout's Judging Ability, the ceiling uses Judging Potential.
+  THE CONTRACT: the true value is always inside the range (fog is honest) but
+  the center is seeded off-true (fog misleads) — a dud can look like a gem.
+  Prospects carry `knownVia: "scout-network"`.
+- **Org's own word (rung 3)**: the pre-network fogged teaser row IS this rung.
+- **Rival rumor (rung 4)**: waits for Act II rival roster snapshots (§4.2).
+HockeyCard range-bars are deferred until prospects render as cards (recruiting,
+Act III) — today the ledger table shows compact "Sk 3–6 · Ceiling 8–13" reads.
+Better intel later (a tryout) should COLLAPSE the range — re-scouting/refinement
+is future work.

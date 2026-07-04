@@ -243,6 +243,13 @@ provenance** that sets range tightness. This reshapes the HockeyCard: attribute
 bars become **confidence ranges** that sharpen as better intel arrives — a dud
 can look like a gem until you get eyes on him. (Ties to task #6.)
 
+> **SHIPPED v1 2026-07-03 (D32)**: rungs 1–3 live. Networked prospects store
+> true attrs + ceiling engine-side and render only estimate ranges
+> (`engine/talentFog.ts`; half-width `max(1, round((16 − judging)/3))`, truth
+> guaranteed inside, center seeded off-true). Rung 4 waits on §4.2 rival
+> snapshots; HockeyCard range bars wait until prospects render as cards; range
+> collapse on better intel (tryout after network) is future work.
+
 ### 6.4 Talent sources (all player-driven, no RNG backchannel)
 
 - Campfire **goodie huts** (active map discovery) — keep.

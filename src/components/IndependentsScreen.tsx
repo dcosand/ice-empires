@@ -21,19 +21,25 @@ import {
   leadingSuitor,
   tierName,
 } from "../engine/independentsSystem";
+import { formatEstimate } from "../engine/talentFog";
 
-// Compact attribute readout for a revealed prospect ("Sk 5 · Sh 4 · Pa 6…").
+// Compact scouted readout for a revealed prospect. Fog-of-talent: these are
+// your scout's ESTIMATE ranges ("Sk 3–6"), never the true numbers — tighter
+// ranges come from better judging. Ceiling is the Judging-Potential read.
 function prospectAttrLine(p: OrgProspect): string {
-  const a = p.attrs!;
+  const e = p.attrEstimates;
+  if (!e) return `“${p.teaser}”`;
+  const f = formatEstimate;
   const parts =
     p.position === "G"
-      ? [`Gt ${a.goaltending}`, `Sk ${a.skating}`, `Pa ${a.passing}`]
+      ? [`Gt ${f(e.goaltending)}`, `Sk ${f(e.skating)}`, `Pa ${f(e.passing)}`]
       : [
-          `Sk ${a.skating}`,
-          `Sh ${a.shooting}`,
-          `Pa ${a.passing}`,
-          `Ch ${a.checking}`,
+          `Sk ${f(e.skating)}`,
+          `Sh ${f(e.shooting)}`,
+          `Pa ${f(e.passing)}`,
+          `Ch ${f(e.checking)}`,
         ];
+  if (p.potentialEstimate) parts.push(`Ceiling ${f(p.potentialEstimate)}`);
   return parts.join(" · ");
 }
 
@@ -337,7 +343,9 @@ function IndependentDetail({
                       )}
                     </td>
                     <td className="pp-teaser">
-                      {p.revealed && p.attrs ? prospectAttrLine(p) : `“${p.teaser}”`}
+                      {p.revealed && p.attrEstimates
+                        ? prospectAttrLine(p)
+                        : `“${p.teaser}”`}
                     </td>
                   </tr>
                 ))}

@@ -84,11 +84,13 @@
       headless (23 assertions). STILL AHEAD from D29: rival networks / Anchor
       Club race, recruiting revealed prospects (Act III), pro/spy scout + GM +
       standing-scout eras, fog-of-talent (below).
-- [ ] **Fog-of-talent (DECISIONS D29, docs/13 §6.3).** Scouted player attributes
-      become confidence RANGES set by an info-provenance ladder (tryout > your
-      scout > indie's word > rival rumor); Potential and Ability are separate
-      fogs; players carry a "known-via" provenance. Reshapes HockeyCard (folds
-      into task: Tryout carousel + headshots + roster compare).
+- [x] **Fog-of-talent v1 (2026-07-03)** — shipped per D32: networked prospects
+      show estimate RANGES (`engine/talentFog.ts`) scaled by the establishing
+      scout's Judging Ability (attrs) and Judging Potential (ceiling); truth
+      always inside the range, center seeded off-true. Tryouts stay near-exact
+      (rung 1); the fogged teaser row is the indie's-word rung. STILL AHEAD:
+      rival-rumor rung (needs §4.2 roster snapshots), HockeyCard range bars
+      (when prospects become cards), range COLLAPSE on better intel.
 - [ ] **Level-1 rinks draw local talent (proposed, docs/13 §6.4)** — make map
       rinks periodically surface a tryout hopeful so they matter beyond
       +1 funds/tryouts. Non-random, structure-driven talent faucet.

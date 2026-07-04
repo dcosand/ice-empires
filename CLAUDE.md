@@ -91,6 +91,9 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   every 5 XP (`scoutStaff.applyScoutPromotions`). `ESTABLISH_NETWORK`: a scout
   with `scouting-reports` parks 2 months beside a contacted independent
   (`working` task, `UnitWork` union) → prospects revealed, +10 influence.
+  **Fog-of-talent (D32)**: prospects keep true `attrs`/`potential` engine-side;
+  UI renders only `attrEstimates`/`potentialEstimate` ranges from
+  `engine/talentFog.ts` (width from the scout's judging; truth always inside).
 - **Club uniques**: `data/clubUniques.ts`. Use `unitsForClub`/`facilitiesForClub`
   for what a club can BUILD, and `ALL_UNIT_DEFS_BY_ID`/`ALL_FACILITY_DEFS_BY_ID`
   for LOOKUPS (raw `UNITS_BY_ID`/`FACILITIES_BY_ID` miss uniques). Wired hooks:

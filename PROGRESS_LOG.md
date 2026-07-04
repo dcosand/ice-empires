@@ -16,8 +16,13 @@ headless sims through the real reducer (20 + 23 assertions, all passing).
   the weaker judging attr every 5 XP). Founding scout is a free volunteer.
 - **Establish Scouting Network** (Act II, docs/13 §4.5): scout with
   `scouting-reports` parks 2 months beside a contacted independent →
-  `networkedByPlayer`, +10 influence, prospect pipeline revealed with real
-  seeded names/ages/attrs (true values — fog-of-talent comes next).
+  `networkedByPlayer`, +10 influence, prospect pipeline revealed.
+- **Fog-of-talent v1 (D32)**: revealed prospects store true attrs + ceiling
+  engine-side; the ledger renders only ESTIMATE ranges ("Sk 3–6 · Ceiling
+  8–13") from `engine/talentFog.ts` — width scales with the establishing
+  scout's Judging Ability/Potential, truth always inside the range, center
+  seeded off-true. Tryouts stay near-exact; rival-rumor rung waits on Act II
+  roster snapshots.
 - **UI**: tier picker in the production confirm bar; Scouting Staff section in
   ClubHQ → Personnel (judging bars + XP); revealed pipeline table in the
   Independents ledger; "Establish Scouting Network" order in the map unit

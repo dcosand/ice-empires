@@ -3,6 +3,7 @@ import type {
   GameState,
   PlayerGender,
   ResourceKey,
+  ScoutCharacter,
   ScoutQualityTier,
   WorldHockeyOrg,
   WorldState,
@@ -34,6 +35,7 @@ import {
   scoutCharacterFor,
 } from "./scoutStaff";
 import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK } from "../data/scouts";
+import { estimateAttr, estimateAttrs } from "./talentFog";
 import { levelForInfluence } from "./independentsSystem";
 import type { PushLog } from "./turnContext";
 // The Scout unlocks once Scouting Reports is researched AND the club has basic
@@ -504,7 +506,7 @@ export function progressScoutWork(draft: GameState, push: PushLog): void {
     org.networkMonth = draft.month;
     org.influencePoints += NETWORK_INFLUENCE_GAIN;
     org.relationshipLevel = levelForInfluence(org.influencePoints);
-    revealOrgProspects(draft, org);
+    revealOrgProspects(draft, org, scoutCharacterFor(draft, unit.id));
     awardScoutXpDraft(draft, unit.id, SCOUT_XP_NETWORK);
     push(
       "discovery",
@@ -517,11 +519,18 @@ export function progressScoutWork(draft: GameState, push: PushLog): void {
   draft.world = syncLegacyScout(world, allScouts(world), world.selectedScoutId);
 }
 
-// Fill in a networked org's prospect identities (seeded). Attribute quality is
-// modest Act-II fare; academies grow slightly stronger kids. True attributes —
-// fog-of-talent (D29 task 3) will later blur these by scout judging.
-function revealOrgProspects(draft: GameState, org: WorldHockeyOrg): void {
+// Fill in a networked org's prospect identities (seeded). True attributes and
+// ceiling are stored engine-side; what the UI gets is fog-of-talent ESTIMATES
+// (docs/13 §6.3) whose tightness scales with the establishing scout's judging
+// ratings — a sharp-eyed ace gives you narrow, trustworthy reads.
+function revealOrgProspects(
+  draft: GameState,
+  org: WorldHockeyOrg,
+  scout: ScoutCharacter | null,
+): void {
   const academyBonus = org.archetype === "academy" ? 1 : 0;
+  const judgingAbility = scout?.judgingAbility ?? 3;
+  const judgingPotential = scout?.judgingPotential ?? 3;
   for (const p of org.prospects) {
     if (p.revealed) continue;
     const r1 = nextRandom(draft.rngSeed);
@@ -532,7 +541,8 @@ function revealOrgProspects(draft: GameState, org: WorldHockeyOrg): void {
     const r6 = nextRandom(r5.seed);
     const r7 = nextRandom(r6.seed);
     const r8 = nextRandom(r7.seed);
-    draft.rngSeed = r8.seed;
+    const r9 = nextRandom(r8.seed);
+    draft.rngSeed = r9.seed;
 
     const female = r1.value < 0.32;
     const firstPool = female ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
@@ -540,6 +550,7 @@ function revealOrgProspects(draft: GameState, org: WorldHockeyOrg): void {
       min + 1 + Math.floor(v * die) + academyBonus;
 
     p.revealed = true;
+    p.knownVia = "scout-network";
     p.name = `${firstPool[Math.floor(r2.value * firstPool.length)]} ${
       LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)]
     }`;
@@ -551,5 +562,22 @@ function revealOrgProspects(draft: GameState, org: WorldHockeyOrg): void {
       checking: roll(r8.value, p.position === "D" ? 3 : 1, 5),
       goaltending: p.position === "G" ? roll(r5.value, 3, 6) : 1,
     };
+    // True ceiling: somewhere above their best current attribute.
+    const best = Math.max(
+      p.attrs.skating,
+      p.attrs.shooting,
+      p.attrs.passing,
+      p.attrs.checking,
+      p.attrs.goaltending,
+    );
+    p.potential = Math.min(20, best + 2 + Math.floor(r9.value * 6));
+
+    // The scout's read: estimates, not truth.
+    const est = estimateAttrs(draft.rngSeed, p.attrs, judgingAbility);
+    draft.rngSeed = est.seed;
+    p.attrEstimates = est.estimates;
+    const pot = estimateAttr(draft.rngSeed, p.potential, judgingPotential);
+    draft.rngSeed = pot.seed;
+    p.potentialEstimate = pot.estimate;
   }
 }
