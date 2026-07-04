@@ -124,6 +124,17 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
   );
 }
 
+// Whether the "End Turn" button is enabled. Production never blocks End Turn:
+// with pay-upfront costs (D30), saving funds for a bigger purchase is a
+// legitimate play. Research still gates — an empty tech slot just wastes HK
+// income. Shared by the CommandRail button and the Enter-key shortcut so both
+// behave identically.
+export function canEndMonth(state: GameState): boolean {
+  const researchReady =
+    !!state.activeResearch || getAvailableResearch(state).length === 0;
+  return researchReady;
+}
+
 // Era-progress requirement checklist for the CURRENT era's exit criteria.
 export type EraReqStatus = {
   id: EraRequirementId;

@@ -24,7 +24,11 @@ import { CardsPanel } from "./CardsPanel";
 import { ScoutingScreen } from "./ScoutingScreen";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
-import { getAvailableResearch, getEraProgress } from "../engine/selectors";
+import {
+  canEndMonth as canEndMonthSel,
+  getAvailableResearch,
+  getEraProgress,
+} from "../engine/selectors";
 import {
   productionItemName,
   startableProductionCount,
@@ -351,10 +355,7 @@ function CommandRail({
     );
   }
 
-  // Production never blocks End Turn: with pay-upfront costs (D30), saving
-  // funds for a bigger purchase is a legitimate play. Research still gates —
-  // an empty tech slot just wastes HK income.
-  const canEndMonth = researchReady;
+  const canEndMonth = canEndMonthSel(state);
   const selectScout = () => {
     if (!selectedScout && scouts[0]?.id) {
       dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });
