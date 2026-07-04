@@ -25,7 +25,11 @@ import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
-import { getAvailableResearch, getEraProgress } from "../engine/selectors";
+import {
+  canEndMonth as canEndMonthSel,
+  getAvailableResearch,
+  getEraProgress,
+} from "../engine/selectors";
 import {
   productionItemName,
   startableProductionCount,
@@ -348,7 +352,7 @@ function CommandRail({
     );
   }
 
-  const canEndMonth = buildReady && researchReady && discoveryReady;
+  const canEndMonth = canEndMonthSel(state);
   const selectScout = () => {
     if (!selectedScout && scouts[0]?.id) {
       dispatch({ type: "SELECT_SCOUT", scoutId: scouts[0].id });

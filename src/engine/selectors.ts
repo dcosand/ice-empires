@@ -16,6 +16,8 @@ import { CARDS_BY_ID } from "../data/cards";
 import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
 import { getClubRinks } from "./rinkSystem";
+import { startableProductionCount } from "./productionSystem";
+import { DISCOVERY_BY_ID } from "../data/discovery";
 
 // Monthly income = club base + completed-facility effects + acquired-card effects.
 export function getMonthlyIncome(state: GameState): ResourceSet {
@@ -131,6 +133,19 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
       state.activeResearch?.techId !== r.id &&
       r.requiredTechIds.every((id) => state.completedResearch.includes(id)),
   );
+}
+
+// Whether the "End Turn" button is enabled: production, research, and a
+// discovery priority are all chosen (or unavailable). Mirrors the gate the
+// CommandRail uses so the keyboard shortcut behaves like clicking the button.
+export function canEndMonth(state: GameState): boolean {
+  const buildReady =
+    !!state.activeProduction || startableProductionCount(state) === 0;
+  const researchReady =
+    !!state.activeResearch || getAvailableResearch(state).length === 0;
+  const discoveryReady =
+    !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
+  return buildReady && researchReady && discoveryReady;
 }
 
 export function getDiscoveredRegionIds(state: GameState): string[] {

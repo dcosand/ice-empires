@@ -51,6 +51,7 @@ import {
   canPaveStreetRink,
 } from "../engine/builderSystem";
 import { getClubRinks, rinkAt } from "../engine/rinkSystem";
+import { canEndMonth } from "../engine/selectors";
 
 // ---- Isometric geometry --------------------------------------------------
 const TILE_W = 64; // diamond width
@@ -1858,6 +1859,8 @@ export function IsoWorldMap({
   const keyMoveRef = useRef<(dx: number, dy: number) => void>(() => {});
   const rightClickRef = useRef<(gx: number, gy: number) => void>(() => {});
   const cycleUnitsRef = useRef<() => void>(() => {});
+  const centerOnSelectedRef = useRef<() => void>(() => {});
+  const endTurnRef = useRef<() => void>(() => {});
   const scoutAnimRef = useRef<{ node: Container; baseY: number } | null>(null);
   const cameraRef = useRef<CameraApi | null>(null);
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
@@ -2033,6 +2036,30 @@ export function IsoWorldMap({
     );
   };
 
+  // "c": snap the camera to the actively selected unit without cycling to a
+  // different one (the pre-founding Founding Group, otherwise the active scout).
+  centerOnSelectedRef.current = () => {
+    const w = state.world;
+    if (!w) return;
+    const unit =
+      w.founder && w.founderSelected && !w.hqTile ? w.founder : activeScout(w);
+    if (!unit) return;
+    const cen = centroid(w);
+    cameraRef.current?.centerOnLocal(
+      isoX(unit.x, unit.y) - cen.x,
+      isoY(unit.x, unit.y) - cen.y,
+    );
+  };
+
+  // Enter / Return: same as clicking "End Turn" — only when the turn's required
+  // tasks are done and no blocking popup is open (mirrors the disabled button).
+  endTurnRef.current = () => {
+    if (state.pendingMeeting || state.pendingEncounter || state.pendingTryout) {
+      return;
+    }
+    if (canEndMonth(state)) dispatch({ type: "END_MONTH" });
+  };
+
   // Always-fresh keyboard mover. (dx, dy) is a grid step; the selected unit
   // walks one tile if that neighbour is reachable. Direction mapping lives in
   // the keydown listener so the arrow/numpad keys read in *screen* space.
@@ -2085,6 +2112,20 @@ export function IsoWorldMap({
       if (e.code === "Tab" || e.code === "Backquote") {
         e.preventDefault();
         cycleUnitsRef.current();
+        return;
+      }
+      // Leave OS/browser chords (copy, dev panel, etc.) alone.
+      const chord = e.metaKey || e.ctrlKey || e.altKey;
+      // "c": center the camera on the actively selected unit.
+      if (e.code === "KeyC" && !chord) {
+        e.preventDefault();
+        centerOnSelectedRef.current();
+        return;
+      }
+      // Enter / Return: end the turn (like clicking the End Turn button).
+      if ((e.code === "Enter" || e.code === "NumpadEnter") && !chord) {
+        e.preventDefault();
+        endTurnRef.current();
         return;
       }
       const d = DIRS[e.code];
