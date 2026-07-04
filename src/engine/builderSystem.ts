@@ -154,11 +154,12 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
 }
 
 // Monthly tick: advance every working builder; finish builds at 0.
+// (Scout fieldwork — establish-network — is progressScoutWork's job.)
 export function progressBuilderWork(draft: GameState, push: PushLog): void {
   const world = draft.world;
   if (!world) return;
   for (const unit of allScouts(world)) {
-    if (!unit.working) continue;
+    if (!unit.working || unit.working.task !== "build-rink") continue;
     unit.working.monthsRemaining -= 1;
     if (unit.working.monthsRemaining > 0) {
       push(

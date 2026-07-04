@@ -72,12 +72,18 @@
       full refund on pre-work cancel, and End Turn no longer requires a
       production pick (saving up is a legitimate play; research still gates).
       Validated headless (20 assertions).
-- [ ] **Scouting system — units, attributes, per-era arc (DECISIONS D29,
-      docs/13 §6).** Active unit-driven scouting that evolves each era; scout
-      Judging-Potential/Judging-Ability attributes; hybrid acquisition (pay
-      upfront for quality + XP promotions). OPEN FORK to settle first: scout
-      ratings on individual scout characters (a "scout roster") vs. club-wide
-      capability.
+- [x] **Scouting system v1 (2026-07-03)** — shipped per D31: individual scout
+      characters (`state.scoutStaff`, the settled fork) with Judging Potential/
+      Ability, quality tiers at production (Volunteer/Traveled/Ace ×1/×1.75/×2.5
+      in `data/scouts.ts`), fieldwork XP → promotions (+1 weaker judging attr /
+      5 XP), and **Establish Scouting Network** (scout + `scouting-reports`,
+      2 months beside a contacted indie → prospects revealed with real seeded
+      identities, +10 influence, +5 XP). UI: tier picker in ProductionPanel,
+      Scouting Staff section in ClubHQ Personnel, revealed pipeline in the
+      Independents ledger, network order in the map unit overlay. Validated
+      headless (23 assertions). STILL AHEAD from D29: rival networks / Anchor
+      Club race, recruiting revealed prospects (Act III), pro/spy scout + GM +
+      standing-scout eras, fog-of-talent (below).
 - [ ] **Fog-of-talent (DECISIONS D29, docs/13 §6.3).** Scouted player attributes
       become confidence RANGES set by an info-provenance ladder (tryout > your
       scout > indie's word > rival rumor); Potential and Ability are separate

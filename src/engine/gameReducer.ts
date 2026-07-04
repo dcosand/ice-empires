@@ -10,12 +10,14 @@ import {
 } from "./world";
 import {
   allScouts,
+  establishNetwork,
   moveScout,
   recruitScout,
   resolvePendingEncounter,
   selectScout,
   triggerPondEncounter,
 } from "./scoutSystem";
+import { ensureScoutCharacters } from "./scoutStaff";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
 import { closeTryouts, holdTryouts, recruitPlayer } from "./tryoutSystem";
 import {
@@ -86,7 +88,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       const seeded = beginFounding(withWorld, state.selectedClubId);
       const club = seeded.club;
       if (!club || !seeded.world?.founder) return seeded;
-      const placed = foundOnTile(seeded);
+      // The starting scout is a person too — give them a volunteer character.
+      const placed = ensureScoutCharacters(foundOnTile(seeded));
       return {
         ...placed,
         eventLog: [
@@ -126,7 +129,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // Plant HQ on the founding tile (Founding Group -> Club Leadership, a Scout
       // takes the ice). The club + resources + Month 1 were already seeded at the
       // start of the founding turn, so this only marks the home and logs it.
-      const placed = foundOnTile(state);
+      const placed = ensureScoutCharacters(foundOnTile(state));
       return {
         ...placed,
         eventLog: [
@@ -143,7 +146,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     }
 
     case "START_PRODUCTION":
-      return startProduction(state, action.kind, action.itemId);
+      return startProduction(state, action.kind, action.itemId, action.scoutTier);
 
     case "CANCEL_PRODUCTION":
       return cancelProduction(state);
@@ -155,7 +158,7 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       return cancelResearch(state);
 
     case "RECRUIT_SCOUT":
-      return recruitScout(state);
+      return ensureScoutCharacters(recruitScout(state));
 
     case "SELECT_SCOUT":
       return selectScout(state, action.scoutId);
@@ -198,6 +201,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "SEND_INTRODUCTION":
       return sendIntroduction(state, action.orgId);
+
+    case "ESTABLISH_NETWORK":
+      return establishNetwork(state, action.unitId, action.orgId);
 
     case "RESOLVE_ENCOUNTER":
       // Resolving may stage a player reveal (wanderer); if so the retry bails

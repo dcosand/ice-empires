@@ -5,6 +5,7 @@ import type {
   GameState,
   ResourceKey,
   ResourceSet,
+  ScoutQualityTier,
 } from "../types/game";
 import {
   canCancelProduction,
@@ -12,6 +13,8 @@ import {
   productionItemName,
   type ProductionOption,
 } from "../engine/productionSystem";
+import { scoutTierCost } from "../engine/scoutStaff";
+import { SCOUT_TIERS } from "../data/scouts";
 import { ItemArt } from "./ItemArt";
 import { playSfx } from "../engine/sfx";
 
@@ -59,6 +62,8 @@ export function ProductionPanel({
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailKey, setDetailKey] = useState<string | null>(null);
+  // Quality tier for scout-spawning units (D29): reset per selection.
+  const [scoutTier, setScoutTier] = useState<ScoutQualityTier>("volunteer");
 
   const selected = lookup.find((o) => keyOf(o) === selectedKey) ?? null;
   const detail = lookup.find((o) => keyOf(o) === detailKey) ?? null;
@@ -76,13 +81,25 @@ export function ProductionPanel({
       setDetailKey(keyOf(o));
       return;
     }
+    setScoutTier("volunteer");
     setSelectedKey((cur) => (cur === keyOf(o) ? null : keyOf(o)));
   };
 
+  const tierAffordable = (o: ProductionOption, tier: ScoutQualityTier) =>
+    funds >= scoutTierCost(o.fundsCost, tier);
+
   const confirmStart = () => {
-    if (!selected || !selectable(selected) || !selected.affordable) return;
+    if (!selected || !selectable(selected)) return;
+    if (selected.spawnsScout ? !tierAffordable(selected, scoutTier) : !selected.affordable) {
+      return;
+    }
     playSfx("confirm");
-    dispatch({ type: "START_PRODUCTION", kind: selected.kind, itemId: selected.id });
+    dispatch({
+      type: "START_PRODUCTION",
+      kind: selected.kind,
+      itemId: selected.id,
+      ...(selected.spawnsScout ? { scoutTier } : {}),
+    });
     setSelectedKey(null);
   };
 
@@ -121,6 +138,9 @@ export function ProductionPanel({
         slotBusy={slotBusy}
         activeName={activeName}
         cancellable={cancellable}
+        scoutTier={scoutTier}
+        onPickTier={setScoutTier}
+        tierAffordable={tierAffordable}
         onConfirm={confirmStart}
         onCancel={() => setSelectedKey(null)}
         onCancelActive={() => dispatch({ type: "CANCEL_PRODUCTION" })}
@@ -226,6 +246,9 @@ function ConfirmBar({
   slotBusy,
   activeName,
   cancellable,
+  scoutTier,
+  onPickTier,
+  tierAffordable,
   onConfirm,
   onCancel,
   onCancelActive,
@@ -234,6 +257,9 @@ function ConfirmBar({
   slotBusy: boolean;
   activeName: string;
   cancellable: boolean;
+  scoutTier: ScoutQualityTier;
+  onPickTier: (tier: ScoutQualityTier) => void;
+  tierAffordable: (o: ProductionOption, tier: ScoutQualityTier) => boolean;
   onConfirm: () => void;
   onCancel: () => void;
   onCancelActive: () => void;
@@ -263,6 +289,13 @@ function ConfirmBar({
   }
 
   const upfront = upfrontChips(selected.upfrontCost);
+  const startable = selected.spawnsScout
+    ? tierAffordable(selected, scoutTier)
+    : selected.affordable;
+  const costLine = selected.spawnsScout
+    ? `${scoutTierCost(selected.fundsCost, scoutTier)} Funds upfront`
+    : `${upfront || "Free"} upfront`;
+
   return (
     <div className="prod-confirm ready">
       <div className="prod-confirm-info">
@@ -270,9 +303,33 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {upfront || "Free"} upfront · {selected.buildMonths} month
+            {costLine} · {selected.buildMonths} month
             {selected.buildMonths === 1 ? "" : "s"} to build
           </div>
+          {selected.spawnsScout && (
+            <div className="prod-tier-row" role="radiogroup" aria-label="Scout quality">
+              {SCOUT_TIERS.map((t) => {
+                const cost = scoutTierCost(selected.fundsCost, t.tier);
+                const afford = tierAffordable(selected, t.tier);
+                return (
+                  <button
+                    key={t.tier}
+                    type="button"
+                    role="radio"
+                    aria-checked={scoutTier === t.tier}
+                    className={`prod-tier-chip${scoutTier === t.tier ? " on" : ""}${
+                      afford ? "" : " unaffordable"
+                    }`}
+                    title={t.blurb}
+                    onClick={() => onPickTier(t.tier)}
+                  >
+                    <span className="prod-tier-name">{t.name}</span>
+                    <span className="prod-tier-cost">{cost} Funds</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <div className="prod-confirm-actions">
@@ -281,7 +338,7 @@ function ConfirmBar({
         </button>
         <button
           className="btn btn-primary"
-          disabled={!selected.affordable}
+          disabled={!startable}
           onClick={confirmGuard(onConfirm)}
         >
           Start Building

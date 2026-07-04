@@ -271,3 +271,30 @@ longer gates End Turn — with upfront costs, saving for a bigger purchase is a
 legitimate play, so forcing a build would punish it. Research still gates.
 Revert = make `productionUpfrontCost` HK-only and restore the income-fed
 progress loop in `progressProduction`.
+
+## D31 — Scout characters live on an individual scout roster (SHIPPED 2026-07-03)
+The D29 open fork is settled with the owner: scout ratings live on INDIVIDUAL
+scout characters (`state.scoutStaff: ScoutCharacter[]`), not a club-wide
+capability. Each map scout unit is a named person (`ScoutCharacter.id` ===
+the WorldUnit id) with Judging Potential + Judging Ability on the shared
+20-point scale. Hybrid acquisition per D29:
+- **Pay upfront** (rides on D30): a quality tier picked at production —
+  Keen Volunteer ×1 (attrs 2–5), Traveled Scout ×1.75 (5–9), Ace ×2.5 (9–14).
+  Tiers/multipliers in `data/scouts.ts`; the tier picker lives in the
+  ProductionPanel confirm bar for `spawnsMapUnit: "scout"` units.
+- **Promote through fieldwork** (Civ-XP): +2 XP goodie hut, +3 first contact
+  with an org, +5 establishing a scouting network. Every 5 XP = a promotion
+  (+1 to the WEAKER judging attribute, ties favor Potential), applied in the
+  monthly sweep (`scoutStaff.applyScoutPromotions`).
+- The founding scout gets a free volunteer character; builders never get
+  characters.
+
+**Establish Scouting Network** (docs/13 §4.5) also shipped: a scout with
+`scouting-reports` parked adjacent to a CONTACTED independent runs a 2-month
+`working` task (reuses the builder `working` shape, now the `UnitWork` union)
+→ `org.networkedByPlayer`, +10 influence, prospects revealed with real seeded
+names/ages/attrs, +5 scout XP. Prospect attrs are TRUE values for now —
+fog-of-talent (D29 task) will blur them by the scout's judging ratings.
+NOT yet: rival networks / Anchor Club race, recruiting revealed prospects
+(Act III per docs/13 §6.1), era requirement wiring (club-formation exit list
+is still empty by design — a partial checklist would advance the era early).

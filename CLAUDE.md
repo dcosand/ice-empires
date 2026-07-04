@@ -83,7 +83,14 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   Contact → +1 rep, +5 influence; tiers Contacted/Friendly/Partner/Affiliate at
   0/10/25/50 influence; `SEND_INTRODUCTION` (needs `first-contact` tech, rep≥3,
   1 fund); rivals mark `contactedByClubIds` by adjacency; prospects are seeded
-  at worldgen and stay fogged until Act-2 scouting networks.
+  at worldgen and stay fogged until a scouting network reveals them.
+- **Scout characters (D31)**: every map scout is a person in `state.scoutStaff`
+  (id === WorldUnit id) with Judging Potential/Ability (20-scale). Quality tier
+  paid at production (Volunteer/Traveled/Ace ×1/×1.75/×2.5 — `data/scouts.ts`);
+  fieldwork XP (+2 hut, +3 first contact, +5 network) promotes the weaker attr
+  every 5 XP (`scoutStaff.applyScoutPromotions`). `ESTABLISH_NETWORK`: a scout
+  with `scouting-reports` parks 2 months beside a contacted independent
+  (`working` task, `UnitWork` union) → prospects revealed, +10 influence.
 - **Club uniques**: `data/clubUniques.ts`. Use `unitsForClub`/`facilitiesForClub`
   for what a club can BUILD, and `ALL_UNIT_DEFS_BY_ID`/`ALL_FACILITY_DEFS_BY_ID`
   for LOOKUPS (raw `UNITS_BY_ID`/`FACILITIES_BY_ID` miss uniques). Wired hooks:

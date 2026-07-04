@@ -3,6 +3,7 @@ import type {
   ProductionKind,
   ResourceKey,
   ResourceSet,
+  ScoutQualityTier,
   UnitDef,
 } from "../types/game";
 import {
@@ -19,6 +20,7 @@ import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
 import { spawnProducedScout } from "./scoutSystem";
 import { spawnProducedBuilder } from "./builderSystem";
+import { scoutTierCost } from "./scoutStaff";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
 // slot. The FULL cost (Funds + any hockeyKnowledge) is charged upfront when
@@ -39,16 +41,20 @@ export function productionFundsCost(kind: ProductionKind, itemId: string): numbe
 }
 
 // The full cost charged when production starts (reputation is a standing stat
-// and should never appear as a cost).
+// and should never appear as a cost). A scout quality tier scales the funds
+// price (D29 hybrid acquisition).
 export function productionUpfrontCost(
   kind: ProductionKind,
   itemId: string,
+  scoutTier?: ScoutQualityTier,
 ): Partial<ResourceSet> {
   const cost =
     kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId]?.cost : ALL_UNIT_DEFS_BY_ID[itemId]?.cost;
   if (!cost) return {};
   const upfront: Partial<ResourceSet> = {};
-  if (cost.funds) upfront.funds = cost.funds;
+  if (cost.funds) {
+    upfront.funds = scoutTier ? scoutTierCost(cost.funds, scoutTier) : cost.funds;
+  }
   if (cost.hockeyKnowledge) upfront.hockeyKnowledge = cost.hockeyKnowledge;
   return upfront;
 }
@@ -57,8 +63,9 @@ export function canAffordUpfront(
   state: GameState,
   kind: ProductionKind,
   itemId: string,
+  scoutTier?: ScoutQualityTier,
 ): boolean {
-  const upfront = productionUpfrontCost(kind, itemId);
+  const upfront = productionUpfrontCost(kind, itemId, scoutTier);
   return (Object.entries(upfront) as [ResourceKey, number][]).every(
     ([res, amt]) => state.resources[res] >= amt,
   );
@@ -104,21 +111,27 @@ export function canStartProduction(
 }
 
 // Start producing an item: validate, charge the full cost, open the slot.
+// `scoutTier` only applies to scout-spawning units (ignored otherwise).
 export function startProduction(
   state: GameState,
   kind: ProductionKind,
   itemId: string,
+  scoutTier?: ScoutQualityTier,
 ): GameState {
-  if (!canStartProduction(state, kind, itemId)) return state;
+  const def =
+    kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId] : ALL_UNIT_DEFS_BY_ID[itemId];
+  const isScoutUnit = kind === "unit" && (def as UnitDef | undefined)?.spawnsMapUnit === "scout";
+  const tier = isScoutUnit ? (scoutTier ?? "volunteer") : undefined;
 
-  const upfront = productionUpfrontCost(kind, itemId);
+  if (!canStartProduction(state, kind, itemId)) return state;
+  if (tier && !canAffordUpfront(state, kind, itemId, tier)) return state;
+
+  const upfront = productionUpfrontCost(kind, itemId, tier);
   const resources = { ...state.resources };
   for (const [res, amt] of Object.entries(upfront) as [ResourceKey, number][]) {
     resources[res] = Math.max(0, resources[res] - amt);
   }
 
-  const def =
-    kind === "facility" ? ALL_FACILITY_DEFS_BY_ID[itemId] : ALL_UNIT_DEFS_BY_ID[itemId];
   const months = Math.max(1, def?.buildMonths ?? 1);
 
   return {
@@ -129,6 +142,7 @@ export function startProduction(
       itemId,
       monthsRemaining: months,
       totalMonths: months,
+      ...(tier ? { scoutTier: tier } : {}),
     },
   };
 }
@@ -145,7 +159,7 @@ export function canCancelProduction(state: GameState): boolean {
 export function cancelProduction(state: GameState): GameState {
   if (!canCancelProduction(state)) return state;
   const prod = state.activeProduction!;
-  const upfront = productionUpfrontCost(prod.kind, prod.itemId);
+  const upfront = productionUpfrontCost(prod.kind, prod.itemId, prod.scoutTier);
   const resources = { ...state.resources };
   for (const [res, amt] of Object.entries(upfront) as [ResourceKey, number][]) {
     resources[res] += amt;
@@ -177,7 +191,7 @@ export function progressProduction(draft: GameState, push: PushLog): void {
   if (prod.kind === "facility") {
     completeFacility(draft, prod.itemId, push);
   } else {
-    completeUnit(draft, prod.itemId, push);
+    completeUnit(draft, prod.itemId, push, prod.scoutTier);
   }
 }
 
@@ -192,7 +206,12 @@ function completeFacility(draft: GameState, facilityId: string, push: PushLog): 
   }
 }
 
-function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
+function completeUnit(
+  draft: GameState,
+  unitId: string,
+  push: PushLog,
+  scoutTier?: ScoutQualityTier,
+): void {
   const def = ALL_UNIT_DEFS_BY_ID[unitId];
   if (!def) return;
   const instanceId = `${def.id}-${draft.month}-${draft.units.length}`;
@@ -205,7 +224,7 @@ function completeUnit(draft: GameState, unitId: string, push: PushLog): void {
     createdMonth: draft.month,
   });
   if (def.spawnsMapUnit === "scout") {
-    spawnProducedScout(draft, instanceId, def.name);
+    spawnProducedScout(draft, instanceId, def.name, scoutTier ?? "volunteer");
   } else if (def.spawnsMapUnit === "builder") {
     spawnProducedBuilder(draft, instanceId, def.name, def.id);
   }
@@ -238,6 +257,8 @@ export type ProductionOption = {
   affordable: boolean;
   // Club-unique unit/facility (replaces or extends the base list).
   isUnique: boolean;
+  // Unit spawns a map scout — offers the quality-tier picker (D29).
+  spawnsScout?: boolean;
 };
 
 export type ProductionOptions = {
@@ -352,6 +373,7 @@ function unitOption(state: GameState, unitId: string): ProductionOption {
     lockReason: met ? undefined : unitLockReason(state, def),
     affordable: canAffordUpfront(state, "unit", unitId),
     isUnique: isUniqueItemId(unitId),
+    spawnsScout: def.spawnsMapUnit === "scout",
   };
 }
 

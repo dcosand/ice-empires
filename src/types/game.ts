@@ -134,6 +134,30 @@ export type UnitDef = {
   abilitySummary: string;
 };
 
+// ---------------------------------------------------------------------------
+// Scout characters (D29/D31: scouts are PEOPLE, not interchangeable units)
+// ---------------------------------------------------------------------------
+
+// Quality tier chosen (and paid for) at production — the EHM job-market feel:
+// splurge on an ace or field cheap volunteer eyes. Tier sets starting ranges
+// for the two judging attributes; fieldwork XP promotes from there.
+export type ScoutQualityTier = "volunteer" | "traveled" | "ace";
+
+// A named scout on the club's scouting staff. `id` matches the WorldUnit id of
+// their map unit (scouts are unit-tied; builders never get characters).
+// Attributes are on the 20-point scale shared with players.
+export type ScoutCharacter = {
+  id: string;
+  name: string;
+  tier: ScoutQualityTier;
+  judgingPotential: number; // projecting a young player's ceiling
+  judgingAbility: number; // reading current skill accurately
+  xp: number; // fieldwork experience (encounters, contacts, networks)
+  promotions: number; // promotions already applied from XP
+  hiredMonth: number;
+  note: string; // one-line personality
+};
+
 // An organizational unit the club owns. Lives in the roster at Club HQ; no map
 // movement yet (kept deliberately separate from the world Scout unit).
 export type OwnedUnit = {
@@ -159,6 +183,9 @@ export type ActiveProduction = {
   itemId: string;
   monthsRemaining: number;
   totalMonths: number;
+  // Quality tier picked for a scout-spawning unit (affects cost + the produced
+  // ScoutCharacter's judging attributes). Absent for everything else.
+  scoutTier?: ScoutQualityTier;
 };
 
 // ---------------------------------------------------------------------------
@@ -326,6 +353,8 @@ export type PendingEncounter = {
   outcome: string; // human-readable result line shown in the pop-up
   tone: "good" | "bad" | "neutral";
   effect: EncounterEffect;
+  // The field unit that stepped on the hut — earns scout XP on resolve (D29).
+  unitId?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -414,15 +443,22 @@ export type WorldTile = {
   valid: boolean; // can be entered / founded on (water is not)
 };
 
-// What a builder is currently constructing (multi-month map work). While set,
-// the unit cannot move and its moves are not refreshed at month end.
-export type BuilderWork = {
-  task: "build-rink";
-  x: number;
-  y: number;
-  rinkKind: "ice" | "inline";
-  monthsRemaining: number;
-};
+// Multi-month map work a field unit is committed to. While set, the unit
+// cannot move and its moves are not refreshed at month end. Builders build
+// rinks; scouts establish scouting networks with independents (D29).
+export type UnitWork =
+  | {
+      task: "build-rink";
+      x: number;
+      y: number;
+      rinkKind: "ice" | "inline";
+      monthsRemaining: number;
+    }
+  | {
+      task: "establish-network";
+      orgId: string;
+      monthsRemaining: number;
+    };
 
 // A movable unit on the world (the Founding Group before founding; Scouts and
 // Builders after). All player field units share this shape and live in
@@ -436,7 +472,7 @@ export type WorldUnit = {
   y: number;
   movesPerTurn: number;
   movesRemaining: number;
-  working?: BuilderWork;
+  working?: UnitWork;
 };
 
 // A rink (or pre-rink surface) created on the map by a builder unit.
@@ -465,12 +501,16 @@ export type WorldPondMarker = {
 
 // A prospect in an independent's pipeline. Seeded at worldgen; `revealed`
 // stays false until an Act-2 scouting network uncovers the details — the
-// ledger shows a fogged "???" slot with only position + teaser.
+// ledger shows a fogged "???" slot with only position + teaser. Establishing
+// a network fills in the real identity (name/age/attrs).
 export type OrgProspect = {
   id: string;
   revealed: boolean;
   position: "F" | "D" | "G";
   teaser: string;
+  name?: string;
+  age?: number;
+  attrs?: PlayerAttrs;
 };
 
 // Relationship ladder with an independent (Civ city-state analog):
@@ -495,6 +535,9 @@ export type WorldHockeyOrg = {
   // The Anchor Club race of Act II grows out of this.
   rivalInfluence: Record<string, number>;
   prospects: OrgProspect[];
+  // The player has established a scouting network here (prospects revealed).
+  networkedByPlayer?: boolean;
+  networkMonth?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -578,6 +621,7 @@ export type GameState = {
   // produced by the Equipment Shed, consumed 1-per-player to gear recruits.
   equipment: number;
   roster: Player[]; // recruited players (the actual team)
+  scoutStaff: ScoutCharacter[]; // named scouts tied to map scout units (D29)
   pendingTryout: PendingTryout | null; // open tryout modal, if any
   // A newly-signed player awaiting their reveal cinematic (see PlayerReveal).
   pendingPlayerReveal: PlayerReveal | null;
@@ -611,7 +655,13 @@ export type GameAction =
   | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
-  | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
+  | {
+      type: "START_PRODUCTION";
+      kind: ProductionKind;
+      itemId: string;
+      // Quality tier for scout-spawning units (defaults to "volunteer").
+      scoutTier?: ScoutQualityTier;
+    }
   // Change of heart — allowed until the first End Turn applies progress.
   | { type: "CANCEL_PRODUCTION" }
   | { type: "SELECT_RESEARCH"; techId: string }
@@ -632,8 +682,11 @@ export type GameAction =
   | { type: "CLOSE_TRYOUTS" }
   // Dismiss the first-player / goodie-hut reveal cinematic.
   | { type: "ACKNOWLEDGE_PLAYER_REVEAL" }
-  // ---- independents ----
+  // ---- independents / scouting ----
   | { type: "SEND_INTRODUCTION"; orgId: string }
+  // Park a scout beside a contacted independent for 2 months to reveal their
+  // prospect pipeline (Act II scouting network, docs/13 §4.5).
+  | { type: "ESTABLISH_NETWORK"; unitId: string; orgId: string }
   | { type: "END_MONTH" }
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----

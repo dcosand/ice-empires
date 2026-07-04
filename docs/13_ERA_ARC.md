@@ -215,10 +215,15 @@ Two attributes, both improving with experience:
 - **Earn promotions** through fieldwork (Civ-XP: networking indies, hut
   campfires). Every scout grows an arc.
 
-Open question for the implementing agent: do scout ratings live on **individual
-scout characters** (a "scout roster" like the player roster — the owner leaned
-this way) or a **club-wide capability** derived from reputation/hockey knowledge?
-Decide before building.
+~~Open question for the implementing agent: do scout ratings live on individual
+scout characters (a "scout roster" like the player roster — the owner leaned
+this way) or a club-wide capability derived from reputation/hockey knowledge?
+Decide before building.~~ **SETTLED 2026-07-03 (D31): individual scout
+characters.** Shipped as `state.scoutStaff` — named scouts tied to map units,
+tiers Volunteer/Traveled/Ace picked at production, promotions every 5 fieldwork
+XP (+1 to the weaker judging attribute). §4.5's Establish Scouting Network
+shipped alongside (see D31 for what's still ahead: rival networks, recruiting
+revealed prospects, the later-era scout types of §6.1).
 
 ### 6.3 Fog-of-talent (information provenance)
 

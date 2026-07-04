@@ -37,6 +37,7 @@ import {
 import {
   activeScout,
   allScouts,
+  networkTargetOrg,
 } from "../engine/scoutSystem";
 import {
   canBuildRink,
@@ -274,7 +275,12 @@ function drawScene(
       // construction on this tile draws the scaffold variant instead.
       const rink = world.rinks.find((r) => r.x === gx && r.y === gy);
       const buildingHere =
-        scouts.some((u) => u.working && u.working.x === gx && u.working.y === gy) ||
+        scouts.some(
+          (u) =>
+            u.working?.task === "build-rink" &&
+            u.working.x === gx &&
+            u.working.y === gy,
+        ) ||
         world.rivals.some((rv) =>
           rv.units.some(
             (u) => u.workingMonths !== undefined && u.x === gx && u.y === gy,
@@ -2670,9 +2676,12 @@ function UnitOverlay({
   const showBuildRink = isBuilder && canBuildRink(state, unitId);
   const showPave = isBuilder && canPaveStreetRink(state, unitId);
   const showHarvest = isBuilder && canHarvestBranches(state, unitId);
+  // Scout order: park beside a contacted independent to open their pipeline.
+  const networkOrg =
+    !isLeader && !isBuilder ? networkTargetOrg(state, unitId) : null;
   const hasOrder = isLeader
     ? !!club
-    : showClearSnow || showBuildRink || showPave || showHarvest;
+    : showClearSnow || showBuildRink || showPave || showHarvest || !!networkOrg;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -2742,6 +2751,16 @@ function UnitOverlay({
               Harvest Branches (+2 Equipment)
             </button>
           )}
+          {networkOrg && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "ESTABLISH_NETWORK", unitId, orgId: networkOrg.id })
+              }
+            >
+              Establish Scouting Network (2 mo)
+            </button>
+          )}
           {!isLeader && (
             <button
               className="btn btn-block"
@@ -2754,8 +2773,15 @@ function UnitOverlay({
         {working ? (
           <div className="unit-hint muted">
             Working —{" "}
-            {working.rinkKind === "ice" ? "building a rink" : "paving a rink"},{" "}
-            {working.monthsRemaining} mo to go.
+            {working.task === "establish-network"
+              ? `building a scouting network with ${
+                  world.hockeyOrgs.find((o) => o.id === working.orgId)?.name ??
+                  "the independents"
+                }`
+              : working.rinkKind === "ice"
+                ? "building a rink"
+                : "paving a rink"}
+            , {working.monthsRemaining} mo to go.
           </div>
         ) : (
           !hasOrder && (

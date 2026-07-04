@@ -5,6 +5,8 @@ import type {
 } from "../types/game";
 import { isAdjacent } from "./world";
 import { allScouts } from "./scoutSystem";
+import { awardScoutXp, awardScoutXpDraft } from "./scoutStaff";
+import { SCOUT_XP_FIRST_CONTACT } from "../data/scouts";
 import { prependLog } from "./log";
 import type { PushLog } from "./turnContext";
 
@@ -80,7 +82,9 @@ export function triggerIndependentContact(
     (o) => !o.playerContacted && isAdjacentOrSame({ x, y }, o),
   );
   if (!org) return state;
-  return makeContact(state, org.id);
+  // First contact is fieldwork — the scout who walked there earns XP (D29).
+  const finder = allScouts(world).find((s) => s.x === x && s.y === y);
+  return awardScoutXp(makeContact(state, org.id), finder?.id, SCOUT_XP_FIRST_CONTACT);
 }
 
 // Monthly sweep: a unit parked beside an org (or an org discovered by other
@@ -95,6 +99,8 @@ export function checkIndependentContact(draft: GameState, push: PushLog): void {
     (o) => !o.playerContacted && units.some((u) => isAdjacentOrSame(u, o)),
   );
   if (!org) return;
+  const finder = units.find((u) => isAdjacentOrSame(u, org));
+  awardScoutXpDraft(draft, finder?.id, SCOUT_XP_FIRST_CONTACT);
   const firstMover = org.contactedByClubIds.length === 0;
   const rep = FIRST_CONTACT_REPUTATION + (firstMover ? FIRST_MOVER_REPUTATION : 0);
   const inf = FIRST_CONTACT_INFLUENCE + (firstMover ? FIRST_MOVER_INFLUENCE : 0);

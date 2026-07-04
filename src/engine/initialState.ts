@@ -19,6 +19,7 @@ export function createInitialState(): GameState {
     resources: { ...EMPTY_RESOURCES },
     equipment: 0,
     roster: [],
+    scoutStaff: [],
     pendingTryout: null,
     pendingPlayerReveal: null,
     seenFirstTryout: false,

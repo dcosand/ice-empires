@@ -1,6 +1,11 @@
 import { useState } from "react";
 import type { Dispatch } from "react";
-import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
+import type {
+  GameAction,
+  GameState,
+  OrgProspect,
+  WorldHockeyOrg,
+} from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { hockeyOrgDisplayName } from "../engine/world";
 import { turnDateLabel } from "../engine/calendar";
@@ -16,6 +21,21 @@ import {
   leadingSuitor,
   tierName,
 } from "../engine/independentsSystem";
+
+// Compact attribute readout for a revealed prospect ("Sk 5 · Sh 4 · Pa 6…").
+function prospectAttrLine(p: OrgProspect): string {
+  const a = p.attrs!;
+  const parts =
+    p.position === "G"
+      ? [`Gt ${a.goaltending}`, `Sk ${a.skating}`, `Pa ${a.passing}`]
+      : [
+          `Sk ${a.skating}`,
+          `Sh ${a.shooting}`,
+          `Pa ${a.passing}`,
+          `Ch ${a.checking}`,
+        ];
+  return parts.join(" · ");
+}
 
 // The Independents ledger — list view (one row per org, built to scale to a
 // dozen-plus contacts) with a detail view per independent holding the prospect
@@ -306,15 +326,28 @@ function IndependentDetail({
                         {p.position}
                       </span>
                     </td>
-                    <td className="pp-name">{p.revealed ? p.id : "???"}</td>
-                    <td className="pp-teaser">“{p.teaser}”</td>
+                    <td className="pp-name">
+                      {p.revealed && p.name ? (
+                        <>
+                          {p.name}
+                          {p.age ? <span className="pp-age"> · {p.age}</span> : null}
+                        </>
+                      ) : (
+                        "???"
+                      )}
+                    </td>
+                    <td className="pp-teaser">
+                      {p.revealed && p.attrs ? prospectAttrLine(p) : `“${p.teaser}”`}
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="faint indy-foot-note">
-            A scouting network (next era) reveals who they actually are.
+            {org.networkedByPlayer
+              ? "Your scouting network keeps this pipeline open — real names, real reads."
+              : "Park a scout beside them for two months to establish a scouting network and reveal who they actually are."}
           </div>
 
           <div className="indy-col-title">The race for their favor</div>
