@@ -38,6 +38,7 @@ import { AttrBar } from "./TryoutScreen";
 import { PlayerHeadshot } from "./HockeyCard";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
+import { primeTryoutMusic } from "./BackgroundMusic";
 
 export type HQTab =
   | "overview"
@@ -333,7 +334,10 @@ function TeamTab({
           className="btn btn-gold"
           disabled={!canHoldTryouts(state)}
           title={tryoutGateHint(gate)}
-          onClick={() => dispatch({ type: "HOLD_TRYOUTS" })}
+          onClick={() => {
+            primeTryoutMusic();
+            dispatch({ type: "HOLD_TRYOUTS" });
+          }}
         >
           Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
         </button>

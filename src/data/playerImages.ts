@@ -8,7 +8,10 @@ const MALE_SKATER_PLAYER = numbered("skater-player", 8);
 const MALE_SKATER_PROSPECT = numbered("skater-prospect", 8);
 const FEMALE_SKATER_PLAYER = numbered("female-skater", 4);
 const FEMALE_PROSPECT = numbered("female-prospect", 6);
-const GOALIE_PROSPECT = numbered("goalie-prospect", 2);
+const MALE_GOALIE_PLAYER = numbered("goalie-player", 6);
+const MALE_GOALIE_PROSPECT = numbered("goalie-prospect", 5);
+const FEMALE_GOALIE_PLAYER = numbered("female-goalie-player", 2);
+const FEMALE_GOALIE_PROSPECT = numbered("female-goalie-prospect", 2);
 
 function numbered(base: string, count: number): string[] {
   return Array.from(
@@ -36,7 +39,13 @@ export function playerImageFor({
 }): string {
   const pool =
     position === "G"
-      ? GOALIE_PROSPECT
+      ? gender === "female"
+        ? kind === "prospect"
+          ? FEMALE_GOALIE_PROSPECT
+          : FEMALE_GOALIE_PLAYER
+        : kind === "prospect"
+          ? MALE_GOALIE_PROSPECT
+          : MALE_GOALIE_PLAYER
       : gender === "female"
         ? kind === "prospect"
           ? FEMALE_PROSPECT

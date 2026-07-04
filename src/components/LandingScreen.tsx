@@ -1,8 +1,8 @@
 import type { Dispatch } from "react";
 import type { GameAction } from "../types/game";
 
-const TITLE_BG = "/assets/title%20screen%20background.png";
-const TITLE_LOGO = "/assets/ice%20empires%20logo.png";
+const TITLE_BG = "/assets/images/title%20screen%20background.png";
+const TITLE_LOGO = "/assets/images/ice%20empires%20logo.png";
 
 export function LandingScreen({
   dispatch,

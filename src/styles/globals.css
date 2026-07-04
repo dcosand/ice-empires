@@ -1290,13 +1290,15 @@ button {
 
 /* ---------- TopBar club logo ---------- */
 .topbar-club {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 68px;
+  padding: 4px 8px 4px clamp(220px, 22vw, 300px);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 4px 8px;
   margin: -4px -8px;
   cursor: pointer;
   text-align: left;
@@ -1311,9 +1313,9 @@ button {
   cursor: default;
 }
 .topbar-logo {
-  height: 68px;
+  height: clamp(118px, 9vw, 150px);
   width: auto;
-  max-width: 84px;
+  max-width: clamp(138px, 12vw, 190px);
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
@@ -4248,26 +4250,52 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  background: #07101a;
+}
+.tryout-scrimmage-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.56;
+  filter: saturate(0.88) brightness(0.74);
+  transform: scale(1.03);
+}
+.tryout-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(95% 70% at 50% 38%, rgba(12, 29, 45, 0.14) 0%, rgba(5, 10, 16, 0.78) 74%),
+    linear-gradient(180deg, rgba(3, 8, 13, 0.46), rgba(3, 8, 13, 0.8));
+  pointer-events: none;
 }
 .tryout-sheet {
   position: relative;
   z-index: 1;
-  width: min(1040px, 94vw);
-  max-height: 86vh;
-  overflow-y: auto;
-  background: var(--panel);
+  width: 100vw;
+  height: 100dvh;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 25, 38, 0.72);
   border: 1px solid var(--border);
   border-top: 3px solid var(--club-accent, var(--accent));
-  border-radius: 14px;
-  padding: 22px 24px;
+  border-radius: 0;
+  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3.8vw, 56px);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
 }
 .tryout-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: clamp(8px, 1.5vh, 16px);
+  flex: 0 0 auto;
 }
 .tryout-head h2 {
   margin: 2px 0 6px;
@@ -4359,6 +4387,15 @@ button {
   color: var(--good);
   font-weight: 700;
   padding: 7px 0;
+}
+.tryout-card-actions {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(110px, 1fr);
+  gap: 8px;
+}
+.tryout-card-actions .btn {
+  width: 100%;
+  min-height: 36px;
 }
 .tryout-foot {
   margin-top: 12px;
@@ -4891,9 +4928,9 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  min-width: 56px;
-  padding: 7px 8px 6px;
+  gap: 4px;
+  min-width: 80px;
+  padding: 10px 12px 8px;
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
@@ -4967,18 +5004,24 @@ button {
 
 /* TopBar identity: leader portrait beside the crest */
 .topbar-identity {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 .topbar-leader {
-  width: 40px;
-  height: 40px;
+  width: clamp(84px, 6.8vw, 100px);
+  height: clamp(84px, 6.8vw, 100px);
   border-radius: 50%;
   object-fit: cover;
   object-position: top center;
-  border: 2px solid var(--club-secondary, var(--accent));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--club-secondary, var(--accent));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.58);
 }
 
 /* Met-rivals strip (Civ-style leader row, top-center of the map) */
@@ -5004,8 +5047,8 @@ button {
   box-shadow: var(--shadow);
 }
 .rival-face {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid var(--border-bright);
@@ -5127,8 +5170,8 @@ button {
 
 /* Tryouts: hockey-card breathing room on a wide sheet */
 .tryout-sheet {
-  width: min(1560px, 96vw);
-  padding: 30px 34px;
+  width: 100vw;
+  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3.8vw, 56px);
 }
 .tryout-head h2 { font-size: 30px; }
 .tryout-head .muted { font-size: 15px; }
@@ -5327,6 +5370,8 @@ button {
    =========================================================================== */
 .hockey-card {
   --card-w: 300px;
+  --portrait-ratio: 4 / 3;
+  --portrait-position: 50% 18%;
   width: var(--card-w);
   max-width: 82vw;
   aspect-ratio: 3 / 4.28;
@@ -5412,7 +5457,7 @@ button {
 .hc-portrait {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
+  aspect-ratio: var(--portrait-ratio);
   overflow: hidden;
   border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   background: #08111b;
@@ -5450,7 +5495,7 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
-  object-position: 50% 18%;
+  object-position: var(--portrait-position);
 }
 .hc-headshot-fallback {
   display: contents;
@@ -5513,18 +5558,21 @@ button {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 0 2px;
+  padding: clamp(10px, 1.8vh, 22px) 0 clamp(6px, 1vh, 12px);
+  flex: 0 0 clamp(360px, 44vh, 520px);
+  min-height: 0;
 }
 .carousel-viewport {
   flex: 1;
   overflow: hidden;
+  min-height: 0;
 }
 .carousel-track {
   display: flex;
-  gap: 26px;
+  gap: 24px;
   align-items: center;
   /* 50% padding resolves against the viewport width → focal cell centres */
-  padding: 0 calc(50% - 150px);
+  padding: 0 calc(50% - 160px);
   transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
 }
 .carousel-cell {
@@ -5533,10 +5581,27 @@ button {
   justify-content: center;
   transition: transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease;
 }
-.carousel-cell .hockey-card { --card-w: 300px; }
+.carousel-cell .hockey-card {
+  --card-w: min(320px, 74vw);
+  --portrait-ratio: 16 / 9;
+  --portrait-position: 50% 24%;
+}
+.tryout-screen .hc-front {
+  gap: 7px;
+  padding-bottom: 12px;
+}
+.tryout-screen .hc-ident { padding: 10px 16px 1px; }
+.tryout-screen .hc-name { font-size: 19px; }
+.tryout-screen .hc-attrs { gap: 5px; padding: 0 16px; }
+.tryout-screen .hc-note {
+  font-size: 12.5px;
+  line-height: 1.35;
+  padding: 0 16px;
+}
+.tryout-screen .hc-footer { padding: 0 16px; }
 .carousel-cell.side {
-  transform: scale(0.84);
-  opacity: 0.4;
+  transform: scale(0.86);
+  opacity: 0.48;
   filter: saturate(0.7);
   cursor: pointer;
 }
@@ -5560,7 +5625,8 @@ button {
   display: flex;
   justify-content: center;
   gap: 8px;
-  margin-top: 12px;
+  margin-top: 0;
+  flex: 0 0 auto;
 }
 .pack-dot {
   width: 10px;
@@ -5573,12 +5639,35 @@ button {
 }
 .pack-dot.active { background: var(--club-accent, var(--accent)); transform: scale(1.2); }
 .pack-dot.recruited { background: var(--good); }
+.tryout-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 0 0 auto;
+  margin-top: 10px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tryout-actions-status {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+.tryout-actions-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
 
 /* Roster compare table: "is this hopeful better than my current line?" */
 .tryout-compare {
-  margin-top: 16px;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
+  margin-top: clamp(8px, 1.2vh, 14px);
+  padding-top: 0;
+  flex: 1 1 auto;
+  min-height: 112px;
+  overflow: hidden;
 }
 .compare-head {
   font-size: 13px;
@@ -5587,7 +5676,10 @@ button {
   margin-bottom: 8px;
 }
 .compare-sub { font-weight: 400; opacity: 0.8; }
-.compare-scroll { overflow-x: auto; }
+.compare-scroll {
+  overflow: auto;
+  max-height: min(250px, calc(100dvh - 740px));
+}
 .compare-table {
   width: 100%;
   border-collapse: collapse;
@@ -5625,6 +5717,31 @@ button {
 }
 .c-better { color: var(--good); font-weight: 700; }
 .c-arrow { font-size: 10px; }
+
+@media (max-width: 720px) {
+  .tryout-head {
+    flex-direction: column;
+  }
+  .tryout-head > .btn {
+    align-self: stretch;
+  }
+  .tryout-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .tryout-actions-buttons {
+    justify-content: stretch;
+  }
+  .tryout-actions-buttons .btn {
+    flex: 1 1 0;
+  }
+  .tryout-card-actions {
+    grid-template-columns: 1fr;
+  }
+  .tryout-carousel {
+    flex-basis: clamp(330px, 48vh, 440px);
+  }
+}
 
 /* ===========================================================================
    Player reveal cinematic — the signing moment (first player / goodie hut)
@@ -5786,4 +5903,45 @@ button {
 .pp-age {
   opacity: 0.65;
   font-size: 0.92em;
+}
+
+/* Full-color PNG dock icons (eras/independents/people/scouting). Unlike the
+   game-icons SVGs these ship already styled, so skip the invert filter. */
+.dock-btn img.dock-btn-png {
+  filter: none;
+  object-fit: contain;
+  width: 58px;
+  height: 58px;
+}
+
+/* Global scouting board (ScoutingScreen) — roster + all scouted prospects. */
+.scouting-panel .indy-col-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.scouting-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0a1018;
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.scouting-table .scouting-source {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.scouting-flag {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f0b24a;
+  border: 1px solid rgba(240, 178, 74, 0.5);
+  border-radius: 5px;
+  padding: 1px 5px;
+  vertical-align: middle;
 }

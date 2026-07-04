@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, Player, PlayerAttrs } from "../types/game";
+import { clubAsset } from "../data/clubs";
 import { ROSTER_CAP } from "../engine/tryoutSystem";
 import { turnDateLabel } from "../engine/calendar";
 import { playSfx } from "../engine/sfx";
@@ -16,8 +17,8 @@ export { AttrBar } from "./HockeyCard";
 
 // One card width + gap, in px — the carousel translates the track by whole
 // cells to centre the focused hopeful.
-const CELL = 300;
-const GAP = 26;
+const CELL = 320;
+const GAP = 24;
 
 // The tryout: curious locals wobble onto your rink and you glide through them
 // like a carousel of hockey cards, comparing each against the players you
@@ -60,6 +61,15 @@ export function TryoutScreen({
     });
   };
 
+  const finishTryouts = () => dispatch({ type: "CLOSE_TRYOUTS" });
+  const goNextOrFinish = () => {
+    if (index >= candidates.length - 1) {
+      finishTryouts();
+      return;
+    }
+    go(1);
+  };
+
   const sheetStyle = {
     "--club-accent": club?.accent ?? "#38bdf8",
   } as CSSProperties;
@@ -77,14 +87,15 @@ export function TryoutScreen({
       aria-modal="true"
       aria-label="Local tryouts"
     >
-      {cinematic ? (
-        <>
-          <div className="meeting-letterbox top" />
-          <div className="meeting-letterbox bottom" />
-        </>
-      ) : (
-        <div className="founding-moment-scrim" />
+      {club && (
+        <img
+          className="tryout-scrimmage-bg"
+          src={clubAsset(club, "scrimmage")}
+          alt=""
+          onError={(e) => (e.currentTarget.style.display = "none")}
+        />
       )}
+      <div className="tryout-bg-vignette" />
       <div className="tryout-sheet">
         <div className="tryout-head">
           <div>
@@ -104,12 +115,6 @@ export function TryoutScreen({
               {state.equipment}
             </p>
           </div>
-          <button
-            className="btn btn-primary"
-            onClick={() => dispatch({ type: "CLOSE_TRYOUTS" })}
-          >
-            End Tryout
-          </button>
         </div>
 
         <div className="tryout-carousel">
@@ -144,19 +149,27 @@ export function TryoutScreen({
                         recruited ? (
                           <div className="tryout-joined">✓ Joined the club</div>
                         ) : focal ? (
-                          <button
-                            className="btn btn-gold btn-block"
-                            disabled={rosterFull}
-                            onClick={() => {
-                              playSfx("recruit");
-                              dispatch({
-                                type: "RECRUIT_PLAYER",
-                                candidateId: c.id,
-                              });
-                            }}
-                          >
-                            Recruit
-                          </button>
+                          <div className="tryout-card-actions">
+                            <button
+                              className="btn"
+                              onClick={goNextOrFinish}
+                            >
+                              Pass
+                            </button>
+                            <button
+                              className="btn btn-gold"
+                              disabled={rosterFull}
+                              onClick={() => {
+                                playSfx("recruit");
+                                dispatch({
+                                  type: "RECRUIT_PLAYER",
+                                  candidateId: c.id,
+                                });
+                              }}
+                            >
+                              Recruit
+                            </button>
+                          </div>
                         ) : undefined
                       }
                     />
@@ -189,6 +202,25 @@ export function TryoutScreen({
               }`}
             />
           ))}
+        </div>
+
+        <div className="tryout-actions" aria-label="Tryout actions">
+          <div className="tryout-actions-status">
+            Hopeful {index + 1}/{candidates.length} · {remaining.length} unsigned
+          </div>
+          <div className="tryout-actions-buttons">
+            <button className="btn" onClick={() => go(-1)} disabled={index <= 0}>
+              Previous
+            </button>
+            {index < candidates.length - 1 && (
+              <button className="btn" onClick={goNextOrFinish}>
+                Next Hopeful
+              </button>
+            )}
+            <button className="btn btn-primary" onClick={finishTryouts}>
+              Finish Tryouts
+            </button>
+          </div>
         </div>
 
         {current && !isRecruited && (

@@ -21,6 +21,7 @@ import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
 import { RivalMeetingScreen } from "./RivalMeetingScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
+import { ScoutingScreen } from "./ScoutingScreen";
 import { EventLog } from "./EventLog";
 import { EraProgressPanel } from "./EraProgressPanel";
 import { getAvailableResearch, getEraProgress } from "../engine/selectors";
@@ -43,13 +44,15 @@ import { PlayerRevealScene } from "./PlayerRevealScene";
 import { playSfx } from "../engine/sfx";
 import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
 import { IndependentsScreen } from "./IndependentsScreen";
+import { primeTryoutMusic } from "./BackgroundMusic";
 
 type OverlayView =
   | "build"
   | "research"
   | "club"
   | "independents"
-  | "cards"
+  | "people"
+  | "scouting"
   | "era"
   | "log"
   | null;
@@ -179,7 +182,11 @@ export function Dashboard({
       {overlay && overlay !== "club" && (
         <TaskOverlay
           title={overlayTitle(overlay)}
-          wide={overlay === "research" || overlay === "independents"}
+          wide={
+            overlay === "research" ||
+            overlay === "independents" ||
+            overlay === "scouting"
+          }
           onClose={() => {
             setOverlay(null);
             setLedgerFocusOrgId(null);
@@ -193,7 +200,8 @@ export function Dashboard({
               initialOrgId={ledgerFocusOrgId}
             />
           )}
-          {overlay === "cards" && <CardsPanel state={state} />}
+          {overlay === "people" && <CardsPanel state={state} />}
+          {overlay === "scouting" && <ScoutingScreen state={state} />}
           {overlay === "era" && <EraProgressPanel state={state} />}
           {overlay === "log" && <EventLog state={state} />}
         </TaskOverlay>
@@ -386,7 +394,10 @@ function CommandRail({
           style={{ marginTop: 6 }}
           disabled={!canHoldTryouts(state)}
           title={tryoutGateHint(tryoutGate(state))}
-          onClick={() => dispatch({ type: "HOLD_TRYOUTS" })}
+          onClick={() => {
+            primeTryoutMusic();
+            dispatch({ type: "HOLD_TRYOUTS" });
+          }}
         >
           Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
         </button>
@@ -436,32 +447,47 @@ function InfoDock({
 }) {
   const contactedOrgs =
     state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
+  const knownProspects =
+    (state.world?.hockeyOrgs.reduce(
+      (n, o) => n + o.prospects.filter((p) => p.revealed).length,
+      0,
+    ) ?? 0) + state.roster.length;
   const eraProgress = getEraProgress(state);
   const eraDone = eraProgress.filter((r) => r.met).length;
   return (
     <div className="info-dock" role="toolbar" aria-label="Club screens">
-      <DockButton icon="family-house" label="HQ" onClick={() => open("club")} />
       <DockButton
-        icon="village"
+        img="/assets/images/independents.png"
+        fallbackIcon="village"
         label="Indies"
         count={contactedOrgs}
         onClick={() => open("independents")}
       />
       <DockButton
-        icon="checklist"
-        label="Cards"
+        img="/assets/images/people.png"
+        fallbackIcon="checklist"
+        label="People"
         count={state.cards.length}
-        onClick={() => open("cards")}
+        onClick={() => open("people")}
       />
       <DockButton
-        icon="flag-objective"
+        img="/assets/images/scouting.png"
+        fallbackIcon="spyglass"
+        label="Scouting"
+        count={knownProspects}
+        onClick={() => open("scouting")}
+      />
+      <DockButton
+        img="/assets/images/era.png"
+        fallbackIcon="flag-objective"
         label="Era"
         count={eraDone}
         countOf={eraProgress.length}
         onClick={() => open("era")}
       />
       <DockButton
-        icon="archive-research"
+        img="/assets/images/log.png"
+        fallbackIcon="archive-research"
         label="Log"
         onClick={() => open("log")}
       />
@@ -472,31 +498,59 @@ function InfoDock({
 const DOCK_TIPS: Record<string, string> = {
   HQ: "Club HQ — overview, team, production, facilities",
   Indies: "Independents ledger — relationships, influence, prospect pipelines",
-  Cards: "Cards — staff and opportunities you've collected",
+  People: "People — staff and opportunities you've collected",
+  Scouting: "Scouting — every player and prospect your club knows about",
   Era: "Era progress — your checklist to the next era",
   Log: "Event log — everything that has happened",
 };
 
 function DockButton({
   icon,
+  img,
+  fallbackIcon,
   label,
   count,
   countOf,
   onClick,
 }: {
-  icon: string;
+  // A game-icons SVG name (auto-inverted for the dark UI)…
+  icon?: string;
+  // …or a full-color PNG path (rendered as-is). If the PNG 404s we fall back
+  // to the game-icons SVG named by `fallbackIcon`.
+  img?: string;
+  fallbackIcon?: string;
   label: string;
   count?: number;
   countOf?: number;
   onClick: () => void;
 }) {
+  const svgSrc = (name: string) => `/assets/vendor/game-icons/svg/${name}.svg`;
   return (
     <button
       className="dock-btn has-tip"
       data-tip={DOCK_TIPS[label] ?? label}
       onClick={onClick}
     >
-      <img src={`/assets/vendor/game-icons/svg/${icon}.svg`} alt="" aria-hidden />
+      {img ? (
+        <img
+          className="dock-btn-png"
+          src={img}
+          alt=""
+          aria-hidden
+          onError={(e) => {
+            // PNG not present yet — swap in the game-icons SVG and drop the
+            // no-invert styling so the mono glyph reads on the dark dock.
+            if (!fallbackIcon) return;
+            const el = e.currentTarget;
+            if (el.dataset.fellBack) return;
+            el.dataset.fellBack = "1";
+            el.classList.remove("dock-btn-png");
+            el.src = svgSrc(fallbackIcon);
+          }}
+        />
+      ) : (
+        <img src={svgSrc(icon ?? "hockey")} alt="" aria-hidden />
+      )}
       <span className="dock-btn-label">{label}</span>
       {count !== undefined && (
         <span className="dock-btn-count">
@@ -654,7 +708,8 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
     research: "Choose Research",
     club: "Club HQ",
     independents: "Independents",
-    cards: "Cards",
+    people: "People",
+    scouting: "Scouting",
     era: "Era Progress",
     log: "Event Log",
   };
@@ -838,6 +893,3 @@ function facilityValue(id: string): string {
   });
   return effects.length > 0 ? effects.join(" · ") : "Adds a new club capability";
 }
-
-
-
