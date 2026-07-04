@@ -20,7 +20,7 @@ export function App() {
   return (
     <>
       {/* Mounted once so music persists across every screen. */}
-      <BackgroundMusic />
+      <BackgroundMusic tryoutActive={!!state.pendingTryout} />
       {renderScreen()}
       {/* Dev tools — hidden until toggled with ⌘⇧. */}
       <DevPanel state={state} dispatch={dispatch} />

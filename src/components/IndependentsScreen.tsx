@@ -1,6 +1,11 @@
 import { useState } from "react";
 import type { Dispatch } from "react";
-import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
+import type {
+  GameAction,
+  GameState,
+  OrgProspect,
+  WorldHockeyOrg,
+} from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { hockeyOrgDisplayName } from "../engine/world";
 import { turnDateLabel } from "../engine/calendar";
@@ -16,6 +21,27 @@ import {
   leadingSuitor,
   tierName,
 } from "../engine/independentsSystem";
+import { formatEstimate } from "../engine/talentFog";
+
+// Compact scouted readout for a revealed prospect. Fog-of-talent: these are
+// your scout's ESTIMATE ranges ("Sk 3–6"), never the true numbers — tighter
+// ranges come from better judging. Ceiling is the Judging-Potential read.
+function prospectAttrLine(p: OrgProspect): string {
+  const e = p.attrEstimates;
+  if (!e) return `“${p.teaser}”`;
+  const f = formatEstimate;
+  const parts =
+    p.position === "G"
+      ? [`Gt ${f(e.goaltending)}`, `Sk ${f(e.skating)}`, `Pa ${f(e.passing)}`]
+      : [
+          `Sk ${f(e.skating)}`,
+          `Sh ${f(e.shooting)}`,
+          `Pa ${f(e.passing)}`,
+          `Ch ${f(e.checking)}`,
+        ];
+  if (p.potentialEstimate) parts.push(`Ceiling ${f(p.potentialEstimate)}`);
+  return parts.join(" · ");
+}
 
 // The Independents ledger — list view (one row per org, built to scale to a
 // dozen-plus contacts) with a detail view per independent holding the prospect
@@ -204,9 +230,10 @@ function IndependentDetail({
 
   return (
     <div className="panel independents-panel indy-detail">
+      {/* Blended full-screen backdrop — the org's own wide scene. */}
       <img
-        className="indy-detail-hero"
-        src={indieAsset(org, "card")}
+        className="indy-detail-bg"
+        src={indieAsset(org, "background")}
         alt=""
         aria-hidden
         onError={(e) => {
@@ -217,89 +244,120 @@ function IndependentDetail({
         ← All Independents
       </button>
 
-      <div className="indy-detail-head">
-        <div>
-          <h2 className="indy-detail-name">{hockeyOrgDisplayName(org)}</h2>
-          <div className="indy-detail-meta">
-            {ARCHETYPE_LABELS[org.archetype]} · first contact{" "}
-            {turnDateLabel(org.contactMonth ?? 1)}
-          </div>
-        </div>
-        <span
-          className={`indy-tier indy-tier-big tier-${org.relationshipLevel}`}
-          title="Your club's relationship standing with this independent"
-        >
-          <span className="indy-tier-note">your standing</span>
-          {tierName(org.relationshipLevel)}
-        </span>
-      </div>
+      <div className="indy-detail-body">
+        {/* Card poster, upper-left. */}
+        <img
+          className="indy-detail-card"
+          src={indieAsset(org, "card")}
+          alt={hockeyOrgDisplayName(org)}
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
 
-      <p className="indy-detail-blurb">{ARCHETYPE_BLURBS[org.archetype]}</p>
-
-      <div className="indy-influence">
-        <div className="indy-influence-bar">
-          <div
-            className="indy-influence-fill"
-            style={{
-              width: `${Math.min(100, (org.influencePoints / barMax) * 100)}%`,
-            }}
-          />
-          {INFLUENCE_THRESHOLDS.map((t) => (
-            <span
-              key={t}
-              className={`indy-tick${org.influencePoints >= t ? " passed" : ""}`}
-              style={{ left: `${(t / barMax) * 100}%` }}
-              title={`${t} influence`}
-            />
-          ))}
-        </div>
-        <div className="indy-influence-label">
-          {org.influencePoints} influence
-          {nextThreshold !== null && (
-            <>
-              {" "}
-              · next tier ({tierName((org.relationshipLevel + 1) as 0 | 1 | 2 | 3)})
-              at {nextThreshold}
-            </>
-          )}
-        </div>
-      </div>
-
-      <button
-        className="btn btn-primary indy-intro-btn"
-        disabled={!canSendIntroduction(state, org.id)}
-        title={introGateHint(gate)}
-        onClick={() => dispatch({ type: "SEND_INTRODUCTION", orgId: org.id })}
-      >
-        Send Introduction ({INTRO_COST_FUNDS} Fund · +5 influence)
-      </button>
-      {gate !== "ok" && <div className="indy-gate-hint">{introGateHint(gate)}</div>}
-
-      <div className="indy-detail-cols">
-        <section>
-          <div className="indy-col-title">Prospect pipeline</div>
-          <div className="indy-prospects">
-            {org.prospects.map((p) => (
-              <div
-                key={p.id}
-                className={`indy-prospect${p.revealed ? "" : " fogged"}`}
-              >
-                <span className={`pos-badge pos-${p.position}`}>{p.position}</span>
-                <div>
-                  <div className="indy-prospect-name">
-                    {p.revealed ? p.id : "???"}
-                  </div>
-                  <div className="indy-prospect-teaser">“{p.teaser}”</div>
-                </div>
+        <div className="indy-detail-main">
+          <div className="indy-detail-head">
+            <div>
+              <h2 className="indy-detail-name">{hockeyOrgDisplayName(org)}</h2>
+              <div className="indy-detail-meta">
+                {ARCHETYPE_LABELS[org.archetype]} · first contact{" "}
+                {turnDateLabel(org.contactMonth ?? 1)}
               </div>
-            ))}
+            </div>
+            <span
+              className={`indy-tier indy-tier-big tier-${org.relationshipLevel}`}
+              title="Your club's relationship standing with this independent"
+            >
+              <span className="indy-tier-note">your standing</span>
+              {tierName(org.relationshipLevel)}
+            </span>
+          </div>
+
+          <p className="indy-detail-blurb">{ARCHETYPE_BLURBS[org.archetype]}</p>
+
+          <div className="indy-influence">
+            <div className="indy-influence-bar">
+              <div
+                className="indy-influence-fill"
+                style={{
+                  width: `${Math.min(100, (org.influencePoints / barMax) * 100)}%`,
+                }}
+              />
+              {INFLUENCE_THRESHOLDS.map((t) => (
+                <span
+                  key={t}
+                  className={`indy-tick${org.influencePoints >= t ? " passed" : ""}`}
+                  style={{ left: `${(t / barMax) * 100}%` }}
+                  title={`${t} influence`}
+                />
+              ))}
+            </div>
+            <div className="indy-influence-label">
+              {org.influencePoints} influence
+              {nextThreshold !== null && (
+                <>
+                  {" "}
+                  · next tier ({tierName((org.relationshipLevel + 1) as 0 | 1 | 2 | 3)})
+                  at {nextThreshold}
+                </>
+              )}
+            </div>
+          </div>
+
+          <button
+            className="btn btn-primary indy-intro-btn"
+            disabled={!canSendIntroduction(state, org.id)}
+            title={introGateHint(gate)}
+            onClick={() => dispatch({ type: "SEND_INTRODUCTION", orgId: org.id })}
+          >
+            Send Introduction ({INTRO_COST_FUNDS} Fund · +5 influence)
+          </button>
+          {gate !== "ok" && <div className="indy-gate-hint">{introGateHint(gate)}</div>}
+
+          <div className="indy-col-title">Prospect pipeline</div>
+          <div className="indy-prospect-scroll">
+            <table className="indy-prospect-table">
+              <thead>
+                <tr>
+                  <th className="pp-pos">Pos</th>
+                  <th>Prospect</th>
+                  <th>Word on them</th>
+                </tr>
+              </thead>
+              <tbody>
+                {org.prospects.map((p) => (
+                  <tr key={p.id} className={p.revealed ? "" : "fogged"}>
+                    <td className="pp-pos">
+                      <span className={`pos-badge pos-${p.position}`}>
+                        {p.position}
+                      </span>
+                    </td>
+                    <td className="pp-name">
+                      {p.revealed && p.name ? (
+                        <>
+                          {p.name}
+                          {p.age ? <span className="pp-age"> · {p.age}</span> : null}
+                        </>
+                      ) : (
+                        "???"
+                      )}
+                    </td>
+                    <td className="pp-teaser">
+                      {p.revealed && p.attrEstimates
+                        ? prospectAttrLine(p)
+                        : `“${p.teaser}”`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
           <div className="faint indy-foot-note">
-            A scouting network (next era) reveals who they actually are.
+            {org.networkedByPlayer
+              ? "Your scouting network keeps this pipeline open — real names, real reads."
+              : "Park a scout beside them for two months to establish a scouting network and reveal who they actually are."}
           </div>
-        </section>
 
-        <section>
           <div className="indy-col-title">The race for their favor</div>
           {org.contactedByClubIds.length === 0 ? (
             <div className="faint indy-foot-note">
@@ -341,7 +399,7 @@ function IndependentDetail({
               </div>
             </>
           )}
-        </section>
+        </div>
       </div>
     </div>
   );

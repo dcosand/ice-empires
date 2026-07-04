@@ -60,7 +60,7 @@ function ResourceIcon({ resource }: { resource: ResourceKey }) {
 
 const RESOURCE_TIP: Record<ResourceKey, string> = {
   funds:
-    "Funds — the club's money and muscle. Each month it flows into your active build; it also pays upfront costs.",
+    "Funds — the club's money and muscle. Builds, tryouts, and introductions are paid in full upfront; income refills the treasury each month.",
   hockeyKnowledge:
     "Hockey Knowledge — research. Each month it flows into your active tech.",
   reputation:

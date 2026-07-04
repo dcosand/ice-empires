@@ -19,15 +19,14 @@ import type {
   WorldTile,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { ERA_ORDER } from "../data/eras";
 import { cachedClubTexture } from "../data/clubTextures";
 import type { ClubDef } from "../types/game";
 import { ItemArt } from "./ItemArt";
-import { REGIONS_BY_ID } from "../data/regions";
 import {
   hasMesaLandform,
   hockeyOrgDisplayName,
   moveableTilesFor,
-  regionIdAtTile,
   tileAt,
   tileKey,
   tileVisualRand,
@@ -38,12 +37,8 @@ import {
 import {
   activeScout,
   allScouts,
-  surveyableRegionId,
+  networkTargetOrg,
 } from "../engine/scoutSystem";
-import {
-  canEstablishConnection,
-  CONNECTION_MONTHS,
-} from "../engine/regionDevelopment";
 import {
   canBuildRink,
   canClearSnow,
@@ -259,9 +254,6 @@ function drawScene(
       }
 
       // ---- markers on top of the tile ----
-      // NOTE: region-discovery pins are intentionally not rendered on the map
-      // right now — the discovery subsystem still runs, but its markers are
-      // hidden until we decide whether that feature stays.
       const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
       if (explored && org) {
         const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
@@ -284,7 +276,12 @@ function drawScene(
       // construction on this tile draws the scaffold variant instead.
       const rink = world.rinks.find((r) => r.x === gx && r.y === gy);
       const buildingHere =
-        scouts.some((u) => u.working && u.working.x === gx && u.working.y === gy) ||
+        scouts.some(
+          (u) =>
+            u.working?.task === "build-rink" &&
+            u.working.x === gx &&
+            u.working.y === gy,
+        ) ||
         world.rivals.some((rv) =>
           rv.units.some(
             (u) => u.workingMonths !== undefined && u.x === gx && u.y === gy,
@@ -302,7 +299,15 @@ function drawScene(
 
       const isHQ = world.hqTile && world.hqTile.x === gx && world.hqTile.y === gy;
       if (isHQ) {
-        const mk = hqMarker(gx, gy, c, accent, clubLabel, leaderTexture);
+        const mk = hqMarker(
+          gx,
+          gy,
+          c,
+          accent,
+          clubLabel,
+          leaderTexture,
+          Math.max(0, ERA_ORDER.indexOf(state.eraId)),
+        );
         mk.position.y -= rise;
         layer.addChild(mk);
       }
@@ -324,6 +329,7 @@ function drawScene(
               rAccent,
               rClub ? shortClubLabel(rClub) : "Rival",
               rivalPortraits[rival.clubId] ?? null,
+              Math.max(0, ERA_ORDER.indexOf(rival.eraId)),
             );
             mk.position.y -= rise;
             applyMemory(mk, memory);
@@ -616,6 +622,80 @@ function leaderMarker(
   return m;
 }
 
+// The club's home city, drawn beneath the leader crest — a major club's
+// capital that unmistakably out-scales a neutral org's mini-district. Scales
+// with `tier` (era index 0–4): a Pond-era hamlet grows into a lit skyline of
+// towers around a big arena by the Dynasty era.
+function drawClubTown(g: Graphics, accent: number, tier: number) {
+  // Broad footprint shadow + stone plaza, wider than any neutral org's.
+  g.ellipse(0, 10, 42, 14).fill({ color: 0x000000, alpha: 0.32 });
+  g.poly([-40, 6, -7, -13, 40, 6, 7, 25]).fill({ color: 0x30465a, alpha: 0.55 });
+  g.poly([-34, 5, -5, -12, 34, 5, 5, 22])
+    .fill({ color: 0xc9d9e0, alpha: 0.9 })
+    .stroke({ width: 1, color: accent, alpha: 0.5 });
+
+  // Back-row buildings, taller each era.
+  drawIsoBlock(g, -26, -2, 11, 15 + tier * 3, 0x5c6f77, accent);
+  drawIsoBlock(g, 15, -3, 11, 16 + tier * 3, 0x54666e, accent);
+  if (tier >= 1) drawIsoBlock(g, -33, 3, 8, 12 + tier * 3, 0x60737b, accent);
+
+  // Skyscraper towers rise as the club turns pro — the "skyline" read.
+  if (tier >= 2) drawTower(g, 26, 3, 9, 22 + tier * 4, accent);
+  if (tier >= 3) drawTower(g, -38, 5, 8, 20 + tier * 4, accent);
+  if (tier >= 4) drawTower(g, 33, 6, 8, 30, accent);
+
+  // The signature arena centrepiece: timber barn body, big accent dome.
+  drawBarnArena(g, 0, 7, 26 + tier * 2, 16 + tier * 3, accent);
+
+  // Front satellite buildings + chimney steam fill the district out.
+  if (tier >= 1) drawIsoBlock(g, 19, 8, 9, 12 + tier * 2, 0x67797f, accent);
+  if (tier >= 3) drawIsoBlock(g, -20, 9, 9, 12, 0x5a6d75, accent);
+  if (tier >= 2) drawSteam(g, -24, -20 - tier * 3);
+
+  // A grand club banner on a tall pole, taller each era.
+  const poleTop = -24 - tier * 3;
+  g.moveTo(30, 7).lineTo(30, poleTop).stroke({ width: 2, color: 0x6b7d8a });
+  g.poly([30, poleTop, 48, poleTop + 5, 30, poleTop + 11])
+    .fill(accent)
+    .stroke({ width: 1, color: 0x05121c });
+}
+
+// A tall thin skyscraper: iso block (drawIsoBlock stipples lit windows up its
+// height) topped by an accent beacon.
+function drawTower(g: Graphics, x: number, baseY: number, w: number, h: number, accent: number) {
+  drawIsoBlock(g, x, baseY, w, h, 0x46586a, accent);
+  g.circle(x + w / 2 + 2, baseY - h - 4, 1.6).fill({ color: accent, alpha: 0.95 });
+}
+
+// Soft chimney steam — a few translucent puffs rising off the district.
+function drawSteam(g: Graphics, x: number, y: number) {
+  g.circle(x, y, 4).fill({ color: 0xffffff, alpha: 0.12 });
+  g.circle(x + 3, y - 5, 5).fill({ color: 0xffffff, alpha: 0.1 });
+  g.circle(x - 2, y - 10, 4).fill({ color: 0xffffff, alpha: 0.08 });
+}
+
+// The signature barn-arena: an iso timber block topped by an accent-colored
+// arched roof (the "barn") with a big sliding door on the front face.
+function drawBarnArena(
+  g: Graphics,
+  cx: number,
+  baseY: number,
+  w: number,
+  bodyH: number,
+  accent: number,
+) {
+  drawIsoBlock(g, cx - w / 2, baseY, w, bodyH, 0x8a583a, accent);
+  const ry = baseY - bodyH; // roofline height
+  g.ellipse(cx, ry, w / 2 + 1, 7)
+    .fill(lighten(accent, 0.12))
+    .stroke({ width: 1.2, color: 0x263746, alpha: 0.7 });
+  g.arc(cx, ry, w / 2 - 1, Math.PI, 0).stroke({ width: 1.6, color: accent, alpha: 0.95 });
+  g.rect(cx - w / 2 + 1, ry + 2, w - 2, 2).fill({ color: accent, alpha: 0.7 });
+  // Big barn doors, warmly lit from within.
+  g.roundRect(cx - 5, baseY - 10, 10, 10, 1.5).fill({ color: 0x2a1c14, alpha: 0.9 });
+  g.rect(cx - 3.5, baseY - 8.5, 7, 7).fill({ color: 0xe8b45a, alpha: 0.6 });
+}
+
 function hqMarker(
   gx: number,
   gy: number,
@@ -623,6 +703,7 @@ function hqMarker(
   accent: number,
   label: string,
   portraitTexture: Texture | null,
+  eraIndex: number,
 ) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
@@ -631,15 +712,21 @@ function hqMarker(
   // paint over the lower half of the label).
   m.zIndex = gx + gy + 50;
 
-  const cy = -23; // medallion centre height above the tile
-  const R = 13; // portrait radius (sits inside the 17px disc backing)
+  const cy = -44; // medallion centre — raised to float above the town roofline
+  const R = 12; // portrait radius (sits inside the disc backing)
+
+  // The club's home isn't a lone pin: it's a growing town that out-scales the
+  // neutral orgs' mini-districts. It gains buildings, height, and lights each
+  // era; the leader medallion rides a standard above it as the crowning crest.
+  const town = new Graphics();
+  drawClubTown(town, accent, Math.max(0, Math.min(4, eraIndex)));
+  m.addChild(town);
 
   const base = new Graphics();
-  base.ellipse(0, 1, 20, 7).fill({ color: 0x000000, alpha: 0.35 });
-  base.poly([-18, 0, 0, 9, 18, 0, 0, -9]).fill(0x05121c).stroke({ width: 2, color: accent });
-  base.circle(0, cy, 17).fill(0x0f1824).stroke({ width: 3, color: accent });
-  base.rect(16, -45, 2, 23).fill(0xe6eef6);
-  base.poly([18, -45, 34, -40, 18, -35]).fill(accent).stroke({ width: 1.5, color: 0x05121c });
+  // Standard pole rising from the plaza up to the floating crest.
+  base.rect(-1.5, cy + R, 3, -(cy + R) + 4).fill(0xe6eef6).stroke({ width: 0.8, color: 0x05121c, alpha: 0.5 });
+  base.circle(0, cy, R + 3).fill(0x0f1824).stroke({ width: 3, color: accent });
+  base.circle(0, cy, R + 5).stroke({ width: 1.5, color: accent, alpha: 0.5 });
   m.addChild(base);
 
   // The club's Leader portrait sits in the HQ medallion (same image shown at
@@ -2485,8 +2572,6 @@ function MiniMap({
       }
     };
 
-    // Region-discovery pins are hidden on the map for now (see the tile-marker
-    // loop above), so they're omitted from the minimap too.
     for (const org of world.hockeyOrgs) {
       if (!state.devRevealAll && !revealedSet.has(`${org.x},${org.y}`)) continue;
       dot(org.x, org.y, 0xf2c14e, 2.2, true);
@@ -2624,21 +2709,20 @@ function UnitOverlay({
   const working = !isLeader ? unit.working : undefined;
 
   // Scout field orders are tied to the tile the unit is standing on. Goodie huts
-  // are no longer a manual order — they auto-resolve into a pop-up on arrival.
-  const surveyId = !isLeader ? surveyableRegionId(state) : null;
-  const scoutRegionId = !isLeader && !isBuilder ? regionIdAtTile(unit.x, unit.y) : null;
-  const canConnect = !!scoutRegionId && canEstablishConnection(state, scoutRegionId);
-  const connecting =
-    !!scoutRegionId && state.discovery.connection?.regionId === scoutRegionId;
+  // and first contact with independents/rivals auto-resolve into a pop-up on
+  // arrival — no manual order for them.
   // Builder orders (kind-gated inside builderSystem's can* predicates).
   const unitId = unit.id ?? "";
   const showClearSnow = isBuilder && canClearSnow(state, unitId);
   const showBuildRink = isBuilder && canBuildRink(state, unitId);
   const showPave = isBuilder && canPaveStreetRink(state, unitId);
   const showHarvest = isBuilder && canHarvestBranches(state, unitId);
+  // Scout order: park beside a contacted independent to open their pipeline.
+  const networkOrg =
+    !isLeader && !isBuilder ? networkTargetOrg(state, unitId) : null;
   const hasOrder = isLeader
     ? !!club
-    : !!surveyId || canConnect || showClearSnow || showBuildRink || showPave || showHarvest;
+    : showClearSnow || showBuildRink || showPave || showHarvest || !!networkOrg;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -2676,24 +2760,6 @@ function UnitOverlay({
               Found {shortClubLabel(club)} Here
             </button>
           )}
-          {surveyId && (
-            <button
-              className="btn btn-primary btn-block"
-              onClick={() => dispatch({ type: "SURVEY_REGION", regionId: surveyId })}
-            >
-              Survey Region
-            </button>
-          )}
-          {canConnect && scoutRegionId && (
-            <button
-              className="btn btn-gold btn-block"
-              onClick={() =>
-                dispatch({ type: "ESTABLISH_CONNECTION", regionId: scoutRegionId })
-              }
-            >
-              Establish Connection ({CONNECTION_MONTHS} mo)
-            </button>
-          )}
           {showClearSnow && (
             <button
               className="btn btn-primary btn-block"
@@ -2726,6 +2792,16 @@ function UnitOverlay({
               Harvest Branches (+2 Equipment)
             </button>
           )}
+          {networkOrg && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "ESTABLISH_NETWORK", unitId, orgId: networkOrg.id })
+              }
+            >
+              Establish Scouting Network (2 mo)
+            </button>
+          )}
           {!isLeader && (
             <button
               className="btn btn-block"
@@ -2738,13 +2814,15 @@ function UnitOverlay({
         {working ? (
           <div className="unit-hint muted">
             Working —{" "}
-            {working.rinkKind === "ice" ? "building a rink" : "paving a rink"},{" "}
-            {working.monthsRemaining} mo to go.
-          </div>
-        ) : connecting ? (
-          <div className="unit-hint muted">
-            Building local ties — {state.discovery.connection?.monthsRemaining} mo to
-            go.
+            {working.task === "establish-network"
+              ? `building a scouting network with ${
+                  world.hockeyOrgs.find((o) => o.id === working.orgId)?.name ??
+                  "the independents"
+                }`
+              : working.rinkKind === "ice"
+                ? "building a rink"
+                : "paving a rink"}
+            , {working.monthsRemaining} mo to go.
           </div>
         ) : (
           !hasOrder && (
@@ -2816,9 +2894,6 @@ function MapControls({
   selectedKey: string | null;
 }) {
   const sel = selectedKey ? selectedKey.split(",").map(Number) : null;
-  const regionId = sel ? regionIdAtTile(sel[0], sel[1]) : null;
-  const region = regionId ? REGIONS_BY_ID[regionId] : null;
-  const rState = regionId ? state.discovery.regionStates[regionId] ?? "hidden" : null;
   const revealed = sel ? state.world?.revealed.includes(`${sel[0]},${sel[1]}`) : false;
   const selVisible =
     sel && state.world
@@ -2840,10 +2915,6 @@ function MapControls({
     selRink && state.world
       ? getClubRinks(state.world, 0).some((r) => r.id === selRink.id)
       : false;
-  const canSurvey = region ? surveyableRegionId(state) === region.id : false;
-  const canConnect = region ? canEstablishConnection(state, region.id) : false;
-  const connecting = region ? state.discovery.connection?.regionId === region.id : false;
-  const contested = region ? state.discovery.contested.includes(region.id) : false;
 
   return (
     <div className="iso-controls">
@@ -2889,7 +2960,7 @@ function MapControls({
         </div>
       )}
 
-      {sel && !(org && revealed) && !selRink && !(region && revealed && rState !== "hidden") && (
+      {sel && !(org && revealed) && !selRink && (
         <div className="map-detail">
           {revealed && marker ? (
             <span className="muted">
@@ -2913,46 +2984,6 @@ function MapControls({
         </div>
       )}
 
-      {sel && region && revealed && rState !== "hidden" && (
-        <div className="map-detail">
-          <div className="detail-head">
-            <strong>{region.name}</strong>
-            <span className="region-resource">{region.hockeyResource}</span>
-          </div>
-          <div className="region-report">{region.scoutReport}</div>
-          <div className="state-tag">
-            {rState}
-            {region.unusual ? " · unusual market" : ""}
-            {contested ? " · ⚔ contested" : ""}
-          </div>
-          <div className="detail-actions">
-            {canSurvey && (
-              <div className="faint">
-                Scout is here — use <strong>Survey Region</strong> on the unit
-                panel.
-              </div>
-            )}
-            {rState === "discovered" && !canSurvey && (
-              <div className="faint">Move your Scout onto this tile to survey it.</div>
-            )}
-            {rState === "surveyed" && !canConnect && !connecting && (
-              <div className="faint">
-                Surveyed — establish a local connection from the Scout's panel.
-              </div>
-            )}
-            {connecting && (
-              <div className="muted">
-                Building local ties — {state.discovery.connection?.monthsRemaining} month(s) to go.
-              </div>
-            )}
-            {rState === "influenced" && (
-              <div className="influenced-note">
-                🚩 Influenced — part of your hockey empire (+1 Reputation/month).
-              </div>
-            )}
-          </div>
-        </div>
-      )}
     </div>
   );
 }

@@ -1,13 +1,20 @@
 import type {
   EncounterEffect,
   GameState,
+  PlayerGender,
   ResourceKey,
+  ScoutCharacter,
+  ScoutQualityTier,
+  WorldHockeyOrg,
   WorldState,
   WorldUnit,
 } from "../types/game";
 import { CARDS_BY_ID } from "../data/cards";
-import { FIRST_NAMES, LAST_NAMES } from "../data/playerNames";
-import { REGIONS_BY_ID } from "../data/regions";
+import {
+  FEMALE_FIRST_NAMES,
+  LAST_NAMES,
+  MALE_FIRST_NAMES,
+} from "../data/playerNames";
 import { RESEARCH_BY_ID } from "../data/research";
 import { POND_ENCOUNTERS_BY_ID } from "../data/pondEncounters";
 import {
@@ -15,16 +22,22 @@ import {
   BUILDER_SIGHT,
   createScoutUnit,
   isAdjacent,
-  regionIdAtTile,
   SCOUT_SIGHT,
   tileAt,
 } from "./world";
 import { prependLog } from "./log";
-import { grantCard, grantRandomCard } from "./cardSystem";
+import { grantCard } from "./cardSystem";
 import { createWandererPlayer } from "./tryoutSystem";
 import { nextRandom } from "./rng";
+import {
+  awardScoutXpDraft,
+  rollScoutCharacter,
+  scoutCharacterFor,
+} from "./scoutStaff";
+import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK } from "../data/scouts";
+import { estimateAttr, estimateAttrs } from "./talentFog";
+import { levelForInfluence } from "./independentsSystem";
 import type { PushLog } from "./turnContext";
-
 // The Scout unlocks once Scouting Reports is researched AND the club has basic
 // infrastructure (at least one facility built). Builders don't count — owning
 // a Rink Rats crew shouldn't block recruiting your first scout.
@@ -57,7 +70,7 @@ export function recruitScout(state: GameState): GameState {
     next,
     "discovery",
     "Scout recruited",
-    "Your first formal Scout takes the ice. Move them out to reveal the world and survey hockey regions.",
+    "Your first formal Scout takes the ice. Move them out to reveal the world and reach the independents and rival clubs scattered across it.",
   );
 }
 
@@ -140,17 +153,6 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
   };
 }
 
-// The region the scout can survey right now (on its tile, discovered, not yet
-// surveyed/influenced). Builders never survey — that's scout work.
-export function surveyableRegionId(state: GameState): string | null {
-  const scout = activeScout(state.world);
-  if (!scout || scout.kind === "builder") return null;
-  const regionId = regionIdAtTile(scout.x, scout.y);
-  if (!regionId) return null;
-  const s = state.discovery.regionStates[regionId];
-  return s === "discovered" || s === "rumored" ? regionId : null;
-}
-
 // A goodie hut auto-resolves the instant a unit steps onto it: we roll the
 // outcome, hide the marker, and stage a PendingEncounter for the UI to surface
 // as a pop-up. The effect itself is NOT applied yet — that happens on
@@ -177,6 +179,11 @@ export function triggerPondEncounter(state: GameState, x: number, y: number): Ga
   const effects = encounter.possibleEffects;
   const effect = effects[Math.floor(roll.value * effects.length)] ?? effects[0];
   const { outcome, tone } = describeOutcome(effect);
+  // Credit the scout standing on the hut (fieldwork XP on resolve). The
+  // founder isn't a scout character, so founding-phase huts credit nobody.
+  const finder = allScouts(world).find(
+    (s) => s.x === x && s.y === y && s.kind !== "builder",
+  );
 
   return {
     ...state,
@@ -196,6 +203,7 @@ export function triggerPondEncounter(state: GameState, x: number, y: number): Ga
       outcome,
       tone,
       effect,
+      unitId: finder?.id,
     },
   };
 }
@@ -208,6 +216,16 @@ export function resolvePendingEncounter(state: GameState): GameState {
   const effect = pe.effect;
 
   let next: GameState = { ...state, pendingEncounter: null };
+
+  // Fieldwork XP for the scout who found the hut (D29).
+  if (pe.unitId && scoutCharacterFor(next, pe.unitId)) {
+    next = {
+      ...next,
+      scoutStaff: next.scoutStaff.map((s) =>
+        s.id === pe.unitId ? { ...s, xp: s.xp + SCOUT_XP_ENCOUNTER } : s,
+      ),
+    };
+  }
 
   if (effect.type === "addResource") {
     next = {
@@ -231,14 +249,25 @@ export function resolvePendingEncounter(state: GameState): GameState {
     next = draft;
   } else if (effect.type === "addRosterPlayer") {
     const draft: GameState = structuredClone(next);
+    const identity = wandererIdentity(draft);
     const player = createWandererPlayer(
       draft,
       effect.position,
-      wandererName(draft, pe.name),
+      identity.name,
+      identity.gender,
     );
     if (!player) {
       // Roster full: the wanderer nods and moves on; the story still pays.
       draft.resources.reputation += 1;
+    } else {
+      // A wanderer joining is always a moment — stage the reveal cinematic,
+      // with the fullest fanfare if they're the club's very first player.
+      draft.pendingPlayerReveal = {
+        player,
+        source: "encounter",
+        firstEver: !draft.seenFirstPlayer,
+      };
+      draft.seenFirstPlayer = true;
     }
     next = draft;
   } else if (effect.type === "grantTech") {
@@ -318,15 +347,20 @@ function describeOutcome(effect: EncounterEffect): {
   }
 }
 
-// A wanderer gets a real name from the player pools (seeded), with the
-// encounter name kept as their note-worthy origin story.
-function wandererName(draft: GameState, _encounterName: string): string {
+// A wanderer gets a real name from the player pools (seeded).
+function wandererIdentity(draft: GameState): { name: string; gender: PlayerGender } {
   const r1 = nextRandom(draft.rngSeed);
   const r2 = nextRandom(r1.seed);
-  draft.rngSeed = r2.seed;
-  return `${FIRST_NAMES[Math.floor(r1.value * FIRST_NAMES.length)]} ${
-    LAST_NAMES[Math.floor(r2.value * LAST_NAMES.length)]
-  }`;
+  const r3 = nextRandom(r2.seed);
+  draft.rngSeed = r3.seed;
+  const gender: PlayerGender = r1.value < 0.32 ? "female" : "male";
+  const firstPool = gender === "female" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
+  const first = firstPool[Math.floor(r2.value * firstPool.length)];
+  const last = LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)];
+  return {
+    gender,
+    name: `${first} ${last}`,
+  };
 }
 
 function resourceLabel(resource: ResourceKey): string {
@@ -334,77 +368,6 @@ function resourceLabel(resource: ResourceKey): string {
   return resource.charAt(0).toUpperCase() + resource.slice(1);
 }
 
-// Survey the region under the scout: promote to "surveyed" and surface a detail
-// (resource, a prospect/staff hint, or a relationship opening).
-export function surveyRegion(state: GameState, regionId: string): GameState {
-  if (surveyableRegionId(state) !== regionId) return state;
-  const region = REGIONS_BY_ID[regionId];
-  if (!region) return state;
-
-  let next: GameState = {
-    ...state,
-    discovery: {
-      ...state.discovery,
-      regionStates: {
-        ...state.discovery.regionStates,
-        [regionId]: "surveyed",
-      },
-    },
-  };
-
-  // A seeded survey outcome: resource detail, a prospect/staff hint, or a
-  // local relationship opening.
-  const roll = nextRandom(next.rngSeed);
-  next = { ...next, rngSeed: roll.seed };
-  const r = roll.value;
-
-  if (r < 0.4) {
-    const before = next.cards.length;
-    const granted = grantSurveyCard(next, region.tags);
-    next =
-      granted.cards.length > before
-        ? granted
-        : prependLog(
-            next,
-            "discovery",
-            `Surveyed ${region.name}`,
-            `${region.scoutReport} Resource confirmed: ${region.hockeyResource}.`,
-          );
-  } else if (r < 0.7) {
-    next = prependLog(
-      next,
-      "discovery",
-      `Surveyed ${region.name}`,
-      `Prospect hint: scouts keep mentioning a name out of ${region.name}. Worth developing a connection here.`,
-    );
-  } else {
-    next = prependLog(
-      next,
-      "discovery",
-      `Surveyed ${region.name}`,
-      `Relationship opening: locals in ${region.name} are open to working with your club. Establish a Local Connection to bring them in.`,
-    );
-  }
-  return next;
-}
-
-function grantSurveyCard(state: GameState, tags: string[]): GameState {
-  const pool = tags.includes("goalies")
-    ? ["quiet-lake-goalie"]
-    : tags.includes("physical")
-      ? ["prairie-defenseman", "raw-desert-winger"]
-      : ["raw-desert-winger", "prairie-defenseman", "local-coach"];
-  // grantRandomCard works on a draft + push; adapt to immutable here.
-  const draft: GameState = structuredClone(state);
-  const captured: Array<{ title: string; message: string }> = [];
-  const push: PushLog = (_type, title, message) =>
-    captured.push({ title, message });
-  grantRandomCard(draft, pool, state.rngSeed % pool.length, push);
-  if (draft.cards.length > state.cards.length && captured.length > 0) {
-    return prependLog(draft, "card", captured[0].title, captured[0].message);
-  }
-  return state;
-}
 
 // Refresh each unit's movement points at the start of each month (silent).
 // Units mid-construction (`working` set) stay pinned at 0 moves until done.
@@ -420,12 +383,22 @@ export function refreshScoutMoves(draft: GameState): void {
 export function spawnProducedScout(
   draft: GameState,
   instanceId: string,
-  name = "Pond Scout",
+  _defName = "Pond Scout",
+  tier: ScoutQualityTier = "volunteer",
 ): void {
   const world = draft.world;
   if (!world?.hqTile) return;
   const scouts = allScouts(world);
-  const scout = createScoutUnit(instanceId, world.hqTile.x, world.hqTile.y, name);
+  // The map unit carries the scout PERSON's name (D29 scout characters).
+  const rolled = rollScoutCharacter(draft.rngSeed, instanceId, tier, draft.month);
+  draft.rngSeed = rolled.seed;
+  draft.scoutStaff.push(rolled.character);
+  const scout = createScoutUnit(
+    instanceId,
+    world.hqTile.x,
+    world.hqTile.y,
+    rolled.character.name,
+  );
   draft.world = syncLegacyScout(
     {
       ...world,
@@ -434,4 +407,177 @@ export function spawnProducedScout(
     [...scouts, scout],
     scout.id ?? null,
   );
+}
+
+// ---------------------------------------------------------------------------
+// Establish Scouting Network (Act II, docs/13 §4.5): park a scout beside a
+// contacted independent for 2 months to reveal their prospect pipeline.
+// ---------------------------------------------------------------------------
+
+export const NETWORK_MONTHS = 2;
+export const NETWORK_INFLUENCE_GAIN = 10;
+
+// The org this scout could network with right now (adjacent or same tile,
+// contacted, not already networked). Null when there's nothing in reach.
+export function networkTargetOrg(
+  state: GameState,
+  unitId: string,
+): WorldHockeyOrg | null {
+  const world = state.world;
+  if (!world) return null;
+  const unit = allScouts(world).find((u) => u.id === unitId);
+  if (!unit || unit.kind === "builder" || unit.working) return null;
+  if (unit.movesRemaining <= 0) return null;
+  if (!state.completedResearch.includes("scouting-reports")) return null;
+  return (
+    world.hockeyOrgs.find(
+      (o) =>
+        o.playerContacted &&
+        !o.networkedByPlayer &&
+        ((o.x === unit.x && o.y === unit.y) || isAdjacent(unit, o)),
+    ) ?? null
+  );
+}
+
+export function canEstablishNetwork(state: GameState, unitId: string): boolean {
+  return !!networkTargetOrg(state, unitId);
+}
+
+export function establishNetwork(
+  state: GameState,
+  unitId: string,
+  orgId: string,
+): GameState {
+  const org = networkTargetOrg(state, unitId);
+  if (!org || org.id !== orgId) return state;
+  const world = state.world!;
+  const scouts = allScouts(world).map((u) =>
+    u.id === unitId
+      ? {
+          ...u,
+          movesRemaining: 0,
+          working: {
+            task: "establish-network" as const,
+            orgId,
+            monthsRemaining: NETWORK_MONTHS,
+          },
+        }
+      : u,
+  );
+  const next: GameState = {
+    ...state,
+    world: syncLegacyScout({ ...world }, scouts, world.selectedScoutId),
+  };
+  const who = scoutCharacterFor(state, unitId);
+  return prependLog(
+    next,
+    "discovery",
+    `Scouting network underway: ${org.name}`,
+    `${who?.name ?? "Your scout"} settles in with ${org.name} — rink coffees, junior games, names in a notebook (${NETWORK_MONTHS} months).`,
+  );
+}
+
+// Monthly tick for scout fieldwork (runs alongside progressBuilderWork, which
+// owns rink tasks). Completing a network reveals the org's prospects, grants
+// influence, and pays the scout XP.
+export function progressScoutWork(draft: GameState, push: PushLog): void {
+  const world = draft.world;
+  if (!world) return;
+  for (const unit of allScouts(world)) {
+    if (!unit.working || unit.working.task !== "establish-network") continue;
+    unit.working.monthsRemaining -= 1;
+    const org = world.hockeyOrgs.find((o) => o.id === (unit.working as { orgId: string }).orgId);
+    if (!org) {
+      unit.working = undefined;
+      continue;
+    }
+    if (unit.working.monthsRemaining > 0) {
+      push(
+        "discovery",
+        "Scouting network taking shape",
+        `${unit.name ?? "Your scout"} keeps the visits up at ${org.name} — ${unit.working.monthsRemaining} month${
+          unit.working.monthsRemaining === 1 ? "" : "s"
+        } to a working network.`,
+      );
+      continue;
+    }
+    unit.working = undefined;
+    org.networkedByPlayer = true;
+    org.networkMonth = draft.month;
+    org.influencePoints += NETWORK_INFLUENCE_GAIN;
+    org.relationshipLevel = levelForInfluence(org.influencePoints);
+    revealOrgProspects(draft, org, scoutCharacterFor(draft, unit.id));
+    awardScoutXpDraft(draft, unit.id, SCOUT_XP_NETWORK);
+    push(
+      "discovery",
+      `Scouting network established: ${org.name}`,
+      `Their prospect pipeline is open to you — real names, real reads (+${NETWORK_INFLUENCE_GAIN} Influence). ${
+        unit.name ?? "Your scout"
+      } earns their keep.`,
+    );
+  }
+  draft.world = syncLegacyScout(world, allScouts(world), world.selectedScoutId);
+}
+
+// Fill in a networked org's prospect identities (seeded). True attributes and
+// ceiling are stored engine-side; what the UI gets is fog-of-talent ESTIMATES
+// (docs/13 §6.3) whose tightness scales with the establishing scout's judging
+// ratings — a sharp-eyed ace gives you narrow, trustworthy reads.
+function revealOrgProspects(
+  draft: GameState,
+  org: WorldHockeyOrg,
+  scout: ScoutCharacter | null,
+): void {
+  const academyBonus = org.archetype === "academy" ? 1 : 0;
+  const judgingAbility = scout?.judgingAbility ?? 3;
+  const judgingPotential = scout?.judgingPotential ?? 3;
+  for (const p of org.prospects) {
+    if (p.revealed) continue;
+    const r1 = nextRandom(draft.rngSeed);
+    const r2 = nextRandom(r1.seed);
+    const r3 = nextRandom(r2.seed);
+    const r4 = nextRandom(r3.seed);
+    const r5 = nextRandom(r4.seed);
+    const r6 = nextRandom(r5.seed);
+    const r7 = nextRandom(r6.seed);
+    const r8 = nextRandom(r7.seed);
+    const r9 = nextRandom(r8.seed);
+    draft.rngSeed = r9.seed;
+
+    const female = r1.value < 0.32;
+    const firstPool = female ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
+    const roll = (v: number, min: number, die: number) =>
+      min + 1 + Math.floor(v * die) + academyBonus;
+
+    p.revealed = true;
+    p.knownVia = "scout-network";
+    p.name = `${firstPool[Math.floor(r2.value * firstPool.length)]} ${
+      LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)]
+    }`;
+    p.age = 15 + Math.floor(r4.value * 5);
+    p.attrs = {
+      skating: roll(r5.value, 2, 6),
+      shooting: roll(r6.value, p.position === "G" ? 1 : 2, p.position === "G" ? 4 : 6),
+      passing: roll(r7.value, p.position === "G" ? 1 : 2, p.position === "G" ? 4 : 6),
+      checking: roll(r8.value, p.position === "D" ? 3 : 1, 5),
+      goaltending: p.position === "G" ? roll(r5.value, 3, 6) : 1,
+    };
+    // True ceiling: somewhere above their best current attribute.
+    const best = Math.max(
+      p.attrs.skating,
+      p.attrs.shooting,
+      p.attrs.passing,
+      p.attrs.checking,
+      p.attrs.goaltending,
+    );
+    p.potential = Math.min(20, best + 2 + Math.floor(r9.value * 6));
+
+    // The scout's read: estimates, not truth.
+    const est = estimateAttrs(draft.rngSeed, p.attrs, judgingAbility);
+    draft.rngSeed = est.seed;
+    p.attrEstimates = est.estimates;
+    const pot = estimateAttr(draft.rngSeed, p.potential, judgingPotential);
+    draft.rngSeed = pot.seed;
+    p.potentialEstimate = pot.estimate;
+  }
 }

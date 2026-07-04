@@ -5,6 +5,7 @@ import type {
   GameState,
   ResourceKey,
   ResourceSet,
+  ScoutQualityTier,
 } from "../types/game";
 import {
   canCancelProduction,
@@ -12,7 +13,8 @@ import {
   productionItemName,
   type ProductionOption,
 } from "../engine/productionSystem";
-import { getMonthlyIncome } from "../engine/selectors";
+import { scoutTierCost } from "../engine/scoutStaff";
+import { SCOUT_TIERS } from "../data/scouts";
 import { ItemArt } from "./ItemArt";
 import { playSfx } from "../engine/sfx";
 
@@ -48,11 +50,8 @@ export function ProductionPanel({
   dispatch: Dispatch<GameAction>;
 }) {
   const opts = getProductionOptions(state);
-  const fundsPerMonth = getMonthlyIncome(state).funds;
+  const funds = state.resources.funds;
   const slotBusy = !!state.activeProduction;
-
-  const monthsFor = (cost: number) =>
-    fundsPerMonth > 0 ? Math.max(1, Math.ceil(cost / fundsPerMonth)) : Infinity;
 
   const unitOptions = useMemo(() => sortOptions(opts.units), [opts]);
   const facilityOptions = useMemo(() => sortOptions(opts.facilities), [opts]);
@@ -63,6 +62,8 @@ export function ProductionPanel({
 
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const [detailKey, setDetailKey] = useState<string | null>(null);
+  // Quality tier for scout-spawning units (D29): reset per selection.
+  const [scoutTier, setScoutTier] = useState<ScoutQualityTier>("volunteer");
 
   const selected = lookup.find((o) => keyOf(o) === selectedKey) ?? null;
   const detail = lookup.find((o) => keyOf(o) === detailKey) ?? null;
@@ -80,13 +81,25 @@ export function ProductionPanel({
       setDetailKey(keyOf(o));
       return;
     }
+    setScoutTier("volunteer");
     setSelectedKey((cur) => (cur === keyOf(o) ? null : keyOf(o)));
   };
 
+  const tierAffordable = (o: ProductionOption, tier: ScoutQualityTier) =>
+    funds >= scoutTierCost(o.fundsCost, tier);
+
   const confirmStart = () => {
-    if (!selected || !selectable(selected) || !selected.affordable) return;
+    if (!selected || !selectable(selected)) return;
+    if (selected.spawnsScout ? !tierAffordable(selected, scoutTier) : !selected.affordable) {
+      return;
+    }
     playSfx("confirm");
-    dispatch({ type: "START_PRODUCTION", kind: selected.kind, itemId: selected.id });
+    dispatch({
+      type: "START_PRODUCTION",
+      kind: selected.kind,
+      itemId: selected.id,
+      ...(selected.spawnsScout ? { scoutTier } : {}),
+    });
     setSelectedKey(null);
   };
 
@@ -102,7 +115,6 @@ export function ProductionPanel({
         opt={opt}
         selected={keyOf(opt) === selectedKey}
         selectable={selectable(opt)}
-        estMonths={monthsFor(opt.fundsCost)}
         onClick={() => onRowClick(opt)}
         onDetails={() => setDetailKey(keyOf(opt))}
       />
@@ -111,8 +123,8 @@ export function ProductionPanel({
   return (
     <div className="panel production-panel">
       <div className="panel-sub">
-        One project at a time; Funds income (+{fundsPerMonth}/turn) flows into
-        it. Click a row to select, then confirm. ⓘ for details.
+        One project at a time; the full cost is paid when work starts (treasury:{" "}
+        {funds} Funds). Click a row to select, then confirm. ⓘ for details.
       </div>
 
       <div className="prod-list-title">Units</div>
@@ -126,24 +138,20 @@ export function ProductionPanel({
         slotBusy={slotBusy}
         activeName={activeName}
         cancellable={cancellable}
-        estMonths={selected ? monthsFor(selected.fundsCost) : Infinity}
+        scoutTier={scoutTier}
+        onPickTier={setScoutTier}
+        tierAffordable={tierAffordable}
         onConfirm={confirmStart}
         onCancel={() => setSelectedKey(null)}
         onCancelActive={() => dispatch({ type: "CANCEL_PRODUCTION" })}
       />
 
-      {detail && (
-        <DetailsModal
-          opt={detail}
-          estMonths={monthsFor(detail.fundsCost)}
-          onClose={() => setDetailKey(null)}
-        />
-      )}
+      {detail && <DetailsModal opt={detail} onClose={() => setDetailKey(null)} />}
     </div>
   );
 }
 
-function statusText(opt: ProductionOption, estMonths: number): string {
+function statusText(opt: ProductionOption): string {
   switch (opt.status) {
     case "active":
       return "Building…";
@@ -152,9 +160,7 @@ function statusText(opt: ProductionOption, estMonths: number): string {
     case "locked":
       return opt.lockReason ?? "Locked";
     default:
-      return estMonths === Infinity
-        ? "needs Funds"
-        : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`;
+      return `${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`;
   }
 }
 
@@ -162,18 +168,15 @@ function ProductionRow({
   opt,
   selected,
   selectable,
-  estMonths,
   onClick,
   onDetails,
 }: {
   opt: ProductionOption;
   selected: boolean;
   selectable: boolean;
-  estMonths: number;
   onClick: () => void;
   onDetails: () => void;
 }) {
-  const upfront = upfrontChips(opt.upfrontCost);
   const unaffordable = opt.status === "available" && !opt.affordable;
 
   return (
@@ -215,13 +218,8 @@ function ProductionRow({
         <div className="prod-row-effect">{opt.effectSummary}</div>
       </div>
       <div className="prod-row-cost">
-        <div>
-          {opt.fundsCost} Funds
-          {upfront ? ` + ${upfront}` : ""}
-        </div>
-        <div className={`prod-row-status s-${opt.status}`}>
-          {statusText(opt, estMonths)}
-        </div>
+        <div>{upfrontChips(opt.upfrontCost) || "Free"}</div>
+        <div className={`prod-row-status s-${opt.status}`}>{statusText(opt)}</div>
       </div>
       {selected && (
         <span className="prod-row-check" aria-hidden>
@@ -248,7 +246,9 @@ function ConfirmBar({
   slotBusy,
   activeName,
   cancellable,
-  estMonths,
+  scoutTier,
+  onPickTier,
+  tierAffordable,
   onConfirm,
   onCancel,
   onCancelActive,
@@ -257,7 +257,9 @@ function ConfirmBar({
   slotBusy: boolean;
   activeName: string;
   cancellable: boolean;
-  estMonths: number;
+  scoutTier: ScoutQualityTier;
+  onPickTier: (tier: ScoutQualityTier) => void;
+  tierAffordable: (o: ProductionOption, tier: ScoutQualityTier) => boolean;
   onConfirm: () => void;
   onCancel: () => void;
   onCancelActive: () => void;
@@ -287,6 +289,13 @@ function ConfirmBar({
   }
 
   const upfront = upfrontChips(selected.upfrontCost);
+  const startable = selected.spawnsScout
+    ? tierAffordable(selected, scoutTier)
+    : selected.affordable;
+  const costLine = selected.spawnsScout
+    ? `${scoutTierCost(selected.fundsCost, scoutTier)} Funds upfront`
+    : `${upfront || "Free"} upfront`;
+
   return (
     <div className="prod-confirm ready">
       <div className="prod-confirm-info">
@@ -294,11 +303,33 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {selected.fundsCost} Funds{upfront ? ` + ${upfront}` : ""} ·{" "}
-            {estMonths === Infinity
-              ? "needs Funds income"
-              : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`}
+            {costLine} · {selected.buildMonths} month
+            {selected.buildMonths === 1 ? "" : "s"} to build
           </div>
+          {selected.spawnsScout && (
+            <div className="prod-tier-row" role="radiogroup" aria-label="Scout quality">
+              {SCOUT_TIERS.map((t) => {
+                const cost = scoutTierCost(selected.fundsCost, t.tier);
+                const afford = tierAffordable(selected, t.tier);
+                return (
+                  <button
+                    key={t.tier}
+                    type="button"
+                    role="radio"
+                    aria-checked={scoutTier === t.tier}
+                    className={`prod-tier-chip${scoutTier === t.tier ? " on" : ""}${
+                      afford ? "" : " unaffordable"
+                    }`}
+                    title={t.blurb}
+                    onClick={() => onPickTier(t.tier)}
+                  >
+                    <span className="prod-tier-name">{t.name}</span>
+                    <span className="prod-tier-cost">{cost} Funds</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
       <div className="prod-confirm-actions">
@@ -307,7 +338,7 @@ function ConfirmBar({
         </button>
         <button
           className="btn btn-primary"
-          disabled={!selected.affordable}
+          disabled={!startable}
           onClick={confirmGuard(onConfirm)}
         >
           Start Building
@@ -324,11 +355,9 @@ function confirmGuard(fn: () => void): () => void {
 
 function DetailsModal({
   opt,
-  estMonths,
   onClose,
 }: {
   opt: ProductionOption;
-  estMonths: number;
   onClose: () => void;
 }) {
   const upfront = upfrontChips(opt.upfrontCost);
@@ -360,17 +389,10 @@ function DetailsModal({
         {opt.flavor && <p className="prod-detail-flavor">{opt.flavor}</p>}
         <div className="prod-detail-rows">
           <DetailRow label="Does" value={opt.effectSummary} tone="good" />
-          <DetailRow
-            label="Cost"
-            value={`${opt.fundsCost} Funds${upfront ? ` + ${upfront} upfront` : ""}`}
-          />
+          <DetailRow label="Cost" value={`${upfront || "Free"} — paid upfront`} />
           <DetailRow
             label="Build time"
-            value={
-              estMonths === Infinity
-                ? "Needs Funds income"
-                : `~${estMonths} turn${estMonths === 1 ? "" : "s"}`
-            }
+            value={`${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`}
           />
           <DetailRow
             label="Requirements"

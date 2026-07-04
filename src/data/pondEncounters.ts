@@ -3,8 +3,8 @@ import type { PondEncounter } from "../types/game";
 // One-time early discoveries the Scout / Pond Scout can investigate in the Pond
 // Hockey Era. These are the Civ-style "goodie huts": they are generated with
 // the world, shown as small rink/barn markers, and disappear after investigation.
-// They are deliberately distinct from persistent Independent Hockey Associations
-// and from city-state-like Hockey Regions in /data/regions.ts.
+// They are deliberately distinct from the persistent Independent Hockey
+// Associations (the city-state analogs in the independents system).
 
 export const POND_ENCOUNTERS: PondEncounter[] = [
   {

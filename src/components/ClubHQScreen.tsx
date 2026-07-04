@@ -6,6 +6,7 @@ import type {
   GameState,
   Player,
   ResourceKey,
+  ScoutCharacter,
 } from "../types/game";
 import {
   ALL_FACILITY_DEFS_BY_ID,
@@ -17,7 +18,6 @@ import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
   getMonthlyUpkeep,
-  getDiscoveredCount,
   getEraProgress,
 } from "../engine/selectors";
 import {
@@ -25,6 +25,8 @@ import {
   productionItemName,
 } from "../engine/productionSystem";
 import { allScouts } from "../engine/scoutSystem";
+import { xpToNextPromotion } from "../engine/scoutStaff";
+import { SCOUT_TIERS_BY_ID } from "../data/scouts";
 import { turnDateLabel } from "../engine/calendar";
 import {
   canHoldTryouts,
@@ -33,8 +35,10 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { AttrBar } from "./TryoutScreen";
+import { PlayerHeadshot } from "./HockeyCard";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
+import { primeTryoutMusic } from "./BackgroundMusic";
 
 export type HQTab =
   | "overview"
@@ -158,7 +162,8 @@ export function ClubHQScreen({
 function OverviewTab({ state }: { state: GameState }) {
   const income = getMonthlyIncome(state);
   const upkeep = getMonthlyUpkeep(state);
-  const discovered = getDiscoveredCount(state);
+  const independentsMet =
+    state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
   const eraProgress = getEraProgress(state);
   const prod = state.activeProduction;
 
@@ -207,7 +212,7 @@ function OverviewTab({ state }: { state: GameState }) {
                   {productionItemName(prod.kind, prod.itemId)}
                 </div>
                 <div className="faint">
-                  {prod.fundsRemaining} Funds remaining
+                  {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} remaining
                 </div>
               </div>
             </div>
@@ -218,8 +223,8 @@ function OverviewTab({ state }: { state: GameState }) {
 
         <div className="hq-card">
           <div className="hq-card-title">Hockey World</div>
-          <div className="hq-stat-big">{discovered}</div>
-          <div className="hq-stat-sub">regions discovered</div>
+          <div className="hq-stat-big">{independentsMet}</div>
+          <div className="hq-stat-sub">independents met</div>
         </div>
 
         <div className="hq-card hq-era-card">
@@ -329,7 +334,10 @@ function TeamTab({
           className="btn btn-gold"
           disabled={!canHoldTryouts(state)}
           title={tryoutGateHint(gate)}
-          onClick={() => dispatch({ type: "HOLD_TRYOUTS" })}
+          onClick={() => {
+            primeTryoutMusic();
+            dispatch({ type: "HOLD_TRYOUTS" });
+          }}
         >
           Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
         </button>
@@ -391,6 +399,9 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
     <div className="line-slot">
       <div className="line-slot-top">
         <span className="line-pos">{label}</span>
+        <div className="line-headshot">
+          <PlayerHeadshot subject={player} />
+        </div>
         <div>
           <div className="line-name">{player.name}</div>
           <div className="line-meta">
@@ -418,6 +429,7 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
 function PersonnelTab({ state }: { state: GameState }) {
   const club = state.club;
   const fieldUnits = allScouts(state.world);
+  const builders = fieldUnits.filter((u) => u.kind === "builder");
   const staff = state.cards.filter((c) => c.type === "staff");
 
   return (
@@ -432,27 +444,36 @@ function PersonnelTab({ state }: { state: GameState }) {
         />
       </div>
 
-      <SectionTitle>Field Staff</SectionTitle>
-      {fieldUnits.length > 0 ? (
+      <SectionTitle>Scouting Staff</SectionTitle>
+      {state.scoutStaff.length > 0 ? (
+        <div className="hq-scout-list">
+          {state.scoutStaff.map((s) => (
+            <ScoutRow key={s.id} scout={s} state={state} />
+          ))}
+        </div>
+      ) : (
+        <div className="faint">No scouts on staff yet.</div>
+      )}
+
+      <SectionTitle>Field Crews</SectionTitle>
+      {builders.length > 0 ? (
         <div className="hq-people">
-          {fieldUnits.map((u) => (
+          {builders.map((u) => (
             <PersonRow
               key={u.id ?? u.name}
-              glyph={u.kind === "builder" ? "⛏" : "🔍"}
-              name={u.name ?? (u.kind === "builder" ? "Rink Rats" : "Club Scout")}
-              role={u.kind === "builder" ? "Construction" : "Exploration"}
+              glyph="⛏"
+              name={u.name ?? "Rink Rats"}
+              role="Construction"
               note={
-                u.working
+                u.working?.task === "build-rink"
                   ? `Building a rink — ${u.working.monthsRemaining} mo to go.`
-                  : u.kind === "builder"
-                    ? "Clearing ponds, raising rinks, cutting sticks."
-                    : "Out on the ice, mapping the hockey world."
+                  : "Clearing ponds, raising rinks, cutting sticks."
               }
             />
           ))}
         </div>
       ) : (
-        <div className="faint">No field staff yet.</div>
+        <div className="faint">No work crews yet.</div>
       )}
       {staff.length > 0 && (
         <div className="hq-people">
@@ -462,6 +483,40 @@ function PersonnelTab({ state }: { state: GameState }) {
         </div>
       )}
 
+    </div>
+  );
+}
+
+// A named scout with judging attributes + fieldwork XP (D29 scout characters).
+function ScoutRow({ scout, state }: { scout: ScoutCharacter; state: GameState }) {
+  const tier = SCOUT_TIERS_BY_ID[scout.tier];
+  const unit = allScouts(state.world).find((u) => u.id === scout.id);
+  const { have, need } = xpToNextPromotion(scout);
+  const doing =
+    unit?.working?.task === "establish-network"
+      ? `Establishing a scouting network — ${unit.working.monthsRemaining} mo to go.`
+      : unit
+        ? "In the field, mapping the hockey world."
+        : "Between assignments.";
+
+  return (
+    <div className="hq-scout-row">
+      <span className="hq-person-avatar">🔍</span>
+      <div className="hq-scout-body">
+        <div className="hq-person-top">
+          <span className="hq-person-name">{scout.name}</span>
+          <span className="hq-person-role">{tier.name}</span>
+          <span className="hq-scout-xp" title="Fieldwork XP toward the next promotion">
+            {have}/{need} XP
+            {scout.promotions > 0 ? ` · ${scout.promotions}⭑` : ""}
+          </span>
+        </div>
+        <div className="hq-scout-attrs">
+          <AttrBar label="Judging Potential" value={scout.judgingPotential} />
+          <AttrBar label="Judging Ability" value={scout.judgingAbility} />
+        </div>
+        <div className="hq-person-note">{doing} “{scout.note}”</div>
+      </div>
     </div>
   );
 }
@@ -500,17 +555,12 @@ function ProductionTab({
   dispatch: Dispatch<GameAction>;
 }) {
   const prod = state.activeProduction;
-  const fundsPerMonth = getMonthlyIncome(state).funds;
 
   return (
     <div className="hq-tabpane">
       {prod ? (
         (() => {
-          const total = prod.fundsRemaining + prod.progressFunds;
-          const turnsLeft =
-            fundsPerMonth > 0
-              ? Math.max(1, Math.ceil(prod.fundsRemaining / fundsPerMonth))
-              : Infinity;
+          const monthsDone = prod.totalMonths - prod.monthsRemaining;
           return (
             <div className="hq-now-building">
               <ItemArt kind={prod.kind} id={prod.itemId} className="hq-build-art" />
@@ -523,18 +573,14 @@ function ProductionTab({
                   <div
                     className="hq-now-fill"
                     style={{
-                      width: `${Math.round((prod.progressFunds / total) * 100)}%`,
+                      width: `${Math.round((monthsDone / prod.totalMonths) * 100)}%`,
                     }}
                   />
                 </div>
                 <div className="hq-now-meta">
+                  <span>Paid in full — the crew is on it.</span>
                   <span>
-                    {prod.progressFunds}/{total} Funds
-                  </span>
-                  <span>
-                    {turnsLeft === Infinity
-                      ? "needs Funds income"
-                      : `~${turnsLeft} turn${turnsLeft === 1 ? "" : "s"} left`}
+                    {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} left
                   </span>
                   {canCancelProduction(state) && (
                     <button
@@ -622,7 +668,7 @@ function UnitsTab({ state }: { state: GameState }) {
               <div className="hq-built-desc">
                 At ({scout.x}, {scout.y}) · {scout.movesRemaining}/{scout.movesPerTurn} moves this turn
               </div>
-              <div className="hq-built-effects">Reveals the map and surveys hockey regions.</div>
+              <div className="hq-built-effects">Reveals the map and reaches independents and rival clubs.</div>
             </div>
           </div>
         </div>

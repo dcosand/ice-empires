@@ -118,7 +118,7 @@ export type UnitDef = {
   eraId: string;
   description: string;
   cost: Partial<ResourceSet>;
-  buildMonths: number; // descriptive; real time derives from Operations/mo
+  buildMonths: number; // actual build duration once paid (D30)
   requiredTechIds?: string[]; // ALL must be completed
   requiredFacilityIds?: string[]; // ALL must be built
   // Requirement met if ANY of these tech-or-facility ids is completed/built.
@@ -132,6 +132,30 @@ export type UnitDef = {
   flavor: string;
   // One-line, player-facing summary of what this unit does / will do.
   abilitySummary: string;
+};
+
+// ---------------------------------------------------------------------------
+// Scout characters (D29/D31: scouts are PEOPLE, not interchangeable units)
+// ---------------------------------------------------------------------------
+
+// Quality tier chosen (and paid for) at production — the EHM job-market feel:
+// splurge on an ace or field cheap volunteer eyes. Tier sets starting ranges
+// for the two judging attributes; fieldwork XP promotes from there.
+export type ScoutQualityTier = "volunteer" | "traveled" | "ace";
+
+// A named scout on the club's scouting staff. `id` matches the WorldUnit id of
+// their map unit (scouts are unit-tied; builders never get characters).
+// Attributes are on the 20-point scale shared with players.
+export type ScoutCharacter = {
+  id: string;
+  name: string;
+  tier: ScoutQualityTier;
+  judgingPotential: number; // projecting a young player's ceiling
+  judgingAbility: number; // reading current skill accurately
+  xp: number; // fieldwork experience (encounters, contacts, networks)
+  promotions: number; // promotions already applied from XP
+  hiredMonth: number;
+  note: string; // one-line personality
 };
 
 // An organizational unit the club owns. Lives in the roster at Club HQ; no map
@@ -151,13 +175,17 @@ export type OwnedUnit = {
 
 export type ProductionKind = "facility" | "unit";
 
-// Production is funded by Funds income each month (not paid upfront).
-// Mirrors ActiveResearch so Funds reads as production-toward-the-item.
+// Production is paid in FULL when it starts (Polytopia-style, DECISIONS D30);
+// the HQ slot then works the item for its buildMonths. monthsRemaining ticks
+// down each End Month; totalMonths drives progress bars.
 export type ActiveProduction = {
   kind: ProductionKind;
   itemId: string;
-  fundsRemaining: number;
-  progressFunds: number;
+  monthsRemaining: number;
+  totalMonths: number;
+  // Quality tier picked for a scout-spawning unit (affects cost + the produced
+  // ScoutCharacter's judging attributes). Absent for everything else.
+  scoutTier?: ScoutQualityTier;
 };
 
 // ---------------------------------------------------------------------------
@@ -196,65 +224,11 @@ export type ActiveResearch = {
   progressKnowledge: number;
 };
 
-// ---------------------------------------------------------------------------
-// Regions (discovery)
-// ---------------------------------------------------------------------------
-
-// Region/tile lifecycle. `contested` is tracked separately (a rival-interest
-// flag that can overlay discovered/surveyed/influenced regions).
-export type DiscoveryStateValue =
-  | "hidden"
-  | "rumored"
-  | "discovered"
-  | "surveyed"
-  | "influenced";
-
-export type RegionDef = {
-  id: string;
-  name: string;
-  terrain: string;
-  hockeyResource: string;
-  scoutingDifficulty: number;
-  potentialYields: Partial<ResourceSet>;
-  tags: string[];
-  scoutReport: string;
-  unusual: boolean;
-  // The tile this region sits on in the persistent world grid.
-  tile: { x: number; y: number };
-};
-
-// Early-game "Local Hockey Search" options. Deliberately informal — the club
-// has no formal scouting department yet (that unlocks later).
-export type DiscoveryPriorityId =
-  | "find-local-players"
-  | "ask-around-the-rinks"
-  | "search-for-playable-ice"
-  | "recruit-volunteers"
-  | "host-an-open-skate"
-  | "follow-a-local-rumor";
-
-export type DiscoveryPriorityDef = {
-  id: DiscoveryPriorityId;
-  name: string;
-  description: string;
-  flavor: string;
-};
-
-// An in-progress "Establish Local Connection" toward a surveyed region.
-export type RegionConnection = {
-  regionId: string;
-  monthsRemaining: number;
-};
-
-export type DiscoveryState = {
-  activePriorityId: DiscoveryPriorityId;
-  // region id -> current discovery state (regions absent are "hidden")
-  regionStates: Record<string, DiscoveryStateValue>;
-  // region ids flagged with rival interest
-  contested: string[];
-  // the single active local-connection effort, if any
-  connection: RegionConnection | null;
-};
+// NOTE: The legacy "Local Hockey Search" / rumor-region discovery system was
+// retired (2026-07-03) — independents are now the sole "places that matter".
+// See DECISIONS.md D26 and docs/13_ERA_ARC.md for the scouting arc that replaces
+// it. Types removed here: DiscoveryStateValue, RegionDef, DiscoveryPriorityId,
+// DiscoveryPriorityDef, RegionConnection, DiscoveryState.
 
 // ---------------------------------------------------------------------------
 // Cards (staff / prospect / player)
@@ -285,6 +259,7 @@ export type CardDef = {
 // ---------------------------------------------------------------------------
 
 export type PlayerPosition = "F" | "D" | "G";
+export type PlayerGender = "male" | "female";
 
 // Attributes on a 20-point scale. Pond-era locals roll 1–6 — they are terrible,
 // and that's the point.
@@ -299,9 +274,11 @@ export type PlayerAttrs = {
 export type Player = {
   id: string;
   name: string;
+  gender: PlayerGender;
   position: PlayerPosition;
   age: number;
   attrs: PlayerAttrs;
+  imageUrl?: string;
   // One stick+gear from the equipment inventory. Ungeared players don't count
   // toward the "full line" era requirement.
   hasEquipment: boolean;
@@ -314,10 +291,23 @@ export type Player = {
 // A tryout attendee who hasn't been recruited yet.
 export type TryoutCandidate = Omit<Player, "hasEquipment" | "joinedMonth">;
 
+// A newly-joined player awaiting their cinematic reveal (letterbox + crowd
+// murmur + card flip). Set when the FIRST-EVER player joins (any source) or
+// whenever a wanderer joins via a goodie hut — the "big moment" of a signing.
+export type PlayerReveal = {
+  player: Player;
+  source: "tryout" | "encounter";
+  // The club's very first player — earns the fullest fanfare copy.
+  firstEver: boolean;
+};
+
 export type PendingTryout = {
   candidates: TryoutCandidate[];
   // ids of candidates already recruited this tryout (kept for the modal UI).
   recruitedIds: string[];
+  // The club's first-ever tryout gets the letterbox cinematic treatment
+  // (crowd murmur, staged card-flip reveal). Set once via state.seenFirstTryout.
+  firstEver?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -325,7 +315,7 @@ export type PendingTryout = {
 // ---------------------------------------------------------------------------
 // One-time early discoveries (wanderers, garage-rink legends, frozen-lake
 // weirdos) that the Scout / Pond Scout can stumble onto. Distinct from the
-// persistent, city-state-like Hockey Regions in /data/regions. Types + sample
+// persistent, city-state-like Independent Hockey Associations. Types + sample
 // data exist now so the encounter system can be wired in without a schema
 // change; nothing reads these yet.
 
@@ -363,6 +353,8 @@ export type PendingEncounter = {
   outcome: string; // human-readable result line shown in the pop-up
   tone: "good" | "bad" | "neutral";
   effect: EncounterEffect;
+  // The field unit that stepped on the hut — earns scout XP on resolve (D29).
+  unitId?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -451,15 +443,22 @@ export type WorldTile = {
   valid: boolean; // can be entered / founded on (water is not)
 };
 
-// What a builder is currently constructing (multi-month map work). While set,
-// the unit cannot move and its moves are not refreshed at month end.
-export type BuilderWork = {
-  task: "build-rink";
-  x: number;
-  y: number;
-  rinkKind: "ice" | "inline";
-  monthsRemaining: number;
-};
+// Multi-month map work a field unit is committed to. While set, the unit
+// cannot move and its moves are not refreshed at month end. Builders build
+// rinks; scouts establish scouting networks with independents (D29).
+export type UnitWork =
+  | {
+      task: "build-rink";
+      x: number;
+      y: number;
+      rinkKind: "ice" | "inline";
+      monthsRemaining: number;
+    }
+  | {
+      task: "establish-network";
+      orgId: string;
+      monthsRemaining: number;
+    };
 
 // A movable unit on the world (the Founding Group before founding; Scouts and
 // Builders after). All player field units share this shape and live in
@@ -473,7 +472,7 @@ export type WorldUnit = {
   y: number;
   movesPerTurn: number;
   movesRemaining: number;
-  working?: BuilderWork;
+  working?: UnitWork;
 };
 
 // A rink (or pre-rink surface) created on the map by a builder unit.
@@ -500,14 +499,39 @@ export type WorldPondMarker = {
   investigated: boolean;
 };
 
+// Fog-of-talent (D29, docs/13 §6.3): how the club learned about a player sets
+// how tightly their attributes are known. Tryouts are near-exact (you watched
+// them); a scout's network visit yields RANGES scaled by that scout's judging;
+// the indie's own word is a vague teaser; rival rumors come later (Act II
+// roster snapshots).
+export type KnownVia = "tryout" | "scout-network" | "org-word" | "rumor";
+
+// An estimated attribute: the truth is guaranteed to be inside [low, high],
+// but the center is seeded off-true — a dud can look like a gem.
+export type AttrEstimate = { low: number; high: number };
+
+export type AttrEstimates = Record<keyof PlayerAttrs, AttrEstimate>;
+
 // A prospect in an independent's pipeline. Seeded at worldgen; `revealed`
-// stays false until an Act-2 scouting network uncovers the details — the
-// ledger shows a fogged "???" slot with only position + teaser.
+// stays false until a scouting network uncovers the details — the ledger
+// shows a fogged "???" slot with only position + teaser. Establishing a
+// network fills in the identity, TRUE values (hidden from the UI), and the
+// scouted ESTIMATES the UI actually shows.
 export type OrgProspect = {
   id: string;
   revealed: boolean;
   position: "F" | "D" | "G";
   teaser: string;
+  name?: string;
+  age?: number;
+  knownVia?: KnownVia;
+  // True values — engine-only; never render these directly.
+  attrs?: PlayerAttrs;
+  potential?: number; // true ceiling, 1–20
+  // What your scout believes (render these): width scales with the
+  // establishing scout's Judging Ability / Judging Potential.
+  attrEstimates?: AttrEstimates;
+  potentialEstimate?: AttrEstimate;
 };
 
 // Relationship ladder with an independent (Civ city-state analog):
@@ -532,6 +556,9 @@ export type WorldHockeyOrg = {
   // The Anchor Club race of Act II grows out of this.
   rivalInfluence: Record<string, number>;
   prospects: OrgProspect[];
+  // The player has established a scouting network here (prospects revealed).
+  networkedByPlayer?: boolean;
+  networkMonth?: number;
 };
 
 // ---------------------------------------------------------------------------
@@ -615,13 +642,18 @@ export type GameState = {
   // produced by the Equipment Shed, consumed 1-per-player to gear recruits.
   equipment: number;
   roster: Player[]; // recruited players (the actual team)
+  scoutStaff: ScoutCharacter[]; // named scouts tied to map scout units (D29)
   pendingTryout: PendingTryout | null; // open tryout modal, if any
+  // A newly-signed player awaiting their reveal cinematic (see PlayerReveal).
+  pendingPlayerReveal: PlayerReveal | null;
+  // One-time flags gating the "first" cinematic beats.
+  seenFirstTryout: boolean; // has the club held a tryout before?
+  seenFirstPlayer: boolean; // has anyone ever joined the roster?
   facilities: string[]; // completed facility ids
   units: OwnedUnit[]; // owned organizational units (HQ roster)
   completedResearch: string[];
   activeProduction: ActiveProduction | null; // one shared facility/unit slot
   activeResearch: ActiveResearch | null;
-  discovery: DiscoveryState;
   cards: CardDef[];
   eventLog: EventLogEntry[];
   rngSeed: number;
@@ -644,20 +676,23 @@ export type GameAction =
   | { type: "MOVE_FOUNDING_UNIT"; x: number; y: number }
   | { type: "END_FOUNDING_TURN" }
   | { type: "FOUND_CLUB"; clubId: string }
-  | { type: "START_PRODUCTION"; kind: ProductionKind; itemId: string }
+  | {
+      type: "START_PRODUCTION";
+      kind: ProductionKind;
+      itemId: string;
+      // Quality tier for scout-spawning units (defaults to "volunteer").
+      scoutTier?: ScoutQualityTier;
+    }
   // Change of heart — allowed until the first End Turn applies progress.
   | { type: "CANCEL_PRODUCTION" }
   | { type: "SELECT_RESEARCH"; techId: string }
   | { type: "CANCEL_RESEARCH" }
-  | { type: "SELECT_DISCOVERY_PRIORITY"; priorityId: DiscoveryPriorityId }
   | { type: "RECRUIT_SCOUT" }
   | { type: "SELECT_SCOUT"; scoutId?: string }
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
   | { type: "RESOLVE_ENCOUNTER" }
   | { type: "ACKNOWLEDGE_MEETING" }
   | { type: "RESPOND_MEETING"; attitude: "friendly" | "wary" }
-  | { type: "SURVEY_REGION"; regionId: string }
-  | { type: "ESTABLISH_CONNECTION"; regionId: string }
   // ---- builder (map work crew) actions ----
   | { type: "CLEAR_SNOW"; unitId: string }
   | { type: "BUILD_RINK"; unitId: string }
@@ -666,8 +701,13 @@ export type GameAction =
   | { type: "HOLD_TRYOUTS" }
   | { type: "RECRUIT_PLAYER"; candidateId: string }
   | { type: "CLOSE_TRYOUTS" }
-  // ---- independents ----
+  // Dismiss the first-player / goodie-hut reveal cinematic.
+  | { type: "ACKNOWLEDGE_PLAYER_REVEAL" }
+  // ---- independents / scouting ----
   | { type: "SEND_INTRODUCTION"; orgId: string }
+  // Park a scout beside a contacted independent for 2 months to reveal their
+  // prospect pipeline (Act II scouting network, docs/13 §4.5).
+  | { type: "ESTABLISH_NETWORK"; unitId: string; orgId: string }
   | { type: "END_MONTH" }
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----

@@ -195,3 +195,125 @@ visible. No hills are rendered yet, so there is no vantage level — add it when
 elevation becomes visual. Sight radii: scouts/founder/HQ 3, builders 2,
 rinks 1. Verified by a headless LOS test (mountain shields, grove blocks flat,
 mountain shows over grove).
+
+## D28 — Retire the region / "Local Hockey Search" layer (2026-07-03)
+Supersedes D13, D14 (region influence), and D15 (rumor pressure). The legacy
+rumor-region discovery system was a passive backchannel: monthly RNG in the
+event log that produced cards/reputation/region-reveals with no connection to
+what the player was doing on the map. Independents (D21) already are the
+"places that matter" (city-state analogs with a contact→influence ladder), so
+regions were a parallel, redundant progression.
+
+Removed wholesale: `data/regions.ts`, `data/discovery.ts`,
+`engine/discoverySystem.ts`, `engine/regionDevelopment.ts`,
+`engine/rivalSystem.ts` (region-based rumor pressure), `components/
+DiscoveryPanel.tsx`, and the dead legacy `components/WorldMap.tsx`. Types
+dropped from `game.ts`: DiscoveryState/Value, RegionDef, DiscoveryPriorityId/
+Def, RegionConnection, and `GameState.discovery`. Actions dropped:
+SELECT_DISCOVERY_PRIORITY, SURVEY_REGION, ESTABLISH_CONNECTION. Turn-loop
+calls (resolveDiscovery / progressConnection / maybeRivalRumor) and the map's
+Survey/Connect unit orders + region tile-detail + "Local Hockey Search" rail
+task/overlay are gone. The "regions discovered" HQ stat became "independents
+met." No behavior replaces the removed card/rep faucet yet — cards are parked
+(see D29). Kept as inert forward-hooks (do nothing now, pending the scouting
+rework): the `deeperDiscovery` Unlock and `improveDiscovery` UnitEffect union
+members, plus the `"discovery"` event-log category (still used by scout logs).
+
+## D29 — Scouting arc, scout attributes, and fog-of-talent (DESIGNED, NOT CODED)
+Direction locked with the product owner; implementation deferred to a dedicated
+session. Full design in docs/13_ERA_ARC.md → "The scouting arc." Summary:
+- Scouting is an ACTIVE, unit-driven verb that evolves each era (Pond: explore +
+  sign wanderers/tryouts; Club II: build a dedicated Scout, travel it to an
+  independent, park to Establish a Scouting Network → reveals their prospects;
+  Competitive III: a professional/"spy" scout gets intel on rival rosters
+  (pre-scrimmage reports) and you start signing the indies you networked in II;
+  Operations IV: a GM figure (maybe the club leader) flies to indies for
+  affiliates/farm teams + influence; leagues/drafts/agents; Dynasty V: standing
+  amateur scouts assigned across the map).
+- Scouts are NOT equal — two attributes, **Judging Potential** and **Judging
+  Ability**, that improve with experience. HYBRID acquisition model: pay an
+  upfront quality tier at production (EHM-style "pay up for a better scout") AND
+  earn promotions through fieldwork (Civ-XP). This only creates real tension if
+  the economy is tightened first — see D30.
+- **Fog-of-talent**: a scouted player's attributes are ESTIMATES with confidence
+  set by an information-provenance ladder (tightest→loosest): tryout on your own
+  ice (near-exact) > your scout visited the indie (scaled by that scout's
+  Judging ratings) > the indie's own word (vague, oversells) > rumor from
+  another major (secondhand). Potential and Ability are SEPARATE fogs. Every
+  scouted player carries a "known-via" provenance that sets range tightness.
+  Reshapes HockeyCard: attribute bars become confidence ranges (task #6).
+- Talent sources become player-driven, not RNG: campfire goodie huts, tryouts,
+  and (proposed) Level-1 rinks periodically drawing a local hopeful so map rinks
+  matter beyond +funds/tryouts.
+- CARDS are PARKED: the coach/prospect card feature has no clear meaning yet
+  (coaches-on-cards feel odd; nothing puts them on the map). Do not build card
+  triggers. Revisit whether cards become a Civ-VI-style "great people" special
+  unit or are removed. Roster players stay first-class (D24), not cards.
+
+## D30 — Economy: trial Polytopia pay-upfront (SHIPPED 2026-07-03)
+Current model is Civ pay-over-time: Funds drip into `ActiveProduction.
+progressFunds` on one slot (productionSystem.ts); only Hockey Knowledge is
+charged upfront. The owner finds funds too plentiful — no "build X or Y"
+tension. Direction: TRIAL a Polytopia-style full-upfront cost for units (at
+least), tighten income, and lean on the D25 upkeep so each purchase is a real
+"spend it or save it" choice. This is the unlock that makes the D29 paid-scout
+tier meaningful. Blast radius is small (~productionSystem.ts + the production
+progress UI), so it is cheap to trial and revert. Deferred to the economy pass.
+
+**Shipped 2026-07-03**: full cost (funds + HK) charged at start for BOTH units
+and facilities — one model, and it removes the income double-count (the old
+drip counted funds income twice: into the treasury AND as production progress).
+`ActiveProduction` is now a `monthsRemaining/totalMonths` timer driven by the
+item's `buildMonths`; cancel refunds in full until the first End Month. Base
+funds income tightened 5 → 3/mo (rinks still +1/mo each). Research keeps the
+HK drip — out of scope. Turn discipline (D10) relaxed to match: production no
+longer gates End Turn — with upfront costs, saving for a bigger purchase is a
+legitimate play, so forcing a build would punish it. Research still gates.
+Revert = make `productionUpfrontCost` HK-only and restore the income-fed
+progress loop in `progressProduction`.
+
+## D31 — Scout characters live on an individual scout roster (SHIPPED 2026-07-03)
+The D29 open fork is settled with the owner: scout ratings live on INDIVIDUAL
+scout characters (`state.scoutStaff: ScoutCharacter[]`), not a club-wide
+capability. Each map scout unit is a named person (`ScoutCharacter.id` ===
+the WorldUnit id) with Judging Potential + Judging Ability on the shared
+20-point scale. Hybrid acquisition per D29:
+- **Pay upfront** (rides on D30): a quality tier picked at production —
+  Keen Volunteer ×1 (attrs 2–5), Traveled Scout ×1.75 (5–9), Ace ×2.5 (9–14).
+  Tiers/multipliers in `data/scouts.ts`; the tier picker lives in the
+  ProductionPanel confirm bar for `spawnsMapUnit: "scout"` units.
+- **Promote through fieldwork** (Civ-XP): +2 XP goodie hut, +3 first contact
+  with an org, +5 establishing a scouting network. Every 5 XP = a promotion
+  (+1 to the WEAKER judging attribute, ties favor Potential), applied in the
+  monthly sweep (`scoutStaff.applyScoutPromotions`).
+- The founding scout gets a free volunteer character; builders never get
+  characters.
+
+**Establish Scouting Network** (docs/13 §4.5) also shipped: a scout with
+`scouting-reports` parked adjacent to a CONTACTED independent runs a 2-month
+`working` task (reuses the builder `working` shape, now the `UnitWork` union)
+→ `org.networkedByPlayer`, +10 influence, prospects revealed with real seeded
+names/ages/attrs, +5 scout XP. Prospect attrs are TRUE values for now —
+fog-of-talent (D29 task) will blur them by the scout's judging ratings.
+NOT yet: rival networks / Anchor Club race, recruiting revealed prospects
+(Act III per docs/13 §6.1), era requirement wiring (club-formation exit list
+is still empty by design — a partial checklist would advance the era early).
+
+## D32 — Fog-of-talent v1: estimate ranges with honest bounds (SHIPPED 2026-07-03)
+docs/13 §6.3 implemented for the provenance rungs that exist today:
+- **Tryout (rung 1)**: near-exact — roster players and tryout candidates keep
+  exact displayed attributes (you watched them play). Unchanged.
+- **Scout network (rung 2)**: revealed prospects store TRUE attrs + a true
+  ceiling (`potential`) engine-side, but the UI only ever renders
+  `attrEstimates`/`potentialEstimate` ranges (`engine/talentFog.ts`). Range
+  half-width = `max(1, round((16 - judging)/3))` — ability ranges use the
+  establishing scout's Judging Ability, the ceiling uses Judging Potential.
+  THE CONTRACT: the true value is always inside the range (fog is honest) but
+  the center is seeded off-true (fog misleads) — a dud can look like a gem.
+  Prospects carry `knownVia: "scout-network"`.
+- **Org's own word (rung 3)**: the pre-network fogged teaser row IS this rung.
+- **Rival rumor (rung 4)**: waits for Act II rival roster snapshots (§4.2).
+HockeyCard range-bars are deferred until prospects render as cards (recruiting,
+Act III) — today the ledger table shows compact "Sk 3–6 · Ceiling 8–13" reads.
+Better intel later (a tryout) should COLLAPSE the range — re-scouting/refinement
+is future work.

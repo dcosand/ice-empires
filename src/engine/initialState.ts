@@ -1,7 +1,6 @@
 import type { GameState } from "../types/game";
 import { CLUBS } from "../data/clubs";
 import { PUND_HOCKEY_ERA_ID } from "../data/eras";
-import { DEFAULT_DISCOVERY_PRIORITY } from "../data/discovery";
 import { EMPTY_RESOURCES } from "./resources";
 
 export const MAX_MONTHS = 12;
@@ -20,18 +19,16 @@ export function createInitialState(): GameState {
     resources: { ...EMPTY_RESOURCES },
     equipment: 0,
     roster: [],
+    scoutStaff: [],
     pendingTryout: null,
+    pendingPlayerReveal: null,
+    seenFirstTryout: false,
+    seenFirstPlayer: false,
     facilities: [],
     units: [],
     completedResearch: [],
     activeProduction: null,
     activeResearch: null,
-    discovery: {
-      activePriorityId: DEFAULT_DISCOVERY_PRIORITY,
-      regionStates: {},
-      contested: [],
-      connection: null,
-    },
     cards: [],
     eventLog: [],
     rngSeed: 0,

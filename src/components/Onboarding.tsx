@@ -83,7 +83,7 @@ function buildSlides(state: GameState): Slide[] {
       title: "Discover the World",
       tagline: "Beyond your town lies a hockey world.",
       lines: [
-        "Send Scouts across the map to uncover major clubs, independent hockey regions, talent hotbeds, and hidden opportunities.",
+        "Send Scouts across the map to uncover major clubs, independent clubs, talent hotbeds, and hidden opportunities.",
         "Select your Scout and click a tile to send it exploring the ice.",
       ],
       hero: art("discover-world", "The hockey world from above"),
@@ -113,23 +113,28 @@ function buildSlides(state: GameState): Slide[] {
       ),
     },
     {
-      icon: "🌲",
-      title: "Independent Regions",
-      tagline: "Talent grows everywhere.",
+      icon: "★",
+      title: "Independent Clubs",
+      tagline: "Win their trust before your rivals do.",
       lines: [
-        "Independent regions are neutral hockey ecosystems that produce players, staff, and opportunities.",
-        "Scout them. Influence them. Earn their trust and turn them into pipelines that feed your club.",
+        "Independent clubs are neutral organizations with their own rinks, prospects, traditions, and loyalties.",
+        "Meet them on the map, build influence through introductions, and race rival clubs to turn local pipelines into lasting partnerships.",
       ],
       hero: (
         <>
           {art("independent-regions", "An independent hockey town")}
-          <div className="onb-panel onb-panel-float">
-            <div className="onb-panel-title">Prairie Rink Belt</div>
-            <div className="onb-panel-sub">Independent Region</div>
-            <OnbBar label="Player Output" value="High" pct={82} />
-            <OnbBar label="Staff Opportunities" value="Medium" pct={54} />
-            <OnbBar label="Scouting Coverage" value="25%" pct={25} />
-            <OnbBar label="Recruitment Influence" value="10%" pct={10} />
+          <div className="onb-panel onb-panel-float onb-independent-card">
+            <div className="onb-panel-kicker">First Contact</div>
+            <div className="onb-panel-title">Victoria</div>
+            <div className="onb-panel-sub">Minor Club · Independent</div>
+            <OnbBar label="Your Influence" value="10 / 25" pct={40} />
+            <OnbBar label="Rival Interest" value="Rising" pct={58} />
+            <div className="onb-pipeline">
+              <span>Prospect Pipeline</span>
+              <strong>???</strong>
+              <strong>???</strong>
+              <strong>F</strong>
+            </div>
           </div>
         </>
       ),

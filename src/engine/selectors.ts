@@ -11,13 +11,10 @@ import {
   ALL_UNIT_DEFS_BY_ID,
 } from "../data/clubUniques";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
-import { REGIONS } from "../data/regions";
 import { CARDS_BY_ID } from "../data/cards";
 import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
 import { getClubRinks } from "./rinkSystem";
-import { startableProductionCount } from "./productionSystem";
-import { DISCOVERY_BY_ID } from "../data/discovery";
 
 // Monthly income = club base + completed-facility effects + acquired-card effects.
 export function getMonthlyIncome(state: GameState): ResourceSet {
@@ -50,14 +47,6 @@ export function getMonthlyIncome(state: GameState): ResourceSet {
         income = addResources(income, { [effect.resource]: effect.amount });
       }
     }
-  }
-
-  // Influenced regions each grant Reputation/month (Exploit phase).
-  const influenced = Object.values(state.discovery.regionStates).filter(
-    (s) => s === "influenced",
-  ).length;
-  if (influenced > 0) {
-    income = addResources(income, { reputation: influenced });
   }
 
   // Each club rink (Level >=1, inside HQ radius) yields +1 Funds/month —
@@ -135,36 +124,15 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
   );
 }
 
-// Whether the "End Turn" button is enabled: production, research, and a
-// discovery priority are all chosen (or unavailable). Mirrors the gate the
-// CommandRail uses so the keyboard shortcut behaves like clicking the button.
+// Whether the "End Turn" button is enabled. Production never blocks End Turn:
+// with pay-upfront costs (D30), saving funds for a bigger purchase is a
+// legitimate play. Research still gates — an empty tech slot just wastes HK
+// income. Shared by the CommandRail button and the Enter-key shortcut so both
+// behave identically.
 export function canEndMonth(state: GameState): boolean {
-  const buildReady =
-    !!state.activeProduction || startableProductionCount(state) === 0;
   const researchReady =
     !!state.activeResearch || getAvailableResearch(state).length === 0;
-  const discoveryReady =
-    !!DISCOVERY_BY_ID[state.discovery.activePriorityId];
-  return buildReady && researchReady && discoveryReady;
-}
-
-export function getDiscoveredRegionIds(state: GameState): string[] {
-  return Object.entries(state.discovery.regionStates)
-    .filter(
-      ([, s]) => s === "discovered" || s === "surveyed" || s === "influenced",
-    )
-    .map(([id]) => id);
-}
-
-export function getDiscoveredCount(state: GameState): number {
-  return getDiscoveredRegionIds(state).length;
-}
-
-export function getHiddenRegionCount(state: GameState): number {
-  return REGIONS.filter((r) => {
-    const s = state.discovery.regionStates[r.id];
-    return !s || s === "hidden";
-  }).length;
+  return researchReady;
 }
 
 // Era-progress requirement checklist for the CURRENT era's exit criteria.
@@ -218,17 +186,11 @@ export function allEraRequirementsMet(state: GameState): boolean {
   return reqs.every((req) => isRequirementMet(state, req.id));
 }
 
-// Production progress as a 0..1 fraction for the active item (Funds produced).
+// Production progress as a 0..1 fraction for the active item (months worked).
 export function getActiveProductionProgress(state: GameState): number {
   const prod = state.activeProduction;
-  if (!prod) return 0;
-  const def =
-    prod.kind === "facility"
-      ? ALL_FACILITY_DEFS_BY_ID[prod.itemId]
-      : ALL_UNIT_DEFS_BY_ID[prod.itemId];
-  const cost = def?.cost.funds ?? 0;
-  if (cost === 0) return 0;
-  return prod.progressFunds / cost;
+  if (!prod || prod.totalMonths <= 0) return 0;
+  return (prod.totalMonths - prod.monthsRemaining) / prod.totalMonths;
 }
 
 export function getActiveResearchProgress(state: GameState): number {

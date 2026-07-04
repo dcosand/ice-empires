@@ -4,6 +4,7 @@ import type { GameAction, GameState } from "../types/game";
 import { FACILITIES } from "../data/facilities";
 import { RESEARCH } from "../data/research";
 import { ERAS, ERA_ORDER } from "../data/eras";
+import { primeTryoutMusic } from "./BackgroundMusic";
 
 // In-app developer panel. Hidden by default; toggled with Cmd/Ctrl+Shift+Period.
 // Lets a developer jump the game into any state for testing: reset to turn 1,
@@ -128,7 +129,10 @@ export function DevPanel({
         <button
           style={inGame && !state.pendingTryout ? actionBtnStyle : disabledBtnStyle}
           disabled={!inGame || !!state.pendingTryout}
-          onClick={() => dispatch({ type: "DEV_FORCE_TRYOUTS" })}
+          onClick={() => {
+            primeTryoutMusic();
+            dispatch({ type: "DEV_FORCE_TRYOUTS" });
+          }}
           title="Open a tryout, bypassing tech/rink/cost gates"
         >
           📋 Force tryouts (roster {state.roster.length})
