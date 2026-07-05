@@ -217,17 +217,7 @@ export function BackgroundMusic({
     tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
     tryout.load();
-    tryout
-      .play()
-      .then(() => {
-        suppressTryoutPauseRef.current = true;
-        tryout.pause();
-        tryout.currentTime = 0;
-        window.setTimeout(() => {
-          suppressTryoutPauseRef.current = false;
-        }, 0);
-      })
-      .catch(() => {});
+    tryout.play().catch(() => {});
   };
 
   const startTryoutMusic = (restart = false) => {

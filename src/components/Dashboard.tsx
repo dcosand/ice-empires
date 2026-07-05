@@ -35,7 +35,7 @@ import {
 } from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
 import { techPayoff } from "../engine/researchSystem";
-import { turnDateLabel, turnDateLong } from "../engine/calendar";
+import { turnDateLabel } from "../engine/calendar";
 import { ItemArt } from "./ItemArt";
 import {
   canHoldTryouts,
@@ -93,7 +93,6 @@ export function Dashboard({
   useEffect(() => {
     if (founded) setShowFoundingMoment(true);
   }, [founded]);
-  const pastTwelve = state.month > state.maxMonths;
   const completion = completionEvents(state).find(
     (event) => !dismissedCompletions.has(event.id),
   );
@@ -151,15 +150,6 @@ export function Dashboard({
           <div className="muted">
             {state.club?.name} {ERA_UNLOCK_MESSAGES[state.eraId] ?? "has entered a new era."}
           </div>
-        </div>
-      )}
-
-      {pastTwelve && (
-        <div className="teaser-banner">
-          <strong>The opening scenario is behind you.</strong>{" "}
-          {state.club?.name} made it through Year One — and you are already into
-          It is {turnDateLong(state.month)}. The deeper hockey world, and the eras
-          beyond it, are waiting.
         </div>
       )}
 
