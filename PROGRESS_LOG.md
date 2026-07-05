@@ -1,5 +1,25 @@
 # Ice Empires — Progress Log
 
+## 2026-07-04 (later) — Act II phase 1b: territory teeth + seasonal tryouts
+Finishes TASKS §1 and lands §3. Headless sim extended to 69 assertions (all
+passing); typecheck clean. Territory now claims impassable tiles too (water/
+mountains inside a projection are yours — borders are ownership, not
+walkability), and the male skater player art pool grew 8 → 32.
+- **Independent contention (D35)**: `accrueRinkPresence` monthly — a player
+  rink (level ≥1) within Chebyshev 3 of a contacted indie courts them (+1
+  influence/mo, tier-ups logged); a rival rink in the zone marks their contact
+  (+5) then accrues +1/mo. The Anchor race now has a bricks-and-boards lane.
+- **Rival grievance (D35)**: `rivalTerritoryNearby` — starting a rink build
+  within 1 tile of a contacted rival's territory flips their attitude to wary
+  and logs "X resents the build" (event log until the Inbox, D41).
+- **Seasonal tryouts (D37)**: spring (May) + training camp (Aug–Sep) windows;
+  `out-of-season` gate names the next window. Applies from Club Formation on —
+  pond era stays any-month (forgiving-pond doctrine). `trainingCampsHeld`
+  counts camp-window tryouts for the future `training-camp` era gate. Dev
+  Force Tryouts bypasses via `holdTryouts(state, { force: true })`.
+- AI-club tryout parity deferred (rivals have no recruiting loop yet); era
+  requirement wiring (§7) still waits on owner confirmation of the exit set.
+
 ## 2026-07-04 — Act II phase 1: territory spine (D34/D35/D36)
 First Act II implementation session. Design docs (docs/14, D33–D41) landed on
 main via PR #2 mid-session. Validated with a headless sim through the real

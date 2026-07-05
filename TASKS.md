@@ -121,11 +121,16 @@ is deferred to Act III** (D33); do not build it here.
 - [x] **Territory → tryout pool** (D35, 2026-07-04) — `territoryTryoutBonus`:
       +1 candidate per 7 owned tiles and +1 attribute floor per 10 (cap +3)
       BEYOND the 37-tile HQ founding footprint, stacking with unique bonuses.
-- [ ] **Territory → independent contention** (D35) — a player rink/Club Scout
-      inside an indie's zone feeds the Anchor Club influence race.
-      `independentsSystem.ts`.
-- [ ] **Territory → rival grievance** (D35) — building inside/against a
-      contacted rival's territory nudges `rival.attitude` wary + an inbox line.
+- [x] **Territory → independent contention** (D35, 2026-07-04) —
+      `accrueRinkPresence` (monthly, after `trackRivalOrgContacts`): a player
+      rink (level ≥1) within `ORG_ZONE_RADIUS` (Chebyshev 3) of a CONTACTED
+      indie pays +1 influence/mo (tier-ups logged); a rival rink in the zone
+      marks their contact (+5) then accrues +1/mo. Club Scout hook comes with
+      D38.
+- [x] **Territory → rival grievance** (D35, 2026-07-04) — `rivalTerritoryNearby`
+      (within 1 tile of contacted-rival territory): starting a rink build there
+      flips that rival's `attitude` to wary + drops a "resents the build" log
+      line (event log for now; migrates to the Inbox with D41).
 
 ### 2. Boundary enforcement (D36)
 - [x] **Min build distance** (2026-07-04) — `buildBlockedByRival` in
@@ -138,11 +143,15 @@ is deferred to Act III** (D33); do not build it here.
       territorySystem) and gates builder tiles; `moveScout` enforces the same.
 
 ### 3. Seasonal tryouts & training camp (D37)
-- [ ] **Windowed tryouts** — Hold Tryouts only in spring (~May) + camp
-      (~Aug–Sep); out-of-window copy names the next window. Apply to AI clubs.
-      `tryoutSystem.ts` + the tryout gate/UI.
-- [ ] **Training-camp cycle as an Act-II exit signal** — track a completed camp
-      window for the `training-camp` requirement.
+- [x] **Windowed tryouts** (2026-07-04) — spring (May) + camp (Aug–Sep) windows
+      in `calendar.ts` (`tryoutWindowFor`); `tryoutGate` returns `out-of-season`
+      with next-window copy. Windows apply FROM CLUB FORMATION on — the pond
+      era stays any-month (same forgiving-pond doctrine as delayed upkeep,
+      D25). Dev-panel Force Tryouts bypasses via `holdTryouts(state, {force})`.
+      AI-club parity deferred: rivals have no recruiting loop yet to window.
+- [x] **Training-camp cycle as an Act-II exit signal** (2026-07-04) —
+      `state.trainingCampsHeld` counts tryouts held in a camp window; the
+      `training-camp` era requirement (§7) will read it.
 
 ### 4. Scouts, networks & evaluation (D38, D39)
 - [ ] **Club Scout unit** — new map unit, Club-Formation-era tech gate; the only

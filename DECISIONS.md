@@ -350,11 +350,15 @@ inside/against a contacted rival's territory nudges `rival.attitude` wary + an
 inbox line; (4) movement/build gating (D36). Borders render Civ VI-style in club
 colors from HQ + rinks.
 
-**Partially shipped 2026-07-04**: (1) tryout pool (`territoryTryoutBonus`: +1
-candidate / 7 tiles, +1 attr floor / 10 tiles capped +3, beyond the 37-tile HQ
-founding footprint), (4) gating, and the border render (main map ribbons +
-minimap wash) are in. Still ahead: (2) independent contention and (3) rival
-grievance (wants the Inbox, D41).
+**Shipped 2026-07-04** (all four teeth): (1) tryout pool
+(`territoryTryoutBonus`: +1 candidate / 7 tiles, +1 attr floor / 10 tiles
+capped +3, beyond the 37-tile HQ founding footprint); (2) independent
+contention (`accrueRinkPresence`: a player rink within Chebyshev 3 of a
+contacted indie pays +1 influence/mo; a rival rink there marks their contact +5
+then +1/mo); (3) rival grievance (`rivalTerritoryNearby`: starting a rink build
+within 1 tile of contacted-rival territory flips them wary + a "resents the
+build" log line — event log until the Inbox, D41); (4) movement/build gating
+(D36). Border render: main-map ribbons + minimap wash.
 
 ## D36 — Boundary enforcement: min build distance + unit-kind movement tiers
 Builders cannot build within N tiles of a known rival HQ or inside rival
@@ -374,6 +378,14 @@ Hold Tryouts is gated to two calendar windows — spring (≈ May) and training 
 Makes the month/year matter and pushes the game toward Eastside Hockey Manager's
 scheduled scouting/camp rhythm. A completed camp cycle is a proposed Act-II exit
 gate. Pool size/quality scale with territory (D35).
+
+**Shipped 2026-07-04**: `tryoutWindowFor` in `calendar.ts` (May spring window;
+Aug–Sep camp), `out-of-season` tryout gate with next-window copy. Windows apply
+from CLUB FORMATION on — the pond era stays any-month, extending the
+forgiving-pond doctrine (D25); revisit if playtest wants the calendar earlier.
+`state.trainingCampsHeld` counts camp-window tryouts for the era requirement.
+AI-club parity waits until rivals actually recruit (no roster loop to window
+yet).
 
 ## D38 — Two scout tiers; the Club Scout owns network-building; scouts are assignable
 Base **Scout** stays a generalist (explore, survey, passive first-contact read)
