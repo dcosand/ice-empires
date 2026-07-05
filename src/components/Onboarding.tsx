@@ -3,6 +3,7 @@ import type { ReactNode, SyntheticEvent } from "react";
 import type { GameState } from "../types/game";
 import { CLUB_LIST, clubAsset } from "../data/clubs";
 import { turnDateLong } from "../engine/calendar";
+import { setBackgroundMusicScene } from "./BackgroundMusic";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
@@ -235,6 +236,11 @@ export function Onboarding({
   const isLast = index === slides.length - 1;
   const next = () => (isLast ? onClose() : setIndex((i) => i + 1));
   const back = () => setIndex((i) => Math.max(0, i - 1));
+
+  useEffect(() => {
+    setBackgroundMusicScene("onboarding");
+    return () => setBackgroundMusicScene(null);
+  }, []);
 
   // Arrow keys tab through the slides; Escape skips the whole intro.
   useEffect(() => {

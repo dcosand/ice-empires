@@ -1,27 +1,55 @@
 import { useEffect, useRef, useState } from "react";
+import type { Phase } from "../types/game";
 
-// Tracks live in /public/assets/audio (served as static files; spaces encoded).
-const TRACKS = [
-  { name: "Forge of Empires", url: "/assets/audio/Forge%20of%20Empires.mp3" },
-  { name: "Frozen Apex", url: "/assets/audio/Frozen%20Apex.mp3" },
-  { name: "Ice Empires", url: "/assets/audio/Ice%20Empires.mp3" },
-  { name: "Siren Ridge", url: "/assets/audio/Siren%20Ridge.mp3" },
-  { name: "Stonebound Horizon", url: "/assets/audio/Stonebound%20Horizon.mp3" },
+// Tracks live in /public/assets/audio (served as static files).
+type MusicScene = "title" | "onboarding" | "gameplay";
+type Track = { name: string; url: string };
+
+const TITLE_TRACKS: Track[] = [
+  { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
 ];
+const ONBOARDING_TRACKS: Track[] = [
+  { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
+];
+const ERA_TRACKS: Record<string, Track> = {
+  "pond-hockey": { name: "Era 01", url: "/assets/audio/music/era01-music.wav" },
+  "club-formation": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
+  "competitive-hockey": { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
+  "hockey-operations": { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
+  dynasty: { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
+};
 
 const GAME_VOLUME = 0.35;
 const TRYOUT_VOLUME = 0.42;
 const TRYOUT_START_VOLUME = 0.12;
 const FADE_MS = 950;
+const MUSIC_CROSSFADE_MS = 2400;
 const RETURN_FADE_MS = 1800;
 const TRYOUT_TRACK = {
   name: "Tryouts",
-  url: "/assets/audio/tryouts%20or%20new%20signing.m4a",
+  url: "/assets/audio/scenes/tryouts%20or%20new%20signing.m4a",
 };
 const TRYOUT_AUDIO_PRIME_EVENT = "ice-empires:prime-tryout-audio";
+const MUSIC_SCENE_EVENT = "ice-empires:music-scene";
 
 export function primeTryoutMusic() {
   window.dispatchEvent(new Event(TRYOUT_AUDIO_PRIME_EVENT));
+}
+
+export function setBackgroundMusicScene(scene: MusicScene | null) {
+  window.dispatchEvent(new CustomEvent(MUSIC_SCENE_EVENT, { detail: scene }));
+}
+
+function baseMusicScene(phase: Phase): MusicScene {
+  if (phase === "landing") return "title";
+  if (phase === "playing" || phase === "complete") return "gameplay";
+  return "onboarding";
+}
+
+function tracksFor(scene: MusicScene, eraId: string): Track[] {
+  if (scene === "title") return TITLE_TRACKS;
+  if (scene === "onboarding") return ONBOARDING_TRACKS;
+  return [ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"]];
 }
 
 function fadeAudio(
@@ -48,16 +76,26 @@ function fadeAudio(
   return () => cancelAnimationFrame(frame);
 }
 
-// Single looping playlist, mounted once at the app root so music persists across
+// Single music controller, mounted once at the app root so music persists across
 // every screen. Browsers block autoplay-with-sound until the user interacts, so
 // we attempt to play immediately and retry once on the first interaction. After
 // playback has begun (or the player takes control), that fallback is disabled so
 // Pause stays paused. A mini player lets the player skip, pause, and cycle tracks.
-export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
-  const audioRef = useRef<HTMLAudioElement>(null);
+export function BackgroundMusic({
+  tryoutActive,
+  phase,
+  eraId,
+}: {
+  tryoutActive: boolean;
+  phase: Phase;
+  eraId: string;
+}) {
+  const audioARef = useRef<HTMLAudioElement>(null);
+  const audioBRef = useRef<HTMLAudioElement>(null);
   const tryoutRef = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
+  const [sceneOverride, setSceneOverride] = useState<MusicScene | null>(null);
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
@@ -65,14 +103,36 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
   const suppressTryoutPauseRef = useRef(false);
   const tryoutWasActiveRef = useRef(false);
   const fadeCleanupsRef = useRef<Array<() => void>>([]);
+  const activeGameRef = useRef<"a" | "b">("a");
+  const currentGameUrlRef = useRef("");
 
   const cancelFades = () => {
     fadeCleanupsRef.current.forEach((cleanup) => cleanup());
     fadeCleanupsRef.current = [];
   };
+  const scene = sceneOverride ?? baseMusicScene(phase);
+  const tracks = tracksFor(scene, eraId);
+  const trackIndex = index % tracks.length;
+  const gameTrack = tracks[trackIndex];
+
+  const gameAudio = (slot = activeGameRef.current) =>
+    slot === "a" ? audioARef.current : audioBRef.current;
+
+  const inactiveGameSlot = () => (activeGameRef.current === "a" ? "b" : "a");
+
+  const pauseInactiveGameAudio = () => {
+    const inactive = gameAudio(inactiveGameSlot());
+    if (!inactive || inactive.paused) return;
+    suppressGamePauseRef.current = true;
+    inactive.pause();
+    inactive.currentTime = 0;
+    window.setTimeout(() => {
+      suppressGamePauseRef.current = false;
+    }, 0);
+  };
 
   const fadeOutGame = () => {
-    const game = audioRef.current;
+    const game = gameAudio();
     if (!game || game.paused) return;
     fadeCleanupsRef.current.push(
       fadeAudio(game, 0, FADE_MS, () => {
@@ -101,7 +161,7 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
   };
 
   const returnToGameMusic = () => {
-    const game = audioRef.current;
+    const game = gameAudio();
     const tryout = tryoutRef.current;
     if (!game || !tryout) return;
 
@@ -137,7 +197,7 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
   };
 
   const startTryoutMusic = () => {
-    const game = audioRef.current;
+    const game = gameAudio();
     const tryout = tryoutRef.current;
     if (!game || !tryout) return;
 
@@ -164,9 +224,13 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
 
   // Initial autoplay attempt + a one-shot first-interaction fallback.
   useEffect(() => {
-    const audio = audioRef.current;
+    const audio = gameAudio("a");
     if (!audio) return;
+    currentGameUrlRef.current = gameTrack.url;
+    audio.src = gameTrack.url;
+    audio.loop = tracks.length === 1;
     audio.volume = GAME_VOLUME;
+    musicIntentRef.current = true;
 
     audio.play().catch(() => {});
 
@@ -175,7 +239,8 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
       // Ignore clicks on the mini player itself (its buttons handle playback).
       const t = e.target;
       if (t instanceof Element && t.closest(".miniplayer")) return;
-      if (audio.paused) audio.play().catch(() => {});
+      const active = gameAudio();
+      if (active?.paused) active.play().catch(() => {});
     };
     window.addEventListener("pointerdown", onInteract);
     window.addEventListener("keydown", onInteract);
@@ -187,26 +252,79 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
 
   useEffect(() => {
     window.addEventListener(TRYOUT_AUDIO_PRIME_EVENT, primeTryoutAudioElement);
+    const onScene = (event: Event) => {
+      setSceneOverride((event as CustomEvent<MusicScene | null>).detail ?? null);
+    };
+    window.addEventListener(MUSIC_SCENE_EVENT, onScene);
     return () => {
       window.removeEventListener(TRYOUT_AUDIO_PRIME_EVENT, primeTryoutAudioElement);
+      window.removeEventListener(MUSIC_SCENE_EVENT, onScene);
     };
   }, []);
 
-  // Track change: load the new source; resume only if we were already playing.
+  useEffect(() => {
+    setIndex(0);
+  }, [scene, eraId]);
+
+  // Track change: cross-fade instead of replacing the active element's src.
   useEffect(() => {
     if (!mounted.current) {
       mounted.current = true;
       return; // initial track handled by the autoplay effect
     }
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.load();
-    audio.volume = GAME_VOLUME;
-    if (musicIntentRef.current && !tryoutActive) audio.play().catch(() => {});
-  }, [index]);
+    if (currentGameUrlRef.current === gameTrack.url) return;
+
+    const from = gameAudio();
+    const nextSlot = inactiveGameSlot();
+    const to = gameAudio(nextSlot);
+    if (!to) return;
+
+    currentGameUrlRef.current = gameTrack.url;
+    to.src = gameTrack.url;
+    to.currentTime = 0;
+    to.volume = 0;
+    to.loop = tracks.length === 1;
+    to.load();
+
+    if (!musicIntentRef.current || tryoutActive) {
+      suppressGamePauseRef.current = true;
+      from?.pause();
+      window.setTimeout(() => {
+        suppressGamePauseRef.current = false;
+      }, 0);
+      to.volume = GAME_VOLUME;
+      activeGameRef.current = nextSlot;
+      return;
+    }
+
+    cancelFades();
+    activeGameRef.current = nextSlot;
+    to
+      .play()
+      .then(() => {
+        setPlaying(true);
+        fadeCleanupsRef.current.push(fadeAudio(to, GAME_VOLUME, MUSIC_CROSSFADE_MS));
+        if (from && !from.paused) {
+          fadeCleanupsRef.current.push(
+            fadeAudio(from, 0, MUSIC_CROSSFADE_MS, () => {
+              suppressGamePauseRef.current = true;
+              from.pause();
+              from.currentTime = 0;
+              window.setTimeout(() => {
+                suppressGamePauseRef.current = false;
+              }, 0);
+            }),
+          );
+        }
+      })
+      .catch(() => {
+        setPlaying(false);
+        if (from && !from.paused) from.volume = GAME_VOLUME;
+      });
+  }, [gameTrack.url, tracks.length, tryoutActive]);
 
   useEffect(() => {
-    const game = audioRef.current;
+    const game = gameAudio();
     const tryout = tryoutRef.current;
     if (!game || !tryout) return;
 
@@ -238,39 +356,75 @@ export function BackgroundMusic({ tryoutActive }: { tryoutActive: boolean }) {
   }, [tryoutActive]);
 
   const togglePlay = () => {
-    const audio = tryoutActive ? tryoutRef.current : audioRef.current;
+    const audio = tryoutActive ? tryoutRef.current : gameAudio();
     if (!audio) return;
     startedRef.current = true; // user is in control from here on
     if (audio.paused) {
       musicIntentRef.current = true;
-      audio.play().catch(() => {});
+      audio
+        .play()
+        .then(() => {
+          if (!tryoutActive) pauseInactiveGameAudio();
+        })
+        .catch(() => {});
       if (tryoutActive) fadeAudio(audio, TRYOUT_VOLUME, 180);
       else fadeAudio(audio, GAME_VOLUME, 180);
     } else {
       musicIntentRef.current = false;
       audio.pause();
+      if (!tryoutActive) pauseInactiveGameAudio();
     }
   };
 
   const go = (delta: number) =>
-    setIndex((i) => (i + delta + TRACKS.length) % TRACKS.length);
+    setIndex((i) => (i + delta + tracks.length) % tracks.length);
 
-  const track = tryoutActive ? TRYOUT_TRACK : TRACKS[index];
+  const track = tryoutActive ? TRYOUT_TRACK : gameTrack;
 
   return (
     <div className="miniplayer">
       <audio
-        ref={audioRef}
-        src={TRACKS[index].url}
+        ref={audioARef}
         preload="auto"
+        autoPlay
+        playsInline
+        loop={tracks.length === 1}
         onEnded={() => go(1)}
         onPlay={() => {
+          if (activeGameRef.current !== "a") return;
           setPlaying(true);
           musicIntentRef.current = true;
           startedRef.current = true;
         }}
         onPause={() => {
-          if (!suppressGamePauseRef.current && !tryoutActive) {
+          if (
+            activeGameRef.current === "a" &&
+            !suppressGamePauseRef.current &&
+            !tryoutActive
+          ) {
+            setPlaying(false);
+            musicIntentRef.current = false;
+          }
+        }}
+      />
+      <audio
+        ref={audioBRef}
+        preload="auto"
+        playsInline
+        loop={tracks.length === 1}
+        onEnded={() => go(1)}
+        onPlay={() => {
+          if (activeGameRef.current !== "b") return;
+          setPlaying(true);
+          musicIntentRef.current = true;
+          startedRef.current = true;
+        }}
+        onPause={() => {
+          if (
+            activeGameRef.current === "b" &&
+            !suppressGamePauseRef.current &&
+            !tryoutActive
+          ) {
             setPlaying(false);
             musicIntentRef.current = false;
           }

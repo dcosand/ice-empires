@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
 import type { GameAction, GameState } from "../types/game";
 import { CLUBS, arizonaMonsoon, clubAsset } from "../data/clubs";
 import { preloadClubTextures } from "../data/clubTextures";
+import { setBackgroundMusicScene } from "./BackgroundMusic";
 
 function hideOnError(e: SyntheticEvent<HTMLImageElement>) {
   e.currentTarget.style.display = "none";
@@ -93,7 +94,10 @@ export function FoundingScreen({
           <div className="fr-actions">
             <button
               className="btn btn-gold btn-lg btn-block fr-primary-action"
-              onClick={() => dispatch({ type: "START_FOUNDING" })}
+              onClick={() => {
+                setBackgroundMusicScene("onboarding");
+                dispatch({ type: "START_FOUNDING" });
+              }}
             >
               Found the Club →
             </button>

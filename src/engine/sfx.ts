@@ -1,10 +1,10 @@
-// Tiny SFX manager over the Kenney CC0 packs in /assets/vendor/kenney.
+// Tiny SFX manager over the game audio in /assets/audio.
 // No dependencies: a pool of HTMLAudio elements per sound, fire-and-forget.
 // Browsers block audio before the first user gesture; play() failures are
 // swallowed so early autoplay restrictions never break the game.
 
-const IS = "/assets/vendor/kenney/interface-sounds/Audio";
-const UI = "/assets/vendor/kenney/ui-audio/Audio";
+const SFX = "/assets/audio/sfx";
+const SCENES = "/assets/audio/scenes";
 
 export type SfxName =
   | "click" // generic button press
@@ -18,23 +18,31 @@ export type SfxName =
   | "recruit" // a player joins
   | "cardFlip" // flipping a candidate/player card in the tryout pack
   | "crowd" // PLACEHOLDER: swap for a real crowd-murmur bed (reveal cinematic)
+  | "walk"
+  | "iceWalk"
+  | "snowWalk"
+  | "forestWalk"
+  | "movementError"
   | "error"; // action refused
 
 const FILES: Record<SfxName, string[]> = {
-  click: [`${UI}/click1.ogg`, `${UI}/click2.ogg`],
-  confirm: [`${IS}/confirmation_001.ogg`],
-  back: [`${IS}/back_001.ogg`],
-  select: [`${IS}/click_002.ogg`],
-  endTurn: [`${IS}/maximize_001.ogg`],
-  complete: [`${IS}/confirmation_002.ogg`],
-  fanfare: [`${IS}/confirmation_004.ogg`],
-  check: [`${IS}/drop_002.ogg`],
-  recruit: [`${IS}/confirmation_003.ogg`],
-  // PLACEHOLDER picks — swap per public/assets/vendor/README.md:
-  //   cardFlip -> a paper/whoosh flip; crowd -> a looping arena murmur bed.
-  cardFlip: [`${UI}/switch2.ogg`, `${UI}/switch7.ogg`],
-  crowd: [`${IS}/bong_001.ogg`],
-  error: [`${IS}/error_004.ogg`],
+  click: [`${SFX}/click.m4a`],
+  confirm: [`${SFX}/success-click.mp3`],
+  back: [`${SFX}/transition-click.wav`],
+  select: [`${SFX}/click.m4a`],
+  endTurn: [`${SFX}/success-click.mp3`],
+  complete: [`${SFX}/success-click.mp3`],
+  fanfare: [`${SFX}/success-click.mp3`],
+  check: [`${SFX}/success-click.mp3`],
+  recruit: [`${SFX}/success-click.mp3`],
+  cardFlip: [`${SFX}/click.m4a`],
+  crowd: [`${SCENES}/hockey-sounds.mp3`],
+  walk: [`${SFX}/walking-01.wav`, `${SFX}/walking-02.wav`],
+  iceWalk: [`${SFX}/ice-walking-01.wav`, `${SFX}/ice-walking-02.wav`],
+  snowWalk: [`${SFX}/snow-walking-01.wav`, `${SFX}/snow-walking-02.wav`],
+  forestWalk: [`${SFX}/forest-walking-01.wav`, `${SFX}/forest-walking-02.wav`],
+  movementError: [`${SFX}/movement-error.m4a`],
+  error: [`${SFX}/soft-error.mp3`],
 };
 
 const VOLUME: Partial<Record<SfxName, number>> = {
@@ -45,9 +53,15 @@ const VOLUME: Partial<Record<SfxName, number>> = {
   fanfare: 0.55,
   cardFlip: 0.3,
   crowd: 0.45,
+  walk: 0.32,
+  iceWalk: 0.34,
+  snowWalk: 0.34,
+  forestWalk: 0.34,
+  movementError: 0.38,
 };
 
 const pools = new Map<string, HTMLAudioElement[]>();
+const lastPlayedAt = new Map<SfxName, number>();
 
 function grab(src: string, volume: number): HTMLAudioElement {
   const pool = pools.get(src) ?? [];
@@ -74,6 +88,9 @@ export function isSfxMuted(): boolean {
 
 export function playSfx(name: SfxName): void {
   if (muted) return;
+  const now = performance.now();
+  if (now - (lastPlayedAt.get(name) ?? -Infinity) < 40) return;
+  lastPlayedAt.set(name, now);
   const files = FILES[name];
   if (!files?.length) return;
   const src = files[Math.floor(Math.random() * files.length)];
@@ -84,9 +101,53 @@ export function playSfx(name: SfxName): void {
   }
 }
 
-// One global listener gives every <button> a click sound without touching
-// each component. Buttons that want a richer sound (confirm/recruit/etc.)
-// play it themselves; the generic click underneath is quiet enough to layer.
+function buttonText(el: HTMLElement): string {
+  return [
+    el.getAttribute("aria-label"),
+    el.getAttribute("title"),
+    el.textContent,
+    el.dataset.tip,
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
+function classifyButtonClick(button: HTMLElement): SfxName {
+  const label = buttonText(button);
+  const classes = button.className.toString();
+
+  if (
+    button.matches(".overlay-scrim") ||
+    button.matches(".dock-btn, .task-button, .topbar-club, .notif-chip, .rival-face") ||
+    button.matches(".tech-node-info, .prod-card-info, .prod-row-info") ||
+    /\b(close|back|skip|continue|restart|details|open|finish tryouts|let's begin|previous track|next track)\b/.test(
+      label,
+    )
+  ) {
+    return "back";
+  }
+
+  if (
+    button.matches(".btn-gold") ||
+    /\b(begin|build|confirm|choose|end turn|found|finish|hold tryouts|recruit|send introduction|establish|harvest|clear snow|pave|welcome|hand them)\b/.test(
+      label,
+    )
+  ) {
+    return "confirm";
+  }
+
+  if (classes.includes("onb-dot") || classes.includes("pack-dot")) {
+    return "select";
+  }
+
+  return "click";
+}
+
+// One global listener gives every <button> an appropriate click without touching
+// every component. Event-specific sounds still call playSfx directly.
 let installed = false;
 export function installGlobalClickSfx(): void {
   if (installed || typeof document === "undefined") return;
@@ -95,7 +156,8 @@ export function installGlobalClickSfx(): void {
     "click",
     (e) => {
       const el = e.target as HTMLElement | null;
-      if (el?.closest("button")) playSfx("click");
+      const button = el?.closest("button");
+      if (button) playSfx(classifyButtonClick(button));
     },
     { capture: true },
   );
