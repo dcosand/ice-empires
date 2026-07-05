@@ -1,6 +1,13 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { ClubDef, PlayerAttrs, PlayerPosition, PlayerStyle } from "../types/game";
+import type {
+  ClubDef,
+  PersonNationality,
+  PlayerAttrs,
+  PlayerPosition,
+  PlayerStyle,
+} from "../types/game";
 import { clubAsset } from "../data/clubs";
+import { nationalityLabel } from "../data/nationalities";
 import {
   ATTR_LABELS,
   GOALIE_ATTR_ORDER,
@@ -19,6 +26,7 @@ import { computeOverall, starString, starTier } from "../engine/ratings";
 export type CardSubject = {
   name: string;
   position: PlayerPosition;
+  nationality?: PersonNationality;
   age: number;
   attrs: PlayerAttrs;
   style?: PlayerStyle;
@@ -111,6 +119,7 @@ export function HockeyCard({
             <div className="hc-name">{subject.name}</div>
             <div className="hc-meta">
               {POSITION_LABEL[subject.position]} · Age {subject.age}
+              {subject.nationality ? ` · ${nationalityLabel(subject.nationality)}` : ""}
               {subject.style ? ` · ${subject.style}` : ""}
             </div>
           </div>

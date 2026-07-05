@@ -7,6 +7,7 @@ import type {
   WorldHockeyOrg,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
+import { nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
 import { turnDateLabel } from "../engine/calendar";
 import { indieAsset } from "../data/independents";
@@ -22,13 +23,30 @@ import {
   tierName,
 } from "../engine/independentsSystem";
 import { estimateLine } from "../engine/talentFog";
+import {
+  estimateMid,
+  scoutReadOverall,
+  starString,
+  starTier,
+} from "../engine/ratings";
 
-// Compact scouted readout for a revealed prospect. Fog-of-talent: these are
-// your scout's ESTIMATE ranges ("SHO 32–52"), never the true numbers —
-// tighter ranges come from better judging. Ceiling is the Judging-Potential
-// read.
+// Compact scouted readout for a player in the pipeline (EHM presentation):
+// before any report it's just the org's word; once a scout has filed, it's
+// the scout's STATIC reads plus the two star ratings — Ability & Potential.
+// The numbers are the scout's belief, not the truth.
 function prospectAttrLine(p: OrgProspect): string {
-  return estimateLine(p);
+  if (!p.attrEstimates) {
+    return p.teaser ? `“${p.teaser}”` : "No read yet.";
+  }
+  const parts = [estimateLine(p)];
+  const ability = scoutReadOverall(p.position, p.attrEstimates);
+  if (ability != null) parts.push(`Ability ${starString(starTier(ability))}`);
+  if (p.potentialEstimate) {
+    parts.push(
+      `Potential ${starString(starTier(estimateMid(p.potentialEstimate)))}`,
+    );
+  }
+  return parts.join(" · ");
 }
 
 // The Independents ledger — list view (one row per org, built to scale to a
@@ -325,6 +343,7 @@ function IndependentDetail({
                         <>
                           {p.name}
                           {p.age ? <span className="pp-age"> · {p.age}</span> : null}
+                          <span className="pp-age"> · {nationalityLabel(p.nationality)}</span>
                         </>
                       ) : (
                         "???"
@@ -342,8 +361,10 @@ function IndependentDetail({
           </div>
           <div className="faint indy-foot-note">
             {org.networkedByPlayer
-              ? "Your scouting network keeps this pipeline open — real names, real reads."
-              : "Send a Club Scout to them — the scouting network opens the moment they arrive, revealing who these prospects actually are."}
+              ? "Your scouting network keeps this pipeline open — assign a scout to them and the reads sharpen with every report."
+              : org.playerContacted
+                ? "You know who plays here — the org's word is all you have on them. Send a Club Scout to establish a scouting network."
+                : "Meet them on the map first."}
           </div>
 
           <div className="indy-col-title">The race for their favor</div>

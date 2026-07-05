@@ -4,7 +4,7 @@ import type {
   WorldHockeyOrg,
 } from "../types/game";
 import { isAdjacent } from "./world";
-import { allScouts } from "./scoutSystem";
+import { allScouts, identifyOrgProspects } from "./scoutSystem";
 import { awardScoutXp, awardScoutXpDraft } from "./scoutStaff";
 import { SCOUT_XP_FIRST_CONTACT } from "../data/scouts";
 import { prependLog } from "./log";
@@ -109,6 +109,9 @@ export function checkIndependentContact(draft: GameState, push: PushLog): void {
   org.discovered = true;
   org.influencePoints += inf;
   org.relationshipLevel = levelForInfluence(org.influencePoints);
+  // First contact = you see the whole player list (docs/15 §6). Numbers wait
+  // for a scouting assignment.
+  identifyOrgProspects(draft, org);
   draft.resources.reputation += rep;
   draft.pendingMeeting = { kind: "independent", id: org.id };
   push(
@@ -128,35 +131,21 @@ function isAdjacentOrSame(
 }
 
 function makeContact(state: GameState, orgId: string): GameState {
-  const world = state.world!;
-  const org = world.hockeyOrgs.find((o) => o.id === orgId)!;
+  const org = state.world!.hockeyOrgs.find((o) => o.id === orgId)!;
   const firstMover = org.contactedByClubIds.length === 0;
   const rep = FIRST_CONTACT_REPUTATION + (firstMover ? FIRST_MOVER_REPUTATION : 0);
   const inf = FIRST_CONTACT_INFLUENCE + (firstMover ? FIRST_MOVER_INFLUENCE : 0);
-  const influence = org.influencePoints + inf;
-  const next: GameState = {
-    ...state,
-    resources: {
-      ...state.resources,
-      reputation: state.resources.reputation + rep,
-    },
-    world: {
-      ...world,
-      hockeyOrgs: world.hockeyOrgs.map((o) =>
-        o.id === orgId
-          ? {
-              ...o,
-              discovered: true,
-              playerContacted: true,
-              contactMonth: state.month,
-              influencePoints: influence,
-              relationshipLevel: levelForInfluence(influence),
-            }
-          : o,
-      ),
-    },
-    pendingMeeting: { kind: "independent", id: orgId },
-  };
+  const next: GameState = structuredClone(state);
+  const dOrg = next.world!.hockeyOrgs.find((o) => o.id === orgId)!;
+  dOrg.discovered = true;
+  dOrg.playerContacted = true;
+  dOrg.contactMonth = state.month;
+  dOrg.influencePoints += inf;
+  dOrg.relationshipLevel = levelForInfluence(dOrg.influencePoints);
+  // First contact = you see the whole player list (docs/15 §6).
+  identifyOrgProspects(next, dOrg);
+  next.resources.reputation += rep;
+  next.pendingMeeting = { kind: "independent", id: orgId };
   return prependLog(
     next,
     "discovery",

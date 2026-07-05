@@ -1,17 +1,11 @@
 import type {
   GameState,
+  PersonNationality,
   Player,
-  PlayerGender,
   PlayerPosition,
   TryoutCandidate,
 } from "../types/game";
-import {
-  CANDIDATE_NOTES,
-  FEMALE_FIRST_NAMES,
-  GOALIE_NOTES,
-  LAST_NAMES,
-  MALE_FIRST_NAMES,
-} from "../data/playerNames";
+import { CANDIDATE_NOTES, GOALIE_NOTES } from "../data/playerNames";
 import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
 import { playerTerritorySize } from "./territorySystem";
@@ -19,6 +13,7 @@ import {
   POND_TRYOUT_BAND,
   WANDERER_BAND,
   rollAttrs,
+  rollPersonIdentity,
   rollPosition,
   rollPotential,
   rollStyle,
@@ -135,6 +130,7 @@ function rollCandidate(
   state: GameState,
   index: number,
   territoryFloor: number,
+  usedNames: Set<string>,
 ): TryoutCandidate {
   const draw = () => {
     const roll = nextRandom(state.rngSeed);
@@ -165,17 +161,22 @@ function rollCandidate(
   );
   const { traits } = thread(rollTraits(state.rngSeed));
 
-  const gender: PlayerGender = draw() < 0.32 ? "female" : "male";
-  const firstPool = gender === "female" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
-  const first = firstPool[Math.floor(draw() * firstPool.length)];
-  const last = LAST_NAMES[Math.floor(draw() * LAST_NAMES.length)];
+  const identity = thread(
+    rollPersonIdentity(
+      state.rngSeed,
+      state.club,
+      "tryoutCandidateFemale",
+      usedNames,
+    ),
+  );
   const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
   const id = `candidate-${state.month}-${index}-${Math.floor(draw() * 1e6)}`;
 
   return {
     id,
-    name: `${first} ${last}`,
-    gender,
+    name: identity.name,
+    nationality: identity.nationality,
+    gender: identity.gender,
     position,
     age: 14 + Math.floor(draw() * 6),
     attrs,
@@ -183,7 +184,7 @@ function rollCandidate(
     style,
     traits,
     imageUrl: playerImageFor({
-      gender,
+      gender: identity.gender,
       kind: "prospect",
       position,
       seed: id,
@@ -225,8 +226,9 @@ export function holdTryouts(
   const territory = territoryTryoutBonus(state);
   const count = 3 + Math.floor(roll.value * 3) + bonus + territory.candidates; // 3..5 (+bonuses)
   const candidates: TryoutCandidate[] = [];
+  const usedNames = new Set(state.roster.map((p) => p.name));
   for (let i = 0; i < count; i++)
-    candidates.push(rollCandidate(working, i, territory.floor));
+    candidates.push(rollCandidate(working, i, territory.floor, usedNames));
 
   const next: GameState = {
     ...working,
@@ -312,7 +314,8 @@ export function createWandererPlayer(
   draft: GameState,
   position: PlayerPosition,
   name: string,
-  gender: PlayerGender,
+  gender: Player["gender"],
+  nationality: PersonNationality,
 ): Player | null {
   if (draft.roster.length >= ROSTER_CAP) return null;
   const draw = () => {
@@ -337,6 +340,7 @@ export function createWandererPlayer(
   const player: Player = {
     id: `wanderer-${draft.month}-${Math.floor(draw() * 1e6)}`,
     name,
+    nationality,
     gender,
     position,
     age: 16 + Math.floor(draw() * 8),

@@ -1,15 +1,21 @@
 import { useMemo, useState } from "react";
 import type {
-  AttrEstimate,
   GameState,
   OrgProspect,
   Player,
   PlayerPosition,
   ScoutReport,
 } from "../types/game";
+import { nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
-import { estimateLine, formatEstimate } from "../engine/talentFog";
-import { attrEntries, computeOverall, starString, starTier } from "../engine/ratings";
+import {
+  attrEntries,
+  computeOverall,
+  estimateMid,
+  scoutReadOverall,
+  starString,
+  starTier,
+} from "../engine/ratings";
 import { ATTR_LABELS, POSITION_LABELS } from "../data/attributes";
 import { turnDateLabel } from "../engine/calendar";
 
@@ -27,6 +33,7 @@ type Row = {
   name: string;
   position: PlayerPosition;
   age: number | null;
+  nationality: string;
   style: string;
   source: string;
   // Sort keys: roster OVR is true; a prospect's is the estimate midpoint.
@@ -42,7 +49,6 @@ type Row = {
 type SortKey = "name" | "position" | "age" | "style" | "ovr" | "pot" | "source" | "reports";
 type Scope = "all" | "roster" | "prospects";
 
-const mid = (e: AttrEstimate): number => (e.low + e.high) / 2;
 
 export function ScoutingScreen({ state }: { state: GameState }) {
   const [scope, setScope] = useState<Scope>("all");
@@ -156,6 +162,7 @@ export function ScoutingScreen({ state }: { state: GameState }) {
                 </td>
                 <td className="pp-name">
                   {r.name}
+                  <span className="scouting-flag">{r.nationality}</span>
                   {r.player && !r.player.hasEquipment && (
                     <span className="scouting-flag" title="No gear — not counted toward your line">
                       ungeared
@@ -189,6 +196,7 @@ function buildRows(state: GameState): Row[] {
       name: p.name,
       position: p.position,
       age: p.age,
+      nationality: nationalityLabel(p.nationality),
       style: p.style,
       source: p.origin,
       ovrSort: ovr,
@@ -206,25 +214,23 @@ function buildRows(state: GameState): Row[] {
     org.prospects
       .filter((p) => p.revealed)
       .map((p): Row => {
-        const est = p.attrEstimates;
-        const mids = est
-          ? Object.values(est).filter(Boolean).map((e) => mid(e!))
-          : [];
-        const ovrMid = mids.length
-          ? Math.round(mids.reduce((a, b) => a + b, 0) / mids.length)
-          : 0;
+        // The scout's read (EHM): a static believed OVR + Ability/Potential
+        // stars — only once a report has been filed. Before that: dashes.
+        const readOvr = scoutReadOverall(p.position, p.attrEstimates);
+        const potMid = p.potentialEstimate ? estimateMid(p.potentialEstimate) : null;
         return {
           id: p.id,
           kind: "prospect",
           name: p.name ?? "???",
           position: p.position,
           age: p.age ?? null,
+          nationality: nationalityLabel(p.nationality),
           style: p.style ?? "",
           source: hockeyOrgDisplayName(org),
-          ovrSort: ovrMid,
-          ovrLabel: ovrMid ? `~${ovrMid}` : "?",
-          potSort: p.potentialEstimate ? mid(p.potentialEstimate) : 0,
-          potLabel: p.potentialEstimate ? formatEstimate(p.potentialEstimate) : "?",
+          ovrSort: readOvr ?? 0,
+          ovrLabel: readOvr != null ? `${readOvr}` : "—",
+          potSort: potMid ?? 0,
+          potLabel: potMid != null ? starString(starTier(potMid)) : "—",
           reports: reportCount(p.id),
           prospect: { ...p, orgName: hockeyOrgDisplayName(org) },
         };
@@ -273,6 +279,13 @@ function PlayerDetail({
 }) {
   const p = row.player;
   const stars = p ? starTier(computeOverall(p)) : null;
+  const readOvr = row.prospect
+    ? scoutReadOverall(row.position, row.prospect.attrEstimates)
+    : null;
+  const readAttrs = row.prospect?.attrEstimates;
+  const potMid = row.prospect?.potentialEstimate
+    ? estimateMid(row.prospect.potentialEstimate)
+    : null;
 
   return (
     <div className="panel scouting-panel sc-detail">
@@ -287,6 +300,7 @@ function PlayerDetail({
           <div className="sc-detail-meta">
             {POSITION_LABELS[row.position]}
             {row.age ? ` · Age ${row.age}` : ""}
+            {` · ${row.nationality}`}
             {row.style ? ` · ${row.style}` : ""} · {row.source}
           </div>
         </div>
@@ -296,10 +310,17 @@ function PlayerDetail({
               <strong>{computeOverall(p)}</strong>
               <span>{stars ? starString(stars) : ""}</span>
             </>
+          ) : readOvr != null ? (
+            <>
+              <strong>{readOvr}</strong>
+              <span title="Your scout's ability rating">
+                {starString(starTier(readOvr))} <span className="faint">read</span>
+              </span>
+            </>
           ) : (
             <>
-              <strong>{row.ovrLabel}</strong>
-              <span className="faint">scout’s read</span>
+              <strong>?</strong>
+              <span className="faint">unscouted</span>
             </>
           )}
         </div>
@@ -318,9 +339,11 @@ function PlayerDetail({
             </div>
           ))}
         </div>
-      ) : row.prospect?.attrEstimates ? (
+      ) : readAttrs ? (
+        // The scout's static reads (EHM): believed values, not ranges — and
+        // not necessarily the truth. Gold fill marks them as scouted numbers.
         <div className="sc-attr-grid">
-          {Object.entries(row.prospect.attrEstimates).map(([key, est]) =>
+          {Object.entries(readAttrs).map(([key, est]) =>
             est ? (
               <div className="sc-attr-row" key={key}>
                 <span className="attr-label">
@@ -328,23 +351,23 @@ function PlayerDetail({
                 </span>
                 <span className="attr-bar">
                   <span
-                    className="attr-range"
-                    style={{
-                      left: `${est.low}%`,
-                      width: `${Math.max(2, est.high - est.low)}%`,
-                    }}
+                    className="attr-fill scouted"
+                    style={{ width: `${Math.min(100, estimateMid(est))}%` }}
                   />
                 </span>
-                <span className="attr-value">{formatEstimate(est)}</span>
+                <span className="attr-value">{estimateMid(est)}</span>
               </div>
             ) : null,
           )}
         </div>
       ) : (
-        <div className="faint">“{row.prospect?.teaser}” — no scouted read yet.</div>
+        <div className="faint">
+          “{row.prospect?.teaser}” — the org’s word is all you have. Assign a
+          scout to them for real reads.
+        </div>
       )}
 
-      <div className="indy-col-title">Ceiling</div>
+      <div className="indy-col-title">Potential</div>
       <div className="sc-ceiling">
         {p ? (
           <span className="faint">
@@ -352,13 +375,15 @@ function PlayerDetail({
             ceiling yet — projecting your own kids takes seasons, not
             practices.
           </span>
-        ) : row.prospect?.potentialEstimate ? (
+        ) : potMid != null ? (
           <>
-            Projected {formatEstimate(row.prospect.potentialEstimate)} overall —{" "}
-            <span className="faint">{estimateLine(row.prospect)}</span>
+            {starString(starTier(potMid))} —{" "}
+            <span className="faint">
+              your scout projects a {potMid}-overall type at maturity.
+            </span>
           </>
         ) : (
-          <span className="faint">Unscouted.</span>
+          <span className="faint">No projection until a scout is assigned.</span>
         )}
       </div>
 
@@ -381,7 +406,11 @@ function PlayerDetail({
               </div>
               <div className="sc-report-prose">“{r.prose}”</div>
               <div className="sc-report-foot">
-                Ceiling read: {formatEstimate(r.potentialEstimate)}
+                Ability {(() => {
+                  const read = scoutReadOverall(r.position, r.attrEstimates);
+                  return read != null ? starString(starTier(read)) : "—";
+                })()}{" "}
+                · Potential {starString(starTier(estimateMid(r.potentialEstimate)))}
               </div>
             </div>
           ))}

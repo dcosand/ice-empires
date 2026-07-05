@@ -6246,3 +6246,4 @@ button {
 @media (max-width: 720px) {
   .sc-attr-grid { grid-template-columns: 1fr; }
 }
+.sc-attr-row .attr-fill.scouted { background: rgba(242, 193, 78, 0.8); }

@@ -148,6 +148,10 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   End Month gating breaks.
 - Old save states don't exist (no persistence) — shape changes need no
   migrations.
+- Codex in-app browser is not available in this workspace/session class: the
+  browser runtime fails before launch with missing `sandboxPolicy` metadata.
+  Do not keep trying to launch it; verify with `npm run typecheck`,
+  `npm run build`, local dev server output, and `curl`/terminal checks instead.
 
 ## Docs map (design intent)
 

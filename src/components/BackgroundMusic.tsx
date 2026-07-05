@@ -121,12 +121,18 @@ export function BackgroundMusic({
   const suppressTryoutPauseRef = useRef(false);
   const tryoutWasActiveRef = useRef(false);
   const fadeCleanupsRef = useRef<Array<() => void>>([]);
+  const contactFadeCleanupsRef = useRef<Array<() => void>>([]);
+  const contactRunRef = useRef(0);
   const activeGameRef = useRef<"a" | "b">("a");
   const currentGameUrlRef = useRef("");
 
   const cancelFades = () => {
     fadeCleanupsRef.current.forEach((cleanup) => cleanup());
     fadeCleanupsRef.current = [];
+  };
+  const cancelContactFades = () => {
+    contactFadeCleanupsRef.current.forEach((cleanup) => cleanup());
+    contactFadeCleanupsRef.current = [];
   };
   const scene = sceneOverride ?? baseMusicScene(phase);
   const tracks = tracksFor(scene, eraId);
@@ -376,6 +382,8 @@ export function BackgroundMusic({
   useEffect(() => {
     const contact = contactRef.current;
     if (!contact) return undefined;
+    const run = ++contactRunRef.current;
+    cancelContactFades();
 
     if (contactActive) {
       contact.currentTime = 0;
@@ -383,20 +391,27 @@ export function BackgroundMusic({
       const start = contact.paused ? contact.play() : Promise.resolve();
       start
         .then(() => {
+          if (contactRunRef.current !== run) return;
           fadeGameTo(CONTACT_GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.7);
-          fadeCleanupsRef.current.push(fadeAudio(contact, CONTACT_VOLUME, MUSIC_CROSSFADE_MS * 0.7));
+          contactFadeCleanupsRef.current.push(
+            fadeAudio(contact, CONTACT_VOLUME, MUSIC_CROSSFADE_MS * 0.7),
+          );
         })
         .catch(() => undefined);
-      return undefined;
+      return cancelContactFades;
     }
 
     if (!contact.paused) {
-      fadeCleanupsRef.current.push(
+      contactFadeCleanupsRef.current.push(
         fadeAudio(contact, 0, MUSIC_CROSSFADE_MS * 0.7, () => {
+          if (contactRunRef.current !== run) return;
           contact.pause();
           contact.currentTime = 0;
         }),
       );
+    } else {
+      contact.currentTime = 0;
+      contact.volume = 0;
     }
     if (musicIntentRef.current && !tryoutActive) {
       const game = gameAudio();
@@ -404,7 +419,7 @@ export function BackgroundMusic({
       fadeGameTo(GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.8);
     }
 
-    return undefined;
+    return cancelContactFades;
   }, [contactActive, tryoutActive]);
 
   useEffect(() => {

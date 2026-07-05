@@ -8,13 +8,12 @@ import {
   SCOUT_TIERS_BY_ID,
   SCOUT_XP_PER_PROMOTION,
 } from "../data/scouts";
-import {
-  FEMALE_FIRST_NAMES,
-  LAST_NAMES,
-  MALE_FIRST_NAMES,
-} from "../data/playerNames";
 import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
+import {
+  type NationalitySource,
+  rollPersonIdentity,
+} from "./playerGen";
 
 // Scout characters (D29/D31): every map scout unit is a named PERSON with two
 // judging attributes that improve through fieldwork. Builders never get
@@ -42,19 +41,19 @@ export function rollScoutCharacter(
   unitId: string,
   tier: ScoutQualityTier,
   month: number,
+  nationalitySource?: NationalitySource | null,
+  usedNames?: Set<string>,
 ): { character: ScoutCharacter; seed: number } {
   const def = SCOUT_TIERS_BY_ID[tier];
-  const r1 = nextRandom(seed);
-  const r2 = nextRandom(r1.seed);
-  const r3 = nextRandom(r2.seed);
-  const r4 = nextRandom(r3.seed);
+  const identity = rollPersonIdentity(
+    seed,
+    nationalitySource,
+    "staffFemale",
+    usedNames,
+  );
+  const r4 = nextRandom(identity.seed);
   const r5 = nextRandom(r4.seed);
   const r6 = nextRandom(r5.seed);
-
-  const female = r1.value < 0.38;
-  const firstPool = female ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
-  const first = firstPool[Math.floor(r2.value * firstPool.length)];
-  const last = LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)];
 
   const roll = (v: number) => def.attrMin + 1 + Math.floor(v * def.attrDie);
 
@@ -62,7 +61,8 @@ export function rollScoutCharacter(
     seed: r6.seed,
     character: {
       id: unitId,
-      name: `${first} ${last}`,
+      name: identity.name,
+      nationality: identity.nationality,
       tier,
       judgingPotential: Math.min(ATTR_CAP, roll(r4.value)),
       judgingAbility: Math.min(ATTR_CAP, roll(r5.value)),
@@ -86,8 +86,16 @@ export function ensureScoutCharacters(state: GameState): GameState {
 
   let seed = state.rngSeed;
   const added: ScoutCharacter[] = [];
+  const usedNames = new Set(state.scoutStaff.map((s) => s.name));
   for (const unit of uncovered) {
-    const rolled = rollScoutCharacter(seed, unit.id!, "volunteer", state.month);
+    const rolled = rollScoutCharacter(
+      seed,
+      unit.id!,
+      "volunteer",
+      state.month,
+      state.club,
+      usedNames,
+    );
     seed = rolled.seed;
     added.push(rolled.character);
   }

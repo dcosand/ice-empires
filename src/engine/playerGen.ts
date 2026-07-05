@@ -1,9 +1,14 @@
 import type {
   GoalieAttrs,
+  NationId,
+  NationalityWeights,
+  PersonNationality,
   PlayerAttrs,
+  PlayerGender,
   PlayerPosition,
   PlayerStyle,
   SkaterAttrs,
+  WeightedName,
 } from "../types/game";
 import {
   GOALIE_ATTR_ORDER,
@@ -11,6 +16,8 @@ import {
   STYLE_BIAS,
   STYLES_BY_POSITION,
 } from "../data/attributes";
+import { NATIONS } from "../data/nationalities";
+import { NAME_POOLS } from "../data/playerNames";
 import { computeOverall } from "./ratings";
 import { nextRandom } from "./rng";
 
@@ -29,6 +36,156 @@ export const WANDERER_BAND: AttrBand = { min: 30, span: 25 };
 export const PROSPECT_BAND: AttrBand = { min: 25, span: 30 };
 
 const ATTR_CAP = 99;
+const SECONDARY_NATIONALITY_ODDS = 0.06;
+
+export const GENDER_ODDS = {
+  tryoutCandidateFemale: 0.12,
+  scoutedPlayerFemale: 0.1,
+  staffFemale: 0.22,
+} as const;
+
+export type GenderRollContext = keyof typeof GENDER_ODDS;
+
+export type NationalitySource = {
+  homeNationId: NationId;
+  nationalityWeights?: NationalityWeights;
+};
+
+export function nationalityWeightsFor(
+  source: NationalitySource | null | undefined,
+): NationalityWeights {
+  if (!source) return { other: 1 };
+  return source.nationalityWeights && Object.keys(source.nationalityWeights).length > 0
+    ? source.nationalityWeights
+    : { [source.homeNationId]: 1 };
+}
+
+function rollWeightedNation(
+  seed: number,
+  weights: NationalityWeights,
+  exclude?: NationId,
+): { nationId: NationId; seed: number } {
+  const entries = (Object.entries(weights) as [NationId, number][])
+    .filter(([nationId, weight]) => nationId !== exclude && weight > 0);
+  if (entries.length === 0) {
+    const fallback = exclude && exclude !== "other" ? "other" : "usa";
+    return { nationId: fallback, seed };
+  }
+  const total = entries.reduce((sum, [, weight]) => sum + weight, 0);
+  const r = nextRandom(seed);
+  let cursor = r.value * total;
+  for (const [nationId, weight] of entries) {
+    cursor -= weight;
+    if (cursor <= 0) return { nationId, seed: r.seed };
+  }
+  return { nationId: entries[entries.length - 1][0], seed: r.seed };
+}
+
+export function rollNationality(
+  seed: number,
+  source: NationalitySource | null | undefined,
+): { nationality: PersonNationality; seed: number } {
+  const weights = nationalityWeightsFor(source);
+  const primary = rollWeightedNation(seed, weights);
+  const secondaryRoll = nextRandom(primary.seed);
+  const hasSecondaryOption = (Object.entries(weights) as [NationId, number][])
+    .some(([nationId, weight]) => nationId !== primary.nationId && weight > 0);
+  if (secondaryRoll.value >= SECONDARY_NATIONALITY_ODDS || !hasSecondaryOption) {
+    return {
+      nationality: { primary: primary.nationId },
+      seed: secondaryRoll.seed,
+    };
+  }
+  const secondary = rollWeightedNation(secondaryRoll.seed, weights, primary.nationId);
+  return {
+    nationality:
+      secondary.nationId === primary.nationId
+        ? { primary: primary.nationId }
+        : { primary: primary.nationId, secondary: secondary.nationId },
+    seed: secondary.seed,
+  };
+}
+
+export function rollGender(
+  seed: number,
+  context: GenderRollContext,
+): { gender: PlayerGender; seed: number } {
+  const r = nextRandom(seed);
+  return {
+    gender: r.value < GENDER_ODDS[context] ? "female" : "male",
+    seed: r.seed,
+  };
+}
+
+function rollWeightedName(seed: number, pool: WeightedName[]): { value: string; seed: number } {
+  const r = nextRandom(seed);
+  const total = pool.reduce((sum, n) => sum + (n.weight ?? 1), 0);
+  let cursor = r.value * total;
+  for (const name of pool) {
+    cursor -= name.weight ?? 1;
+    if (cursor <= 0) return { value: name.value, seed: r.seed };
+  }
+  return { value: pool[pool.length - 1]?.value ?? "Unknown", seed: r.seed };
+}
+
+export function rollPersonIdentityForNationality(
+  seed: number,
+  nationality: PersonNationality,
+  context: GenderRollContext,
+  usedNames?: Set<string>,
+): {
+  name: string;
+  gender: PlayerGender;
+  nationality: PersonNationality;
+  seed: number;
+} {
+  let s = seed;
+  const gender = rollGender(s, context);
+  s = gender.seed;
+  const poolId = NATIONS[nationality.primary]?.namePoolId ?? "other";
+  const pool = NAME_POOLS[poolId] ?? NAME_POOLS.other;
+  const firstPool = gender.gender === "female" ? pool.femaleFirstNames : pool.maleFirstNames;
+
+  let name = "Unknown";
+  for (let attempt = 0; attempt < 6; attempt++) {
+    const first = rollWeightedName(s, firstPool);
+    s = first.seed;
+    const last = rollWeightedName(s, pool.lastNames);
+    s = last.seed;
+    name = `${first.value} ${last.value}`;
+    if (!usedNames?.has(name)) break;
+  }
+  usedNames?.add(name);
+
+  return {
+    name,
+    gender: gender.gender,
+    nationality,
+    seed: s,
+  };
+}
+
+export function rollPersonIdentity(
+  seed: number,
+  source: NationalitySource | null | undefined,
+  context: GenderRollContext,
+  usedNames?: Set<string>,
+): {
+  name: string;
+  gender: PlayerGender;
+  nationality: PersonNationality;
+  seed: number;
+} {
+  let s = seed;
+  const nationality = rollNationality(s, source);
+  s = nationality.seed;
+  return rollPersonIdentityForNationality(
+    s,
+    nationality.nationality,
+    context,
+    usedNames,
+  );
+}
 
 export function rollPosition(
   seed: number,

@@ -24,8 +24,8 @@ import { scoutTierCost } from "./scoutStaff";
 
 // Club HQ produces one thing at a time — a facility OR a unit — from the same
 // slot. The FULL cost (Funds + any hockeyKnowledge) is charged upfront when
-// production starts (Polytopia-style, DECISIONS D30); the slot then works the
-// item for its buildMonths.
+// production starts (Polytopia-style, DECISIONS D30). Facilities then work for
+// their buildMonths; paid-for units muster offscreen and arrive next turn.
 
 export function productionItemName(kind: ProductionKind, itemId: string): string {
   return kind === "facility"
@@ -132,7 +132,8 @@ export function startProduction(
     resources[res] = Math.max(0, resources[res] - amt);
   }
 
-  const months = Math.max(1, def?.buildMonths ?? 1);
+  const months =
+    kind === "unit" ? 1 : Math.max(1, def?.buildMonths ?? 1);
 
   return {
     ...state,
@@ -365,7 +366,7 @@ function unitOption(state: GameState, unitId: string): ProductionOption {
     description: def.description,
     fundsCost: productionFundsCost("unit", unitId),
     upfrontCost: productionUpfrontCost("unit", unitId),
-    buildMonths: def.buildMonths,
+    buildMonths: 1,
     flavor: def.flavor,
     effectSummary: def.abilitySummary,
     requirementText: unitRequirementText(def),

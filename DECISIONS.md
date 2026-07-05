@@ -470,3 +470,39 @@ now an EHM-style board (sortable/filterable/searchable) with a per-player
 detail file: attributes (true bars for roster, fog-range bars for prospects),
 ceiling read, and the full scouting history. Report depth/missions (docs/15
 §5) will append to the same store.
+
+## D45 — Nationality is first-class identity data (SHIPPED 2026-07-05)
+Clubs, rivals, independents, players/prospects, and generated scout staff now
+carry nationality metadata. Name pools are presentation derived from the
+selected nationality at creation time; nationality is never inferred afterward
+from a generated name. This supports future international scouting, draft
+classes, import limits, and richer independent pipelines without implementing
+those systems yet.
+
+## D46 — Networks are explicit orders; reads are earned by assignments (SHIPPED 2026-07-05, revises D38/D44)
+Playtest verdict: auto-established networks were "too passive — the user needs
+the payoff." The loop is now three explicit beats, all on the selected unit's
+card (Civ VI-style unit actions):
+1. **First contact** identifies an org's FULL roster (docs/15 §6): 8–10 named
+   players per org (names/age/style + engine-side truth, `identifyOrgProspects`)
+   with only the org's-word teaser showing.
+2. **Establish Scouting Network** — an explicit order on the Club Scout's unit
+   card, instant on click, +10 influence — and a CELEBRATION cinematic
+   (`NetworkEstablishedScene`, `state.pendingNetwork`) that offers the next
+   order. No auto-establish, no monthly sweep.
+3. **Begin Scouting Assignment** (`ScoutMission`, `state.scoutMissions`) pins
+   the scout on station (`working: scout-org`); a report batch files every
+   `MISSION_REPORT_MONTHS` (2), and each successive filing watches sharper
+   (effective judging +3/filing, capped) — repeat viewings narrow the reads.
+   Recall Scout ends the assignment; reports stay on record.
+
+## D47 — EHM presentation: static reads + Ability/Potential stars; OVR stays (SHIPPED 2026-07-05)
+Owner rule: EHM's scouting soul, EA's 1–100 skin — and unlike EHM, Ice Empires
+keeps a derived OVR. Scouted players display the scout's belief as STATIC point
+values (the deliberately off-true center of the internal range — the honesty
+contract stays engine-side, D32), never as ranges, plus TWO star ratings:
+**Ability** (star tier of the read OVR) and **Potential** (star tier of the
+ceiling read). Both appear only after an assignment has filed a report — the
+org's word (teaser prose) is all you get before that. `ratings.scoutReadAttrs/
+scoutReadOverall/estimateMid` are the display helpers; report prose speaks in
+point projections with verbal hedging, not numeric ranges.

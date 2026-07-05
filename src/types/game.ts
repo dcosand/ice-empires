@@ -35,9 +35,52 @@ export type ClubPalette = {
   light: string;
 };
 
+export type NationId =
+  | "usa"
+  | "canada"
+  | "canada_french"
+  | "finland"
+  | "sweden"
+  | "czechia"
+  | "slovakia"
+  | "russia"
+  | "germany"
+  | "switzerland"
+  | "latvia"
+  | "other";
+
+export type NamePoolId = NationId;
+
+export type NationalityWeights = Partial<Record<NationId, number>>;
+
+export type PersonNationality = {
+  primary: NationId;
+  secondary?: NationId;
+};
+
+export type NationDefinition = {
+  id: NationId;
+  displayName: string;
+  namePoolId: NamePoolId;
+};
+
+export type WeightedName = {
+  value: string;
+  weight?: number;
+};
+
+export type NamePool = {
+  id: NamePoolId;
+  maleFirstNames: WeightedName[];
+  femaleFirstNames: WeightedName[];
+  lastNames: WeightedName[];
+};
+
 export type ClubDef = {
   id: string;
   name: string;
+  homeNationId: NationId;
+  nationalityWeights?: NationalityWeights;
   cityRegion: string;
   leaderArchetype: string;
   philosophy: string;
@@ -149,6 +192,7 @@ export type ScoutQualityTier = "volunteer" | "traveled" | "ace";
 export type ScoutCharacter = {
   id: string;
   name: string;
+  nationality: PersonNationality;
   tier: ScoutQualityTier;
   judgingPotential: number; // projecting a young player's ceiling
   judgingAbility: number; // reading current skill accurately
@@ -319,6 +363,7 @@ export type PlayerStyle =
 export type Player = {
   id: string;
   name: string;
+  nationality: PersonNationality;
   gender: PlayerGender;
   position: PlayerPosition;
   age: number;
@@ -498,13 +543,31 @@ export type WorldTile = {
 
 // Multi-turn map work a field unit is committed to. While set, the unit
 // cannot move and its moves are not refreshed at turn end. Builders build
-// rinks. (Scout network-building was work too until D38 made it instant.)
-export type UnitWork = {
-  task: "build-rink";
-  x: number;
-  y: number;
-  rinkKind: "ice" | "inline";
-  monthsRemaining: number;
+// rinks; scouts hold observation assignments at an org (docs/15 §5 — open-
+// ended until recalled).
+export type UnitWork =
+  | {
+      task: "build-rink";
+      x: number;
+      y: number;
+      rinkKind: "ice" | "inline";
+      monthsRemaining: number;
+    }
+  | {
+      task: "scout-org";
+      orgId: string;
+    };
+
+// An active scouting assignment (docs/15 §5, the Civ-VI-spy analog): a scout
+// parked at a networked org, filing reports on a cadence. Repeat viewings
+// sharpen the reads; the mission ends when the scout is recalled.
+export type ScoutMission = {
+  unitId: string;
+  orgId: string;
+  startMonth: number;
+  monthsActive: number;
+  // How many report batches this mission has filed (drives read sharpness).
+  filings: number;
 };
 
 // A movable unit on the world (the Founding Group before founding; Scouts and
@@ -569,6 +632,7 @@ export type AttrEstimates = Partial<Record<AttrKey, AttrEstimate>>;
 export type OrgProspect = {
   id: string;
   revealed: boolean;
+  nationality: PersonNationality;
   position: PlayerPosition;
   teaser: string;
   name?: string;
@@ -612,6 +676,8 @@ export type OrgRelationshipLevel = 0 | 1 | 2 | 3;
 export type WorldHockeyOrg = {
   id: string;
   name: string;
+  homeNationId: NationId;
+  nationalityWeights?: NationalityWeights;
   x: number;
   y: number;
   archetype: "minor-club" | "junior-league" | "rink-society" | "academy";
@@ -657,6 +723,8 @@ export type RivalUnit = {
 
 export type RivalClub = {
   clubId: string; // -> CLUBS[clubId] for name / accent / assets
+  homeNationId: NationId;
+  nationalityWeights?: NationalityWeights;
   hqTile: { x: number; y: number };
   productionPoints: number; // lightweight economy accumulator toward next unit
   units: RivalUnit[];
@@ -715,6 +783,7 @@ export type GameState = {
   roster: Player[]; // recruited players (the actual team)
   scoutStaff: ScoutCharacter[]; // named scouts tied to map scout units (D29)
   scoutReports: ScoutReport[]; // filed reports, newest first (docs/15 §5)
+  scoutMissions: ScoutMission[]; // active observation assignments (docs/15 §5)
   pendingTryout: PendingTryout | null; // open tryout modal, if any
   // A newly-signed player awaiting their reveal cinematic (see PlayerReveal).
   pendingPlayerReveal: PlayerReveal | null;
@@ -736,6 +805,9 @@ export type GameState = {
   pendingEncounter: PendingEncounter | null;
   // A rival first-contact meeting awaiting acknowledgement (leader scene open).
   pendingMeeting: PendingMeeting | null;
+  // A just-established scouting network awaiting its celebration scene — the
+  // trek across the map deserves a payoff beat (docs/15 §4).
+  pendingNetwork: { orgId: string; unitId: string } | null;
   devRevealAll: boolean; // dev tool: render every tile regardless of fog of war
 };
 
@@ -783,6 +855,11 @@ export type GameAction =
   // Park a scout beside a contacted independent for 2 months to reveal their
   // prospect pipeline (Act II scouting network, docs/13 §4.5).
   | { type: "ESTABLISH_NETWORK"; unitId: string; orgId: string }
+  // Dismiss the network-established celebration scene.
+  | { type: "ACKNOWLEDGE_NETWORK" }
+  // ---- scouting assignments (docs/15 §5) ----
+  | { type: "BEGIN_SCOUT_MISSION"; unitId: string; orgId: string }
+  | { type: "RECALL_SCOUT"; unitId: string }
   | { type: "END_MONTH" }
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----

@@ -47,6 +47,7 @@ import { TryoutScreen } from "./TryoutScreen";
 import { PlayerRevealScene } from "./PlayerRevealScene";
 import { playSfx } from "../engine/sfx";
 import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
+import { NetworkEstablishedScene } from "./NetworkEstablishedScene";
 import { IndependentsScreen } from "./IndependentsScreen";
 import { primeTryoutMusic } from "./BackgroundMusic";
 
@@ -235,6 +236,19 @@ export function Dashboard({
         <IndependentMeetingScreen
           state={state}
           orgId={state.pendingMeeting.id}
+          dispatch={dispatch}
+          onOpenLedger={(orgId) => {
+            setLedgerFocusOrgId(orgId);
+            setOverlay("independents");
+          }}
+        />
+      )}
+
+      {state.pendingNetwork && !state.pendingMeeting && (
+        <NetworkEstablishedScene
+          state={state}
+          orgId={state.pendingNetwork.orgId}
+          unitId={state.pendingNetwork.unitId}
           dispatch={dispatch}
           onOpenLedger={(orgId) => {
             setLedgerFocusOrgId(orgId);

@@ -21,6 +21,8 @@ export function createInitialState(): GameState {
     roster: [],
     scoutStaff: [],
     scoutReports: [],
+    scoutMissions: [],
+    pendingNetwork: null,
     pendingTryout: null,
     pendingPlayerReveal: null,
     seenFirstTryout: false,

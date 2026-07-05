@@ -22,6 +22,8 @@ const SHARED_START = {
 export const arizonaMonsoon: ClubDef = {
   id: "arizona-monsoon",
   name: "Arizona Monsoon",
+  homeNationId: "usa",
+  nationalityWeights: { usa: 80, canada: 12, other: 8 },
   cityRegion: "Sonoran Desert",
   leaderArchetype: "The Desert Visionary",
   philosophy: "Nontraditional hockey growth",
@@ -39,6 +41,8 @@ export const arizonaMonsoon: ClubDef = {
 export const halifaxPrivateers: ClubDef = {
   id: "halifax-privateers",
   name: "Halifax Privateers",
+  homeNationId: "canada",
+  nationalityWeights: { canada: 76, canada_french: 14, usa: 10 },
   cityRegion: "Maritime Coast",
   leaderArchetype: "The Salt-Ice Tactician",
   philosophy: "Toughness and board battles",
@@ -55,6 +59,8 @@ export const halifaxPrivateers: ClubDef = {
 export const helsinkiIceCrown: ClubDef = {
   id: "helsinki-ice-crown",
   name: "Helsinki Ice Crown",
+  homeNationId: "finland",
+  nationalityWeights: { finland: 84, sweden: 7, russia: 4, other: 5 },
   cityRegion: "Baltic North",
   leaderArchetype: "The Goalie Whisperer",
   philosophy: "Elite goaltending development",
@@ -71,6 +77,8 @@ export const helsinkiIceCrown: ClubDef = {
 export const calgaryIronHerd: ClubDef = {
   id: "calgary-iron-herd",
   name: "Calgary Iron Herd",
+  homeNationId: "canada",
+  nationalityWeights: { canada: 84, usa: 10, canada_french: 6 },
   cityRegion: "Prairie Foothills",
   leaderArchetype: "The Rink-Town Builder",
   philosophy: "Rink density and grassroots pipelines",
@@ -87,6 +95,8 @@ export const calgaryIronHerd: ClubDef = {
 export const pragueLions: ClubDef = {
   id: "prague-lions",
   name: "Prague Lions",
+  homeNationId: "czechia",
+  nationalityWeights: { czechia: 78, slovakia: 12, germany: 4, other: 6 },
   cityRegion: "Central Europe",
   leaderArchetype: "The Skill Architect",
   philosophy: "Skating and patient systems",
@@ -103,6 +113,8 @@ export const pragueLions: ClubDef = {
 export const minnesotaNova: ClubDef = {
   id: "minnesota-nova",
   name: "Minnesota Nova",
+  homeNationId: "usa",
+  nationalityWeights: { usa: 70, canada: 15, sweden: 6, finland: 5, other: 4 },
   cityRegion: "Upper Midwest",
   leaderArchetype: "The State-of-Hockey Heir",
   philosophy: "Deep traditions and pipelines",
@@ -119,6 +131,8 @@ export const minnesotaNova: ClubDef = {
 export const detroitForge: ClubDef = {
   id: "detroit-forge",
   name: "Detroit Forge",
+  homeNationId: "usa",
+  nationalityWeights: { usa: 74, canada: 18, other: 8 },
   cityRegion: "Great Lakes",
   leaderArchetype: "The Foundry Builder",
   philosophy: "Infrastructure, discipline, and legacy building",
@@ -135,6 +149,8 @@ export const detroitForge: ClubDef = {
 export const stockholmFrost: ClubDef = {
   id: "stockholm-frost",
   name: "Stockholm Frost",
+  homeNationId: "sweden",
+  nationalityWeights: { sweden: 84, finland: 7, other: 9 },
   cityRegion: "Scandinavia",
   leaderArchetype: "The Elegant Architect",
   philosophy: "Elegant systems, composure, and relentless development",

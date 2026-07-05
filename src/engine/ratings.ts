@@ -1,4 +1,12 @@
-import type { GoalieAttrs, Player, PlayerAttrs, SkaterAttrs } from "../types/game";
+import type {
+  AttrEstimate,
+  AttrEstimates,
+  GoalieAttrs,
+  Player,
+  PlayerAttrs,
+  PlayerPosition,
+  SkaterAttrs,
+} from "../types/game";
 import {
   GOALIE_ATTR_ORDER,
   GOALIE_OVR_WEIGHTS,
@@ -71,6 +79,51 @@ export function attrEntries(attrs: PlayerAttrs): [string, number][] {
   return attrs.kind === "skater"
     ? SKATER_ATTR_ORDER.map((k): [string, number] => [k, attrs.skater[k]])
     : GOALIE_ATTR_ORDER.map((k): [string, number] => [k, attrs.goalie[k]]);
+}
+
+// ---------------------------------------------------------------------------
+// Scout reads (docs/15 §5–6, EHM presentation): the UI shows the scout's
+// belief as STATIC point values — the (deliberately off-true) center of each
+// estimate range — never as ranges. Honesty stays engine-side.
+// ---------------------------------------------------------------------------
+
+export function estimateMid(e: AttrEstimate): number {
+  return Math.round((e.low + e.high) / 2);
+}
+
+// The scout's attribute block as point values, shaped like real PlayerAttrs.
+// Null until a report has covered every attribute of the position's set.
+export function scoutReadAttrs(
+  position: PlayerPosition,
+  estimates: AttrEstimates | undefined,
+): PlayerAttrs | null {
+  if (!estimates) return null;
+  if (position === "G") {
+    const goalie = {} as GoalieAttrs;
+    for (const key of GOALIE_ATTR_ORDER) {
+      const est = estimates[key];
+      if (!est) return null;
+      goalie[key] = estimateMid(est);
+    }
+    return { kind: "goalie", goalie };
+  }
+  const skater = {} as SkaterAttrs;
+  for (const key of SKATER_ATTR_ORDER) {
+    const est = estimates[key];
+    if (!est) return null;
+    skater[key] = estimateMid(est);
+  }
+  return { kind: "skater", skater };
+}
+
+// The scout's OVR read (their believed current ability) — feeds the Ability
+// star rating. Null when unscouted.
+export function scoutReadOverall(
+  position: PlayerPosition,
+  estimates: AttrEstimates | undefined,
+): number | null {
+  const attrs = scoutReadAttrs(position, estimates);
+  return attrs ? computeOverall({ position, attrs }) : null;
 }
 
 // ---------------------------------------------------------------------------

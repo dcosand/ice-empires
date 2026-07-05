@@ -154,13 +154,15 @@ export function ProductionPanel({
 function statusText(opt: ProductionOption): string {
   switch (opt.status) {
     case "active":
-      return "Building…";
+      return opt.kind === "unit" ? "Arriving next turn…" : "Building…";
     case "built":
       return "Built ✓";
     case "locked":
       return opt.lockReason ?? "Locked";
     default:
-      return `${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`;
+      return opt.kind === "unit"
+        ? "Next turn"
+        : `${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`;
   }
 }
 
@@ -269,8 +271,8 @@ function ConfirmBar({
       <div className="prod-confirm busy">
         <span className="faint">
           {cancellable
-            ? `Building ${activeName} — you can still change your mind before ending the turn.`
-            : `Building ${activeName} — work has begun; see it through.`}
+            ? `${activeName} is paid for — you can still change your mind before ending the turn.`
+            : `${activeName} is underway; see it through.`}
         </span>
         {cancellable && (
           <button className="btn" onClick={onCancelActive}>
@@ -303,8 +305,10 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {costLine} · {selected.buildMonths} turn
-            {selected.buildMonths === 1 ? "" : "s"} to build
+            {costLine} ·{" "}
+            {selected.kind === "unit"
+              ? "arrives next turn"
+              : `${selected.buildMonths} turn${selected.buildMonths === 1 ? "" : "s"} to build`}
           </div>
           {selected.spawnsScout && (
             <div className="prod-tier-row" role="radiogroup" aria-label="Scout quality">
@@ -341,7 +345,7 @@ function ConfirmBar({
           disabled={!startable}
           onClick={confirmGuard(onConfirm)}
         >
-          Start Building
+          {selected.kind === "unit" ? "Order Unit" : "Start Building"}
         </button>
       </div>
     </div>
@@ -391,8 +395,12 @@ function DetailsModal({
           <DetailRow label="Does" value={opt.effectSummary} tone="good" />
           <DetailRow label="Cost" value={`${upfront || "Free"} — paid upfront`} />
           <DetailRow
-            label="Build time"
-            value={`${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`}
+            label={opt.kind === "unit" ? "Delivery" : "Build time"}
+            value={
+              opt.kind === "unit"
+                ? "Arrives next turn"
+                : `${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`
+            }
           />
           <DetailRow
             label="Requirements"

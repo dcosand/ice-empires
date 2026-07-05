@@ -14,6 +14,7 @@ import {
 } from "../data/clubUniques";
 import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
+import { nationalityLabel } from "../data/nationalities";
 import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
@@ -493,7 +494,7 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
             {player.name} <span className="line-ovr">{overall}</span>
           </div>
           <div className="line-meta">
-            Age {player.age} · {player.style} · Joined {turnDateLabel(player.joinedMonth)}
+            Age {player.age} · {nationalityLabel(player.nationality)} · {player.style} · Joined {turnDateLabel(player.joinedMonth)}
           </div>
         </div>
         <span
@@ -591,6 +592,7 @@ function ScoutRow({ scout, state }: { scout: ScoutCharacter; state: GameState })
         <div className="hq-person-top">
           <span className="hq-person-name">{scout.name}</span>
           <span className="hq-person-role">{tier.name}</span>
+          <span className="hq-person-role">{nationalityLabel(scout.nationality)}</span>
           <span className="hq-scout-xp" title="Fieldwork XP toward the next promotion">
             {have}/{need} XP
             {scout.promotions > 0 ? ` · ${scout.promotions}⭑` : ""}
@@ -663,7 +665,11 @@ function ProductionTab({
                   />
                 </div>
                 <div className="hq-now-meta">
-                  <span>Paid in full — the crew is on it.</span>
+                  <span>
+                    {prod.kind === "unit"
+                      ? "Paid in full — arriving next turn."
+                      : "Paid in full — the crew is on it."}
+                  </span>
                   <span>
                     {turnsText(prod.monthsRemaining)} left
                   </span>

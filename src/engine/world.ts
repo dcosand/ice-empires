@@ -12,6 +12,8 @@ import type {
 } from "../types/game";
 import { POND_ENCOUNTERS } from "../data/pondEncounters";
 import { CLUB_LIST } from "../data/clubs";
+import { independentNationalityProfile } from "../data/nationalities";
+import { rollNationality } from "./playerGen";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
@@ -458,6 +460,8 @@ function placeRivals(
     if (!chosen) break; // degenerate map: stop rather than crowd
     rivals.push({
       clubId: club.id,
+      homeNationId: club.homeNationId,
+      nationalityWeights: club.nationalityWeights,
       hqTile: { x: chosen.x, y: chosen.y },
       productionPoints: 0,
       contacted: false,
@@ -652,9 +656,13 @@ function generateIndependents(
       );
     });
     if (!chosen) break; // degenerate map: stop rather than crowd
+    const name = namePool[i % namePool.length];
+    const nationality = independentNationalityProfile(name);
     orgs.push({
       id: `hockey-org-${i + 1}`,
-      name: namePool[i % namePool.length],
+      name,
+      homeNationId: nationality.homeNationId,
+      nationalityWeights: nationality.nationalityWeights,
       x: chosen.x,
       y: chosen.y,
       archetype: archetypes[i % archetypes.length],
@@ -664,7 +672,7 @@ function generateIndependents(
       influencePoints: 0,
       contactedByClubIds: [],
       rivalInfluence: {},
-      prospects: seedOrgProspects(i, chosen.x, chosen.y, seed),
+      prospects: seedOrgProspects(i, chosen.x, chosen.y, seed, nationality),
     });
   }
 
@@ -691,8 +699,11 @@ function seedOrgProspects(
   x: number,
   y: number,
   seed: number,
+  nationalitySource: Pick<WorldHockeyOrg, "homeNationId" | "nationalityWeights">,
 ): WorldHockeyOrg["prospects"] {
-  const count = 2 + Math.floor(noise2d(x, y, seed + 77001) * 3); // 2..4
+  // A real team's worth of names (docs/15 §6): the full list shows at first
+  // contact; reads on each player are earned by scouting assignments.
+  const count = 8 + Math.floor(noise2d(x, y, seed + 77001) * 3); // 8..10
   const prospects: WorldHockeyOrg["prospects"] = [];
   for (let i = 0; i < count; i++) {
     const roll = noise2d(x + i * 13, y + i * 7, seed + 77031);
@@ -703,9 +714,11 @@ function seedOrgProspects(
         Math.floor(noise2d(x + i, y - i, seed + 77061) * PROSPECT_TEASERS.length) %
           PROSPECT_TEASERS.length
       ];
+    const nationality = rollNationality(seed + orgIndex * 997 + i * 37 + 77091, nationalitySource);
     prospects.push({
       id: `org-${orgIndex + 1}-prospect-${i + 1}`,
       revealed: false,
+      nationality: nationality.nationality,
       position,
       teaser,
     });

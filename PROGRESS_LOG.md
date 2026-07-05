@@ -1,5 +1,29 @@
 # Ice Empires — Progress Log
 
+## 2026-07-05 (later) — The scouting loop gets its verbs (D45–D47)
+Playtest-driven session: the network beat was "too passive," reads were too
+range-y, and scouts were indistinguishable. Headless sim now 103 assertions.
+- **Explicit networks + celebration (D46)**: no more auto-establish — the
+  Club Scout's unit card offers "Establish Scouting Network" (instant on
+  click), which stages `NetworkEstablishedScene` (meeting-cinematic staging,
+  offers "Begin the Scouting Assignment" as the next order). First contact now
+  identifies the org's FULL roster (8–10 named players, up from 2–4 slots);
+  numbers wait for assignments.
+- **Scouting assignments (docs/15 §5 core)**: `ScoutMission` +
+  `BEGIN_SCOUT_MISSION`/`RECALL_SCOUT`; assigned scout pins on station
+  (`working: scout-org`), files a report batch every 2 turns, and each filing
+  sharpens (judging +3/filing, capped) — repeat viewings visibly narrow reads.
+- **EHM presentation (D47)**: scouted players show STATIC point reads (the
+  off-true range center; honesty stays engine-side) + Ability/Potential star
+  pair — only after a report exists. Report prose speaks in point projections
+  with verbal hedging. OVR stays (the deliberate EHM departure).
+- **Nationality identity (D45, parallel agent)**: nations + name pools;
+  players/prospects/scouts roll nationality-weighted names; UI shows nations.
+- Fixes: org buildings no longer hide units to their south (zIndex 12 → 0.55);
+  unit production delivers next turn with upfront cost; contact-audio fade
+  guard; indie name labels render above lowered building art.
+
+
 ## 2026-07-05 — Ratings foundation (docs/15 build order A + report history)
 The attribute/ratings pass docs/15 reserved as the Act III gate. Compiler-guided
 sweep across engine + UI; headless sim now 96 assertions, all passing; D42–D44.

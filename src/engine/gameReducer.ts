@@ -10,9 +10,10 @@ import {
 } from "./world";
 import {
   allScouts,
-  autoEstablishNetworks,
+  beginScoutMission,
   establishNetwork,
   moveScout,
+  recallScout,
   recruitScout,
   resolvePendingEncounter,
   selectScout,
@@ -168,22 +169,19 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // After the move, popups stage in priority order — goodie hut, then rival
       // first contact, then independent first contact. Each trigger bails if
       // something is already pending, so the player only ever sees one pop-up.
-      // Last, a Club Scout that just arrived beside a contacted independent
-      // networks it instantly (D38 — a log line, not a popup).
-      return autoEstablishNetworks(
-        triggerIndependentContact(
-          triggerRivalContact(
-            triggerPondEncounter(
-              moveScout(state, action.x, action.y, action.scoutId),
-              action.x,
-              action.y,
-            ),
+      // (Networks are NOT auto-established — the player gives the order.)
+      return triggerIndependentContact(
+        triggerRivalContact(
+          triggerPondEncounter(
+            moveScout(state, action.x, action.y, action.scoutId),
             action.x,
             action.y,
           ),
           action.x,
           action.y,
         ),
+        action.x,
+        action.y,
       );
 
     case "CLEAR_SNOW":
@@ -209,6 +207,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "ESTABLISH_NETWORK":
       return establishNetwork(state, action.unitId, action.orgId);
+
+    case "ACKNOWLEDGE_NETWORK":
+      return { ...state, pendingNetwork: null };
+
+    case "BEGIN_SCOUT_MISSION":
+      return beginScoutMission(state, action.unitId, action.orgId);
+
+    case "RECALL_SCOUT":
+      return recallScout(state, action.unitId);
 
     case "RESOLVE_ENCOUNTER":
       // Resolving may stage a player reveal (wanderer); if so the retry bails

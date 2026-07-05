@@ -61,10 +61,13 @@ export function formatEstimate(e: AttrEstimate): string {
 }
 
 // Compact one-line scouted readout for tables: three headline attributes for
-// the position plus the ceiling read. Falls back to the teaser when the
-// subject hasn't been scouted at all.
+// the position, shown as the scout's STATIC point read (EHM-style — the
+// number is the scout's belief, and it can be wrong; ranges stay internal).
+// Falls back to the org's-word teaser when nobody has filed a report.
 const SKATER_HEADLINE: AttrKey[] = ["shooting", "passing", "speed"];
 const GOALIE_HEADLINE: AttrKey[] = ["reflexes", "positioning", "gloveHands"];
+
+const midOf = (e: AttrEstimate): number => Math.round((e.low + e.high) / 2);
 
 export function estimateLine(p: {
   position: string;
@@ -75,9 +78,8 @@ export function estimateLine(p: {
   const e = p.attrEstimates;
   if (!e) return p.teaser ? `“${p.teaser}”` : "No read yet.";
   const keys = p.position === "G" ? GOALIE_HEADLINE : SKATER_HEADLINE;
-  const parts = keys
+  return keys
     .filter((k) => e[k])
-    .map((k) => `${ATTR_ABBR[k]} ${formatEstimate(e[k]!)}`);
-  if (p.potentialEstimate) parts.push(`Ceiling ${formatEstimate(p.potentialEstimate)}`);
-  return parts.join(" · ");
+    .map((k) => `${ATTR_ABBR[k]} ${midOf(e[k]!)}`)
+    .join(" · ");
 }

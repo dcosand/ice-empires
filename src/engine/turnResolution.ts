@@ -12,7 +12,7 @@ import {
 } from "./independentsSystem";
 import { progressResearch } from "./researchSystem";
 import { runRivalTurns } from "./rivalAI";
-import { progressScoutWork, refreshScoutMoves } from "./scoutSystem";
+import { progressScoutMissions, refreshScoutMoves } from "./scoutSystem";
 import { applyScoutPromotions } from "./scoutStaff";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
@@ -58,7 +58,7 @@ export function endMonth(state: GameState): GameState {
   // 2+. Systems — each contributes a readable world/club update.
   progressProduction(draft, push);
   progressBuilderWork(draft, push); // map crews: rink builds advance/finish
-  progressScoutWork(draft, push); // scout fieldwork: scouting networks advance/finish
+  progressScoutMissions(draft, push); // assigned scouts file reports on a cadence
   progressResearch(draft, push);
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact

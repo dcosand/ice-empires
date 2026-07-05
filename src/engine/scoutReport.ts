@@ -77,14 +77,14 @@ export function buildReportProse(input: {
       )} at best right now.`,
     );
   }
-  const potMid = mid(input.potentialEstimate);
+  const potMid = Math.round(mid(input.potentialEstimate));
   const potWidth = input.potentialEstimate.high - input.potentialEstimate.low;
   parts.push(
     potWidth > 25
-      ? `Ceiling? Honestly, anywhere from ${input.potentialEstimate.low} to ${input.potentialEstimate.high} — projecting kids is guesswork.`
+      ? `Ceiling? Ask me after more viewings — could be a ${potMid}-overall type, could be nothing of the sort.`
       : potMid >= 70
-        ? `The ceiling is the story: I project ${input.potentialEstimate.low}–${input.potentialEstimate.high} overall if he's brought along right.`
-        : `Don't expect a star — I project a ${input.potentialEstimate.low}–${input.potentialEstimate.high} overall ceiling.`,
+        ? `The ceiling is the story: I project a ${potMid}-overall player if he's brought along right.`
+        : `Don't expect a star — I'd put his ceiling around ${potMid} overall.`,
   );
   parts.push(capitalize(`${confidenceWord(input.judgingAbility)}.`));
   return parts.join(" ");

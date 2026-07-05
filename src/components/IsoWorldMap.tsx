@@ -36,6 +36,7 @@ import {
 import {
   activeScout,
   allScouts,
+  missionTargetOrg,
   moveableTilesFor,
   networkTargetOrg,
 } from "../engine/scoutSystem";
@@ -308,10 +309,15 @@ function drawScene(
       // ---- markers on top of the tile ----
       const org = world.hockeyOrgs.find((o) => o.x === gx && o.y === gy);
       if (explored && org) {
-        const mk = hockeyOrgMarker(gx, gy, c, org.archetype, hockeyOrgDisplayName(org));
+        const label = hockeyOrgDisplayName(org);
+        const mk = hockeyOrgMarker(gx, gy, c, org.archetype);
         mk.position.y -= rise;
         applyMemory(mk, memory);
         layer.addChild(mk);
+        const text = hockeyOrgLabelMarker(gx, gy, c, label);
+        text.position.y -= rise;
+        applyMemory(text, memory);
+        layer.addChild(text);
       }
 
       const pond = world.pondMarkers.find(
@@ -485,11 +491,12 @@ function hockeyOrgMarker(
   gy: number,
   c: { x: number; y: number },
   archetype: string,
-  label: string,
 ) {
   const m = new Container();
   m.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
-  m.zIndex = gx + gy + 12;
+  // Just under units (+0.6) so a scout standing at the org draws in front,
+  // and rows south of the org are never hidden behind the buildings.
+  m.zIndex = gx + gy + 0.55;
   const g = new Graphics();
   const accent =
     archetype === "academy"
@@ -520,7 +527,15 @@ function hockeyOrgMarker(
   g.arc(6, 2, 13, Math.PI, 0).stroke({ width: 1.1, color: accent, alpha: 0.9 });
   g.rect(-23, 5, 45, 3).fill({ color: accent, alpha: 0.65 });
   m.addChild(g);
+  return m;
+}
 
+function hockeyOrgLabelMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  label: string,
+) {
   const text = new Text({
     text: label,
     style: {
@@ -532,9 +547,11 @@ function hockeyOrgMarker(
     },
   });
   text.anchor.set(0.5, 0);
-  text.position.set(0, 10);
-  m.addChild(text);
-  return m;
+  // Labels are their own high-priority layer so neighboring tile sprites can
+  // overlap the indie buildings without burying the indie's name.
+  text.zIndex = gx + gy + 50;
+  text.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y + 10);
+  return text;
 }
 
 function drawIsoBlock(g: Graphics, x: number, y: number, w: number, h: number, body: number, accent: number) {
@@ -2961,12 +2978,25 @@ function UnitOverlay({
   const showBuildRink = isBuilder && canBuildRink(state, unitId);
   const showPave = isBuilder && canPaveStreetRink(state, unitId);
   const showHarvest = isBuilder && canHarvestBranches(state, unitId);
-  // Scout order: park beside a contacted independent to open their pipeline.
+  // Scout orders (Civ VI-style unit actions): establish a network at a
+  // contacted indie, then begin/end an observation assignment there.
   const networkOrg =
     !isLeader && !isBuilder ? networkTargetOrg(state, unitId) : null;
+  const missionOrg =
+    !isLeader && !isBuilder ? missionTargetOrg(state, unitId) : null;
+  const onMission = working?.task === "scout-org";
+  const missionOrgName = onMission
+    ? world.hockeyOrgs.find((o) => o.id === working.orgId)
+    : null;
   const hasOrder = isLeader
     ? !!club
-    : showClearSnow || showBuildRink || showPave || showHarvest || !!networkOrg;
+    : showClearSnow ||
+      showBuildRink ||
+      showPave ||
+      showHarvest ||
+      !!networkOrg ||
+      !!missionOrg ||
+      onMission;
 
   return (
     <div className="unit-overlay" role="group" aria-label={`${name} selected`}>
@@ -3046,7 +3076,25 @@ function UnitOverlay({
                 dispatch({ type: "ESTABLISH_NETWORK", unitId, orgId: networkOrg.id })
               }
             >
-              Establish Scouting Network
+              Establish Scouting Network — {hockeyOrgDisplayName(networkOrg)}
+            </button>
+          )}
+          {missionOrg && (
+            <button
+              className="btn btn-gold btn-block"
+              onClick={() =>
+                dispatch({ type: "BEGIN_SCOUT_MISSION", unitId, orgId: missionOrg.id })
+              }
+            >
+              Begin Scouting Assignment — {hockeyOrgDisplayName(missionOrg)}
+            </button>
+          )}
+          {onMission && (
+            <button
+              className="btn btn-block"
+              onClick={() => dispatch({ type: "RECALL_SCOUT", unitId })}
+            >
+              Recall Scout (ends assignment)
             </button>
           )}
           {!isLeader && (
@@ -3060,9 +3108,13 @@ function UnitOverlay({
         </div>
         {working ? (
           <div className="unit-hint muted">
-            Working —{" "}
-            {working.rinkKind === "ice" ? "building a rink" : "paving a rink"}
-            , {working.monthsRemaining} turn{working.monthsRemaining === 1 ? "" : "s"} to go.
+            {working.task === "scout-org"
+              ? `On assignment at ${
+                  missionOrgName ? hockeyOrgDisplayName(missionOrgName) : "the org"
+                } — a fresh report every 2 turns.`
+              : `Working — ${
+                  working.rinkKind === "ice" ? "building a rink" : "paving a rink"
+                }, ${working.monthsRemaining} turn${working.monthsRemaining === 1 ? "" : "s"} to go.`}
           </div>
         ) : (
           !hasOrder && (

@@ -12,7 +12,8 @@ import type { UnitDef } from "../types/game";
 //                         (>=1 rink within the club's HQ radius).
 //
 // Cost model: `cost.funds` is charged IN FULL when production starts (D30
-// pay-upfront); the HQ slot then works the unit for `buildMonths`.
+// pay-upfront). Player-produced units arrive on the next turn; buildMonths is
+// retained as pacing metadata for AI/balance notes and future variants.
 
 export const UNITS: UnitDef[] = [
   {
