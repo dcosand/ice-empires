@@ -10,6 +10,7 @@ import {
 } from "./world";
 import { allScouts, syncLegacyScout } from "./scoutSystem";
 import { rinkAt } from "./rinkSystem";
+import { buildBlockedByRival } from "./territorySystem";
 import { prependLog } from "./log";
 import type { PushLog } from "./turnContext";
 
@@ -43,7 +44,9 @@ export function canClearSnow(state: GameState, unitId: string): boolean {
     !!tile &&
     tile.terrain === "pond" &&
     tile.surfaceState === "frozen" &&
-    !rinkAt(world, unit.x, unit.y)
+    !rinkAt(world, unit.x, unit.y) &&
+    // D36: no construction on a known rival's doorstep or inside their borders.
+    !buildBlockedByRival(world, unit.x, unit.y)
   );
 }
 
@@ -93,7 +96,12 @@ export function canBuildRink(state: GameState, unitId: string): boolean {
   if (!world || !unit || unit.movesRemaining <= 0) return false;
   if (!state.completedResearch.includes("outdoor-rinkcraft")) return false;
   const cleared = rinkAt(world, unit.x, unit.y);
-  return !!cleared && cleared.level === 0 && cleared.kind === "ice";
+  return (
+    !!cleared &&
+    cleared.level === 0 &&
+    cleared.kind === "ice" &&
+    !buildBlockedByRival(world, unit.x, unit.y)
+  );
 }
 
 // Arizona's unique Asphalt Crew paves desert flats into street/inline rinks —
@@ -110,7 +118,8 @@ export function canPaveStreetRink(state: GameState, unitId: string): boolean {
     tile.valid &&
     (tile.terrain === "desert" || tile.terrain === "high-desert") &&
     !hasMesaLandform(tile) &&
-    !rinkAt(world, unit.x, unit.y)
+    !rinkAt(world, unit.x, unit.y) &&
+    !buildBlockedByRival(world, unit.x, unit.y)
   );
 }
 

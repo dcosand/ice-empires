@@ -14,6 +14,7 @@ import {
 } from "../data/playerNames";
 import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
+import { playerTerritorySize } from "./territorySystem";
 import { prependLog } from "./log";
 import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
@@ -27,6 +28,29 @@ export const TRYOUT_COST_FUNDS = 3;
 export const ROSTER_CAP = 10;
 const POND_ATTR_MIN = 1;
 const POND_ATTR_SPAN = 5; // rolls land in [1, 6]
+
+// Territory → turnout (D35): a bigger claimed area is a bigger population.
+// The HQ alone claims at most TERRITORY_BASELINE_TILES at founding (its full
+// radius-3 disk on open ground), so only tiles BEYOND that baseline — forward
+// rinks, Affiliate independents — grow the pool; the first tryout stays a
+// 3–5 person pond affair.
+export const TERRITORY_BASELINE_TILES = 37;
+export const TILES_PER_EXTRA_CANDIDATE = 7; // +1 hopeful per ~7 extra tiles
+export const TILES_PER_FLOOR_STEP = 10; // attr floor +1 per ~10 extra tiles
+export const TERRITORY_FLOOR_CAP = 3; // pond-era talent stays humble
+
+// Extra candidates / raised attribute floor earned by owned territory,
+// stacking with the unique-unit bonuses (Warming-House Crew, Rink Evangelist).
+export function territoryTryoutBonus(state: GameState): {
+  candidates: number;
+  floor: number;
+} {
+  const beyond = Math.max(0, playerTerritorySize(state) - TERRITORY_BASELINE_TILES);
+  return {
+    candidates: Math.floor(beyond / TILES_PER_EXTRA_CANDIDATE),
+    floor: Math.min(TERRITORY_FLOOR_CAP, Math.floor(beyond / TILES_PER_FLOOR_STEP)),
+  };
+}
 
 export type TryoutGate =
   | "ok"
@@ -74,14 +98,21 @@ function ownsUnit(state: GameState, unitDefId: string): boolean {
 // Roll one candidate. Goalies are rare (~1 in 4) and get their ability in the
 // crease; skaters get a position-flavored spread of terrible numbers.
 // Helsinki's Goalie Whisperer roughly doubles goalie turnout.
-function rollCandidate(state: GameState, index: number): TryoutCandidate {
+function rollCandidate(
+  state: GameState,
+  index: number,
+  territoryFloor: number,
+): TryoutCandidate {
   const draw = () => {
     const roll = nextRandom(state.rngSeed);
     state.rngSeed = roll.seed;
     return roll.value;
   };
   // A Rink Evangelist raises the floor: nobody shows up completely hopeless.
-  const floor = ownsUnit(state, "rink-evangelist") ? POND_ATTR_MIN + 1 : POND_ATTR_MIN;
+  // Territory raises it further — a wider claim draws better locals (D35).
+  const floor =
+    (ownsUnit(state, "rink-evangelist") ? POND_ATTR_MIN + 1 : POND_ATTR_MIN) +
+    territoryFloor;
   const attr = () => floor + Math.floor(draw() * (POND_ATTR_SPAN + 1));
 
   const goalieCut = ownsUnit(state, "goalie-whisperer") ? 0.6 : 0.78;
@@ -138,9 +169,13 @@ export function holdTryouts(state: GameState): GameState {
   const bonus =
     (ownsUnit(state, "warming-house-crew") ? 1 : 0) +
     (ownsUnit(state, "rink-evangelist") ? 1 : 0);
-  const count = 3 + Math.floor(roll.value * 3) + bonus; // 3..5 (+bonuses)
+  // Owned territory is population: more claimed tiles, more (and better)
+  // walk-ons (D35). Stacks with the unique-unit bonuses above.
+  const territory = territoryTryoutBonus(state);
+  const count = 3 + Math.floor(roll.value * 3) + bonus + territory.candidates; // 3..5 (+bonuses)
   const candidates: TryoutCandidate[] = [];
-  for (let i = 0; i < count; i++) candidates.push(rollCandidate(working, i));
+  for (let i = 0; i < count; i++)
+    candidates.push(rollCandidate(working, i, territory.floor));
 
   const next: GameState = {
     ...working,
@@ -152,7 +187,11 @@ export function holdTryouts(state: GameState): GameState {
     next,
     "card",
     "Tryouts posted",
-    `Flyers go up at the rink. ${count} hopeful locals lace up whatever they own and wobble onto the ice.`,
+    `Flyers go up at the rink. ${count} hopeful locals lace up whatever they own and wobble onto the ice.${
+      territory.candidates > 0
+        ? " Word has spread across your territory — the turnout is bigger than the pond alone could draw."
+        : ""
+    }`,
   );
 }
 

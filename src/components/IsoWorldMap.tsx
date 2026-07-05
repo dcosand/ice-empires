@@ -26,7 +26,6 @@ import { ItemArt } from "./ItemArt";
 import {
   hasMesaLandform,
   hockeyOrgDisplayName,
-  moveableTilesFor,
   tileAt,
   tileKey,
   tileVisualRand,
@@ -37,6 +36,7 @@ import {
 import {
   activeScout,
   allScouts,
+  moveableTilesFor,
   networkTargetOrg,
 } from "../engine/scoutSystem";
 import {
@@ -46,7 +46,13 @@ import {
   canPaveStreetRink,
 } from "../engine/builderSystem";
 import { getClubRinks, rinkAt } from "../engine/rinkSystem";
+import {
+  computeTerritory,
+  PLAYER_OWNER,
+  type TerritoryOwnership,
+} from "../engine/territorySystem";
 import { canEndMonth } from "../engine/selectors";
+import { playSfx, type SfxName } from "../engine/sfx";
 
 // ---- Isometric geometry --------------------------------------------------
 const TILE_W = 64; // diamond width
@@ -57,6 +63,33 @@ const FOG_RISE = 7; // unexplored tiles sit slightly lower than explored land
 
 const isoX = (gx: number, gy: number) => (gx - gy) * (TILE_W / 2);
 const isoY = (gx: number, gy: number) => (gx + gy) * (TILE_H / 2);
+
+function movementSfxForTile(world: WorldState, tile: WorldTile): SfxName {
+  if (hasVisibleGrove(world, tile)) return "forestWalk";
+  if (tile.terrain === "pond" && tile.surfaceState === "frozen") return "iceWalk";
+  if (tile.terrain === "ice") return "snowWalk";
+  return "walk";
+}
+
+function isAdjacentTarget(unit: { x: number; y: number }, x: number, y: number) {
+  const dx = Math.abs(unit.x - x);
+  const dy = Math.abs(unit.y - y);
+  return dx <= 1 && dy <= 1 && dx + dy > 0;
+}
+
+function playMovementErrorIfImpassable(
+  world: WorldState,
+  unit: { x: number; y: number; movesRemaining: number } | null | undefined,
+  x: number,
+  y: number,
+) {
+  const tile = tileAt(world, x, y);
+  if (unit && unit.movesRemaining > 0 && isAdjacentTarget(unit, x, y) && tile && !tile.valid) {
+    playSfx("movementError");
+    return true;
+  }
+  return false;
+}
 
 // Terrain palette (hockey-world flavored: green plains, tan desert, pale ice).
 const TERRAIN: Record<WorldTerrain, { top: number; side: number; detail: number }> = {
@@ -151,6 +184,9 @@ function drawScene(
         : new Set<string>();
   const revealedSet = new Set(world.revealed);
   const visibleSet = visibleTiles(world);
+  // Tile ownership (D34): derived fresh per draw, like income — never stored.
+  // Uncontacted rivals are excluded, so unknown borders can't leak.
+  const territory = computeTerritory(world);
 
   for (let gy = 0; gy < world.height; gy++) {
     for (let gx = 0; gx < world.width; gx++) {
@@ -213,6 +249,22 @@ function drawScene(
         gTop.poly(diamond()).stroke({ width: 2.5, color: 0xffffff, alpha: 0.95 });
       }
       layer.addChild(gTop);
+
+      // --- territory border ribbons (D35, Civ VI style): stroke each owned
+      // tile edge that faces a differently-owned (or neutral) tile, in the
+      // owner club's colors. Only on explored ground — fog keeps its secrets.
+      const tileOwner = explored ? territory.ownerByTile[key] : undefined;
+      if (tileOwner) {
+        const borderColor =
+          tileOwner === PLAYER_OWNER
+            ? accent
+            : accentNumber(CLUBS[tileOwner]?.accent);
+        const mk = territoryBorderMarker(gx, gy, c, territory, tileOwner, borderColor);
+        if (mk) {
+          mk.position.y -= rise;
+          layer.addChild(mk);
+        }
+      }
 
       // --- standing features: trees, peaks, mesas, cacti and rocks that rise
       // off the tile top so taller terrain visibly towers over flat ground.
@@ -375,6 +427,55 @@ function drawScene(
       }
     }
   }
+}
+
+// ---- Territory borders (D34/D35) ------------------------------------------
+// The four diamond-edge neighbors and the top-face edge each one shares with
+// this tile (diamond vertices: top, right, bottom, left in screen space).
+const BORDER_EDGES: Array<{
+  dx: number;
+  dy: number;
+  from: [number, number];
+  to: [number, number];
+}> = [
+  { dx: 0, dy: -1, from: [0, -TILE_H / 2], to: [TILE_W / 2, 0] }, // up-right
+  { dx: 1, dy: 0, from: [TILE_W / 2, 0], to: [0, TILE_H / 2] }, // down-right
+  { dx: 0, dy: 1, from: [0, TILE_H / 2], to: [-TILE_W / 2, 0] }, // down-left
+  { dx: -1, dy: 0, from: [-TILE_W / 2, 0], to: [0, -TILE_H / 2] }, // up-left
+];
+
+// Civ VI-style boundary ribbon for one owned tile: a dark outer edge hugging
+// the tile seam plus a bright inner stroke just inside it, drawn only along
+// edges that face a tile with a different owner (or unclaimed ground). Returns
+// null when the tile is fully interior — most owned tiles draw nothing.
+function territoryBorderMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  territory: TerritoryOwnership,
+  owner: string,
+  color: number,
+): Graphics | null {
+  const edges = BORDER_EDGES.filter(
+    (e) => territory.ownerByTile[tileKey(gx + e.dx, gy + e.dy)] !== owner,
+  );
+  if (edges.length === 0) return null;
+  const g = new Graphics();
+  g.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  // Above the top face and its ground texture, below standing features (0.1).
+  g.zIndex = gx + gy + 0.09;
+  // Insetting both strokes toward the tile center keeps shared corners joined
+  // between neighboring border tiles (same scale on the shared vertex).
+  const ribbon = (inset: number, width: number, col: number, alpha: number) => {
+    for (const e of edges) {
+      g.moveTo(e.from[0] * inset, e.from[1] * inset);
+      g.lineTo(e.to[0] * inset, e.to[1] * inset);
+    }
+    g.stroke({ width, color: col, alpha, cap: "round", join: "round" });
+  };
+  ribbon(0.96, 3.5, darkenBy(color, 0.55), 0.55); // dark outer edge
+  ribbon(0.85, 2, lighten(color, 0.14), 0.92); // bright inner ribbon
+  return g;
 }
 
 function hockeyOrgMarker(
@@ -2006,7 +2107,8 @@ export function IsoWorldMap({
   clickRef.current = (gx: number, gy: number) => {
     const w = state.world;
     if (!w) return;
-    if (!tileAt(w, gx, gy)) return;
+    const targetTile = tileAt(w, gx, gy);
+    if (!targetTile) return;
     const key = tileKey(gx, gy);
     const founder = w.founder;
     const founderMoveable =
@@ -2014,7 +2116,17 @@ export function IsoWorldMap({
         ? moveableTilesFor(w, founder)
         : new Set<string>();
     if (founder && w.founderSelected && founderMoveable.has(key)) {
+      playSfx(movementSfxForTile(w, targetTile));
       dispatch({ type: "MOVE_FOUNDING_UNIT", x: gx, y: gy });
+      setSelectedKey(key);
+      return;
+    }
+    if (
+      founder &&
+      w.founderSelected &&
+      !w.hqTile &&
+      playMovementErrorIfImpassable(w, founder, gx, gy)
+    ) {
       setSelectedKey(key);
       return;
     }
@@ -2040,7 +2152,12 @@ export function IsoWorldMap({
     const scout = activeScout(w);
     const moveable = scout ? moveableTilesFor(w, scout) : new Set<string>();
     if (scout && moveable.has(key) && !hqHere) {
+      playSfx(movementSfxForTile(w, targetTile));
       dispatch({ type: "MOVE_SCOUT", x: gx, y: gy, scoutId: scout.id });
+      setSelectedKey(key);
+      return;
+    }
+    if (scout && !hqHere && playMovementErrorIfImpassable(w, scout, gx, gy)) {
       setSelectedKey(key);
       return;
     }
@@ -2158,7 +2275,11 @@ export function IsoWorldMap({
       const x = founder.x + dx;
       const y = founder.y + dy;
       if (moveableTilesFor(w, founder).has(tileKey(x, y))) {
+        const tile = tileAt(w, x, y);
+        if (tile) playSfx(movementSfxForTile(w, tile));
         dispatch({ type: "MOVE_FOUNDING_UNIT", x, y });
+        setSelectedKey(tileKey(x, y));
+      } else if (playMovementErrorIfImpassable(w, founder, x, y)) {
         setSelectedKey(tileKey(x, y));
       }
       return;
@@ -2168,7 +2289,11 @@ export function IsoWorldMap({
       const x = scout.x + dx;
       const y = scout.y + dy;
       if (moveableTilesFor(w, scout).has(tileKey(x, y))) {
+        const tile = tileAt(w, x, y);
+        if (tile) playSfx(movementSfxForTile(w, tile));
         dispatch({ type: "MOVE_SCOUT", x, y, scoutId: scout.id });
+        setSelectedKey(tileKey(x, y));
+      } else if (playMovementErrorIfImpassable(w, scout, x, y)) {
         setSelectedKey(tileKey(x, y));
       }
     }
@@ -2546,6 +2671,22 @@ function MiniMap({
         bctx.fillRect(gx, gy, 1, 1);
       }
     }
+
+    // Territory wash (D34/D35): owned explored tiles tint in their club's
+    // color — player accent plus contacted rivals — so borders read at a glance.
+    const territory = computeTerritory(world);
+    const playerAccent = accentNumber(getActiveClub(state)?.accent);
+    bctx.globalAlpha = 0.4;
+    for (const key in territory.ownerByTile) {
+      if (!state.devRevealAll && !revealedSet.has(key)) continue;
+      const [tgx, tgy] = key.split(",").map(Number);
+      const owner = territory.ownerByTile[key];
+      bctx.fillStyle = cssHex(
+        owner === PLAYER_OWNER ? playerAccent : accentNumber(CLUBS[owner]?.accent),
+      );
+      bctx.fillRect(tgx, tgy, 1, 1);
+    }
+    bctx.globalAlpha = 1;
 
     const comp = compositeRef.current ?? document.createElement("canvas");
     comp.width = mmW * dpr;

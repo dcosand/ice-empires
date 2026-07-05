@@ -1177,25 +1177,6 @@ function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
 }
 
-// Tiles a unit may move to right now (adjacent, valid land/ice, points left).
-export function moveableTilesFor(
-  world: WorldState,
-  unit: WorldUnit | null,
-): Set<string> {
-  const out = new Set<string>();
-  if (!unit || unit.movesRemaining <= 0) return out;
-  for (let dy = -1; dy <= 1; dy++) {
-    for (let dx = -1; dx <= 1; dx++) {
-      if (dx === 0 && dy === 0) continue;
-      const x = unit.x + dx;
-      const y = unit.y + dy;
-      const tile = tileAt(world, x, y);
-      if (tile && tile.valid) out.add(tileKey(x, y));
-    }
-  }
-  return out;
-}
-
 // ---- Founding-phase unit (Founding Group) -------------------------------
 
 export function moveFounder(state: GameState, x: number, y: number): GameState {

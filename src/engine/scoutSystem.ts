@@ -24,6 +24,7 @@ import {
   isAdjacent,
   SCOUT_SIGHT,
   tileAt,
+  tileKey,
 } from "./world";
 import { prependLog } from "./log";
 import { grantCard } from "./cardSystem";
@@ -37,6 +38,11 @@ import {
 import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK } from "../data/scouts";
 import { estimateAttr, estimateAttrs } from "./talentFog";
 import { levelForInfluence } from "./independentsSystem";
+import {
+  computeTerritory,
+  isKnownRivalTerritory,
+  PLAYER_OWNER,
+} from "./territorySystem";
 import type { PushLog } from "./turnContext";
 // The Scout unlocks once Scouting Reports is researched AND the club has basic
 // infrastructure (at least one facility built). Builders don't count — owning
@@ -119,6 +125,31 @@ export function selectScout(state: GameState, scoutId?: string): GameState {
   return { ...state, world: syncLegacyScout(world, scouts, selectedScoutId) };
 }
 
+// Tiles a unit may move to right now (adjacent, valid land/ice, points left).
+// Movement tiers (D36): scouts cross all borders freely — recon and diplomacy
+// travel; builders (work crews) cannot enter a known rival's territory.
+export function moveableTilesFor(
+  world: WorldState,
+  unit: WorldUnit | null,
+): Set<string> {
+  const out = new Set<string>();
+  if (!unit || unit.movesRemaining <= 0) return out;
+  const territory = unit.kind === "builder" ? computeTerritory(world) : null;
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      if (dx === 0 && dy === 0) continue;
+      const x = unit.x + dx;
+      const y = unit.y + dy;
+      const tile = tileAt(world, x, y);
+      if (!tile || !tile.valid) continue;
+      const owner = territory?.ownerByTile[tileKey(x, y)];
+      if (owner && owner !== PLAYER_OWNER) continue;
+      out.add(tileKey(x, y));
+    }
+  }
+  return out;
+}
+
 // Scout moves to an adjacent valid tile (1 point), revealing fog around it.
 export function moveScout(state: GameState, x: number, y: number, scoutId?: string): GameState {
   const world = state.world;
@@ -131,6 +162,8 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
   if (!isAdjacent(scout, { x, y })) return state;
   const tile = tileAt(world, x, y);
   if (!tile || !tile.valid) return state;
+  // Work crews stay home (D36): builders cannot cross a known rival's border.
+  if (scout.kind === "builder" && isKnownRivalTerritory(world, x, y)) return state;
   const moved = { ...scout, x, y, movesRemaining: scout.movesRemaining - 1 };
   const nextScouts = scouts.map((s) => (s.id === scout.id ? moved : s));
   const sight = scout.kind === "builder" ? BUILDER_SIGHT : SCOUT_SIGHT;

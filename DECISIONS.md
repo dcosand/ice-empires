@@ -335,6 +335,12 @@ Affiliate independents). Fixes the Act-I anti-pattern where a forward rink was
 strictly worse than a home rink. Territory is derived each turn/render from
 sources, not stored per tile (like income).
 
+**Shipped 2026-07-04**: `HOME_RINK_RADIUS = 3` in `rinkSystem.ts`;
+`engine/territorySystem.ts` computes ownership from HQ (r=3) + player rinks
+level ≥1 (r=2) + Affiliate independents (r=2) + contacted rivals' HQ/rinks,
+rounded-disk projection, nearest-source tie-break with ties favoring the
+player. Validated headless (42 assertions).
+
 ## D35 — Territory has mechanical teeth (never just map paint)
 Owned territory drives, in priority order: (1) the tryout pool — more owned tiles
 ⇒ more candidates and a higher attribute floor (`holdTryouts`), the population
@@ -344,6 +350,12 @@ inside/against a contacted rival's territory nudges `rival.attitude` wary + an
 inbox line; (4) movement/build gating (D36). Borders render Civ VI-style in club
 colors from HQ + rinks.
 
+**Partially shipped 2026-07-04**: (1) tryout pool (`territoryTryoutBonus`: +1
+candidate / 7 tiles, +1 attr floor / 10 tiles capped +3, beyond the 37-tile HQ
+founding footprint), (4) gating, and the border render (main map ribbons +
+minimap wash) are in. Still ahead: (2) independent contention and (3) rival
+grievance (wants the Inbox, D41).
+
 ## D36 — Boundary enforcement: min build distance + unit-kind movement tiers
 Builders cannot build within N tiles of a known rival HQ or inside rival
 territory (placement-time check; default N=3, possibly era-scaled). Movement is
@@ -351,6 +363,10 @@ gated by unit kind: **basic Scouts (and the Club Scout) cross all borders from
 game start; Rink Rats/builders cannot enter a rival's territory.** No
 open-borders negotiation for now — scouts already pass, so there is nothing to
 trade yet; revisit as a Diplomacy-branch payoff if builders ever need to cross.
+
+**Shipped 2026-07-04**: `buildBlockedByRival` (flat N=3, contacted rivals only)
+wired into all three builder placement checks; builder movement gated in
+`moveableTilesFor` (now in `scoutSystem.ts`) and `moveScout`.
 
 ## D37 — Tryouts are seasonal (twice/year), not any-month
 Hold Tryouts is gated to two calendar windows — spring (≈ May) and training camp

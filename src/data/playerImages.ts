@@ -4,7 +4,7 @@ type PlayerImageKind = "prospect" | "player";
 
 const ROOT = "/assets/players/";
 
-const MALE_SKATER_PLAYER = numbered("skater-player", 8);
+const MALE_SKATER_PLAYER = numbered("skater-player", 32);
 const MALE_SKATER_PROSPECT = numbered("skater-prospect", 8);
 const FEMALE_SKATER_PLAYER = numbered("female-skater", 4);
 const FEMALE_PROSPECT = numbered("female-prospect", 6);

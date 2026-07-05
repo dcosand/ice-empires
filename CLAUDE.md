@@ -66,10 +66,19 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   units), pave desert street rinks (Arizona), harvest forest branches
   (+2 equipment, once per tile via `world.harvestedTiles`).
 - **Rinks**: `world.rinks: WorldRink[]` (level 0 = cleared pond, 1 = rink;
-  kind ice|inline). "Club rinks" = within Chebyshev 3 of HQ
+  kind ice|inline). "Club rinks" = within `HOME_RINK_RADIUS` (Chebyshev 3) of HQ
   (`engine/rinkSystem.ts`) — they enable tryouts and pay +1 funds/mo each; every
   rink is a radius-1 vision source. Worldgen guarantees a frozen pond (desert:
   a paveable flat) within 2 tiles of the start (`world.guaranteeStarterPond`).
+- **Territory (D34–D36)**: `engine/territorySystem.ts` — tile ownership is
+  COMPUTED per call (like income), never stored: HQ (r=3) + player rinks
+  level ≥1 at any distance (r=2) + Affiliate independents (r=2) vs contacted
+  rivals' HQ/rinks; nearest source wins, ties favor the player. Owned tiles
+  scale the tryout pool (`territoryTryoutBonus`); `buildBlockedByRival` rejects
+  builds near/inside known rival ground; builders can't MOVE into known rival
+  territory (`scoutSystem.moveableTilesFor` — it lives there, not in world.ts,
+  to avoid an import cycle). Borders render via `territoryBorderMarker`
+  (IsoWorldMap) + a minimap color wash.
 - **Roster**: `state.roster: Player[]` (attrs on a 20 scale; pond-era rolls
   1–6). `engine/tryoutSystem.ts` = Hold Tryouts gate/generation/recruiting +
   monthly FIFO auto-equip. UI: `TryoutScreen` modal + ClubHQ "Team" tab.

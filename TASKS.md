@@ -105,20 +105,22 @@ top-to-bottom — territory is the spine everything else reads from. **Match eng
 is deferred to Act III** (D33); do not build it here.
 
 ### 1. Territory & borders (the spine — do first)
-- [ ] **Two-radius rink model** (D34) — split `CLUB_RINK_RADIUS` into a home
-      economy radius (income/upkeep/tryout gate, keep = 3) and a territory
-      projection radius (every rink, any distance). `rinkSystem.ts`.
-- [ ] **Computed tile ownership** (D34) — derive owned tiles each turn/render
-      from HQ + player rinks (level ≥ 1) + Affiliate independents, radius
-      projection, nearest-source tie-break. Rival ownership from their HQ +
-      rinks, shown only once contacted. New `engine/territorySystem.ts`.
-- [ ] **Civ VI-style border render** (D35) — club-colored boundary-ring stroke
-      (bright inner + dark outer) extending in the 4 diamond directions from HQ
-      and rinks; rival borders in their colors once contacted. `IsoWorldMap.tsx`
-      (edit surgically — ~2,800 lines); add minimap treatment.
-- [ ] **Territory → tryout pool** (D35) — in `holdTryouts`, add `+1 candidate
-      per ~6–8 owned tiles` and step the attribute floor up at territory
-      breakpoints, stacking with existing unique bonuses. `tryoutSystem.ts`.
+- [x] **Two-radius rink model** (D34, 2026-07-04) — `CLUB_RINK_RADIUS` became
+      `HOME_RINK_RADIUS` (= 3; income/upkeep/tryout gate unchanged); territory
+      projection radii live in `territorySystem.ts`. New `getPlayerRinks`
+      returns every player rink at any distance.
+- [x] **Computed tile ownership** (D34, 2026-07-04) — `engine/territorySystem.
+      ts`: derived per call (never stored) from HQ (r=3) + player rinks level ≥1
+      (r=2) + Affiliate independents (r=2), rounded-disk projection (same shape
+      as the sight disks), nearest-source tie-break (ties favor the player).
+      Rival ownership from their HQ + rinks; uncontacted rivals excluded.
+- [x] **Civ VI-style border render** (D35, 2026-07-04) — `territoryBorderMarker`
+      in `IsoWorldMap.tsx`: dark outer edge + bright inner ribbon in club colors
+      on owned-tile edges facing other owners, explored tiles only; minimap gets
+      a low-alpha club-color territory wash.
+- [x] **Territory → tryout pool** (D35, 2026-07-04) — `territoryTryoutBonus`:
+      +1 candidate per 7 owned tiles and +1 attribute floor per 10 (cap +3)
+      BEYOND the 37-tile HQ founding footprint, stacking with unique bonuses.
 - [ ] **Territory → independent contention** (D35) — a player rink/Club Scout
       inside an indie's zone feeds the Anchor Club influence race.
       `independentsSystem.ts`.
@@ -126,11 +128,14 @@ is deferred to Act III** (D33); do not build it here.
       contacted rival's territory nudges `rival.attitude` wary + an inbox line.
 
 ### 2. Boundary enforcement (D36)
-- [ ] **Min build distance** — reject builds within N tiles (default 3) of a
-      known rival HQ / inside rival territory. Placement check in `builderSystem`.
-- [ ] **Movement tiers by unit kind** — basic Scouts (+ Club Scout) cross all
-      borders; Rink Rats/builders cannot enter rival territory. Gate in the
-      move/`moveableTilesFor` path.
+- [x] **Min build distance** (2026-07-04) — `buildBlockedByRival` in
+      `territorySystem.ts`: rejects clear-snow / rink / pave within Chebyshev 3
+      of a CONTACTED rival HQ or inside contacted-rival territory; wired into
+      all three `can*` checks in `builderSystem`.
+- [x] **Movement tiers by unit kind** (2026-07-04) — builders cannot enter
+      known rival territory; scouts cross freely. `moveableTilesFor` moved from
+      `world.ts` into `scoutSystem.ts` (avoids an import cycle with
+      territorySystem) and gates builder tiles; `moveScout` enforces the same.
 
 ### 3. Seasonal tryouts & training camp (D37)
 - [ ] **Windowed tryouts** — Hold Tryouts only in spring (~May) + camp

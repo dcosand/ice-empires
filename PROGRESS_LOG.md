@@ -1,5 +1,34 @@
 # Ice Empires — Progress Log
 
+## 2026-07-04 — Act II phase 1: territory spine (D34/D35/D36)
+First Act II implementation session. Design docs (docs/14, D33–D41) landed on
+main via PR #2 mid-session. Validated with a headless sim through the real
+engine functions (42 assertions, all passing) + typecheck + production build.
+- **Two-radius rink model (D34)**: `CLUB_RINK_RADIUS` → `HOME_RINK_RADIUS`
+  (= 3, all economy behavior unchanged); new `getPlayerRinks` returns every
+  player rink regardless of distance.
+- **`engine/territorySystem.ts` (D34)**: computed tile ownership, derived per
+  call like income — HQ (r=3) + player rinks level ≥1 (r=2) + Affiliate
+  independents (r=2) vs contacted rivals' HQ + rinks; rounded-disk projection
+  (same shape as the sight disks), nearest-source tie-break, ties favor the
+  player; uncontacted rivals excluded so unknown borders can't leak or fence.
+- **Border render (D35)**: `territoryBorderMarker` in `IsoWorldMap.tsx` strokes
+  owned-tile edges facing other owners — dark outer edge + bright inner ribbon
+  in the owner club's accent, explored tiles only, zIndex just above the tile
+  top. Minimap: 40%-alpha club-color wash over owned explored tiles.
+- **Territory → tryouts (D35)**: `territoryTryoutBonus` — beyond the 37-tile HQ
+  founding footprint, +1 candidate per 7 owned tiles and +1 attribute floor per
+  10 (capped +3), stacking with Warming-House Crew / Rink Evangelist. First
+  tryout on a fresh map is unchanged (3–5 locals).
+- **Boundary enforcement (D36)**: `buildBlockedByRival` (Chebyshev ≤3 of a
+  contacted rival HQ, or inside contacted-rival territory) rejects clear-snow /
+  rink builds / desert paving; builders cannot MOVE into known rival territory
+  (`moveableTilesFor` — relocated `world.ts` → `scoutSystem.ts` to avoid an
+  import cycle — and `moveScout`); scouts cross all borders freely.
+- Still ahead in Act II §1: independent contention + rival grievance (D35 items
+  2–3, want the Inbox), then seasonal tryouts (D37), Club Scout (D38),
+  confidence (D39), scouting screen, Inbox (D41), ratings (D40), era wiring.
+
 ## 2026-07-03 — Economy pay-upfront (D30) + scouting system v1 (D29/D31)
 The two deferred design tasks from the 2026-07-03 handoff. Both validated with
 headless sims through the real reducer (20 + 23 assertions, all passing).
