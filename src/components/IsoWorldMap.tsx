@@ -414,7 +414,9 @@ function drawScene(
         const mk =
           scout.kind === "builder"
             ? builderMarker(gx, gy, c, isSel, accent)
-            : scoutMarker(gx, gy, c, isSel, accent);
+            : scout.unitDefId === "club-scout"
+              ? clubScoutMarker(gx, gy, c, isSel, accent)
+              : scoutMarker(gx, gy, c, isSel, accent);
         mk.position.x += (i - (scoutsHere.length - 1) / 2) * 10;
         mk.position.y -= rise;
         // When a Scout shares the HQ tile, draw him in front of the HQ pin so
@@ -1914,6 +1916,81 @@ function scoutMarker(
   return s;
 }
 
+// The Club Scout (D38): the professional tier — long charcoal overcoat, a
+// club-accent flat cap and scarf, nose down in a clipboard of reports. No
+// banner, no expedition fur: this one watches games for a living. Reads
+// instantly different from the bright parka-and-banner Pond Scout at any zoom.
+const OVERCOAT = 0x2e3540;
+const OVERCOAT_DK = 0x20252e;
+const OVERCOAT_LT = 0x49525f;
+const PAPER = 0xf2ead6;
+const PAPER_LINE = 0x9aa0a6;
+const BOARD = 0x6b4a2c;
+
+function clubScoutMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+  selected: boolean | undefined,
+  accent: number,
+) {
+  const s = new Graphics();
+  s.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  s.zIndex = gx + gy + 0.6;
+
+  const capColor = accent;
+  const capDark = darkenBy(accent, 0.35);
+  const scarf = lighten(accent, 0.2);
+
+  if (selected) {
+    s.ellipse(0, 1, 15, 6).stroke({ width: 2.5, color: 0xffffff, alpha: 0.9 });
+  }
+  s.ellipse(0, 1, 11, 4).fill({ color: 0x000000, alpha: 0.35 });
+
+  // polished shoes + trousers — no snow boots for this one
+  s.roundRect(-6.5, -3.5, 6, 3.5, 1.5).fill(0x14171c);
+  s.roundRect(0.5, -3.5, 6, 3.5, 1.5).fill(0x14171c);
+  s.roundRect(-5, -13, 4.5, 10, 2).fill(0x272d36);
+  s.roundRect(0.5, -13, 4.5, 10, 2).fill(0x272d36);
+
+  // long charcoal overcoat, knee length, with a right-side shade + buttons
+  s.roundRect(-10, -32, 20, 22, 5).fill(OVERCOAT);
+  s.roundRect(4, -31, 6, 20, 4).fill({ color: OVERCOAT_DK, alpha: 0.6 });
+  s.roundRect(-10, -32, 3, 22, 4).fill({ color: OVERCOAT_LT, alpha: 0.5 });
+  s.circle(-0.5, -26, 0.8).fill(OVERCOAT_LT);
+  s.circle(-0.5, -22, 0.8).fill(OVERCOAT_LT);
+  s.circle(-0.5, -18, 0.8).fill(OVERCOAT_LT);
+  // club-accent scarf tucked into the collar, one tail down the chest
+  s.roundRect(-7.5, -32.5, 15, 3.4, 1.6).fill(scarf);
+  s.roundRect(2, -30.5, 3.4, 9, 1.4).fill(scarf);
+  s.roundRect(2, -30.5, 3.4, 9, 1.4).stroke({ width: 0.7, color: capDark, alpha: 0.5 });
+
+  // clipboard held up in both hands — the signature prop
+  s.poly([-13, -25, -8, -28, -6, -21, -11, -18]).fill(OVERCOAT); // left arm out
+  s.poly([8, -28, 12, -26, 10, -19, 6, -21]).fill({ color: OVERCOAT_DK, alpha: 0.9 }); // right arm
+  s.roundRect(-9, -27.5, 15, 10.5, 1.4).fill(BOARD).stroke({ width: 1, color: 0x4d3620 });
+  s.roundRect(-8, -26.5, 13, 8.5, 1).fill(PAPER);
+  s.roundRect(-6.5, -24.6, 10, 1, 0.5).fill({ color: PAPER_LINE, alpha: 0.8 });
+  s.roundRect(-6.5, -22.4, 10, 1, 0.5).fill({ color: PAPER_LINE, alpha: 0.65 });
+  s.roundRect(-6.5, -20.2, 7, 1, 0.5).fill({ color: PAPER_LINE, alpha: 0.5 });
+  s.roundRect(-3.5, -28.4, 4, 1.8, 0.8).fill(0x8c98a4); // clip
+
+  // bare head (no hood), gaze angled down at the notes
+  s.circle(0, -37.5, 4.8).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
+  s.circle(-1.7, -36.6, 0.8).fill(EYE);
+  s.circle(1.9, -36.6, 0.8).fill(EYE);
+  // club-accent flat cap with a forward brim
+  s.ellipse(0, -41.2, 6.4, 3.2).fill(capColor);
+  s.ellipse(-1, -42, 5.2, 2.4).fill({ color: lighten(accent, 0.28), alpha: 0.7 });
+  s.roundRect(-6.2, -40.4, 12.4, 1.6, 0.8).fill(capDark); // band
+  s.poly([2, -40, 8.2, -39.4, 7.4, -37.8, 2, -38.6]).fill(capDark); // brim
+
+  // cold breath while he mutters over the numbers
+  s.circle(6, -33, 1.2).fill({ color: 0xffffff, alpha: 0.14 });
+
+  return s;
+}
+
 // The Builder (Rink Rats): blue-collar and under-paid — canvas work coat,
 // club-accent toque, work gloves, and a shovel over the shoulder. Reads
 // instantly different from the parka-and-banner Scout at any zoom.
@@ -2755,7 +2832,9 @@ function MiniMap({
     const accent = accentNumber(getActiveClub(state)?.accent);
     if (world.founder) dot(world.founder.x, world.founder.y, accent, 2.8, true);
     for (const scout of allScouts(world)) {
-      dot(scout.x, scout.y, 0x38bdf8, 2.8, scout.id === world.selectedScoutId);
+      // Club Scouts plot gold so the professional eye is findable at a glance.
+      const dotColor = scout.unitDefId === "club-scout" ? 0xf2c14e : 0x38bdf8;
+      dot(scout.x, scout.y, dotColor, 2.8, scout.id === world.selectedScoutId);
     }
     if (world.hqTile) dot(world.hqTile.x, world.hqTile.y, accent, 3.4, true);
   }, [state, world, mmW, mmH]);
@@ -2857,11 +2936,19 @@ function UnitOverlay({
   const isLeader = leaderSelected;
   const unit = isLeader ? world.founder! : selectedScout!;
   const isBuilder = !isLeader && unit.kind === "builder";
+  const isClubScout = !isLeader && !isBuilder && unit.unitDefId === "club-scout";
   const club = getActiveClub(state);
   const name = isLeader
     ? "Leader"
     : unit.name ?? (isBuilder ? "Rink Rats" : "Pond Scout");
-  const role = isLeader ? "Founding Group" : isBuilder ? "Construction" : "Exploration";
+  // The role line names the UNIT TYPE — the name above is the person.
+  const role = isLeader
+    ? "Founding Group"
+    : isBuilder
+      ? "Construction Crew"
+      : isClubScout
+        ? "Club Scout"
+        : "Pond Scout";
   const outOfMoves = unit.movesRemaining <= 0;
   const working = !isLeader ? unit.working : undefined;
 
@@ -2893,7 +2980,10 @@ function UnitOverlay({
             }}
           />
         ) : (
-          <ItemArt kind="unit" id={isBuilder ? "rink-rats" : "pond-scout"} />
+          <ItemArt
+            kind="unit"
+            id={isBuilder ? "rink-rats" : isClubScout ? "club-scout" : "pond-scout"}
+          />
         )}
       </div>
       <div className="unit-body">

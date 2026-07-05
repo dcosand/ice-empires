@@ -196,6 +196,20 @@ is deferred to Act III** (D33); do not build it here.
       ranges). Still ahead: by-scout view, rival/major coverage, report depth.
 - [ ] **Log → Inbox** (D41) — promote `EventLog` to an inbox: events + news
       (team/scout/rival-GM/indie) with sender/source and read/unread triage.
+- [ ] **Player-file access points (playtest 2026-07-05)** — the EHM player
+      file lives only behind the Scouting board (dock → click a row). Open the
+      same detail view from: ClubHQ → Team rows, the player-reveal cinematic
+      ("view full profile"), and tryout candidate cards DURING the tryout
+      (candidates aren't roster/prospects, so the file needs a candidate mode).
+- [ ] **Tryout music cross-fade regression (playtest 2026-07-05)** — the
+      tryout scene audio no longer cross-fades in/out as it did on 2026-07-04;
+      check `BackgroundMusic.tsx` scene-transition handling (audio-session
+      follow-up).
+- [ ] **Indie 'Send Introduction' / influence refinement (playtest
+      2026-07-05)** — owner: the current introduction verb + influence economy
+      at each independent needs a design pass (per-org flavor, costs, what
+      influence buys at each tier). Fold into the docs/15 §6 affiliate/farm
+      refinement, which is already flagged "after playtesting."
 
 ### 7. Era wiring
 - [ ] **Confirm + wire `club-formation` `ERA_REQUIREMENTS`** — proposed:
