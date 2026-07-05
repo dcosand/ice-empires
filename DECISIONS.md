@@ -317,3 +317,91 @@ HockeyCard range-bars are deferred until prospects render as cards (recruiting,
 Act III) — today the ledger table shows compact "Sk 3–6 · Ceiling 8–13" reads.
 Better intel later (a tryout) should COLLAPSE the range — re-scouting/refinement
 is future work.
+
+## D33 — Match engine moves from Act II to Act III
+The original Act II plan (docs/13 §4.1) opened with competitive hockey. Reversed:
+we do not yet understand player/team attributes well enough to make a match feel
+good, and a shallow 5-attribute model would bake in bad assumptions. Act II now
+builds the *evaluation* substrate (expanded ratings + scouting confidence +
+team-level aggregates, see docs/14 §8) and competition becomes the Act III entry
+criterion. Act II exit no longer requires playing or winning a game.
+
+## D34 — Every rink projects territory; income stays local (two-radius model)
+`CLUB_RINK_RADIUS = 3` splits into two independent radii: a **home economy
+radius** (unchanged = 3) still gates income (+1 Funds/mo), the rinks/2 upkeep tax
+(D25), and Hold Tryouts; a **territory projection radius** applies to *every*
+rink regardless of distance and feeds computed tile ownership (HQ + rinks +
+Affiliate independents). Fixes the Act-I anti-pattern where a forward rink was
+strictly worse than a home rink. Territory is derived each turn/render from
+sources, not stored per tile (like income).
+
+## D35 — Territory has mechanical teeth (never just map paint)
+Owned territory drives, in priority order: (1) the tryout pool — more owned tiles
+⇒ more candidates and a higher attribute floor (`holdTryouts`), the population
+metaphor and the headline payoff; (2) independent contention (a rink/Club Scout
+in an indie's zone feeds the Anchor Club race); (3) rival grievance — building
+inside/against a contacted rival's territory nudges `rival.attitude` wary + an
+inbox line; (4) movement/build gating (D36). Borders render Civ VI-style in club
+colors from HQ + rinks.
+
+## D36 — Boundary enforcement: min build distance + unit-kind movement tiers
+Builders cannot build within N tiles of a known rival HQ or inside rival
+territory (placement-time check; default N=3, possibly era-scaled). Movement is
+gated by unit kind: **basic Scouts (and the Club Scout) cross all borders from
+game start; Rink Rats/builders cannot enter a rival's territory.** No
+open-borders negotiation for now — scouts already pass, so there is nothing to
+trade yet; revisit as a Diplomacy-branch payoff if builders ever need to cross.
+
+## D37 — Tryouts are seasonal (twice/year), not any-month
+Hold Tryouts is gated to two calendar windows — spring (≈ May) and training camp
+(≈ Aug–Sep) — for the player *and* AI major clubs, in addition to the Funds cost.
+Makes the month/year matter and pushes the game toward Eastside Hockey Manager's
+scheduled scouting/camp rhythm. A completed camp cycle is a proposed Act-II exit
+gate. Pool size/quality scale with territory (D35).
+
+## D38 — Two scout tiers; the Club Scout owns network-building; scouts are assignable
+Base **Scout** stays a generalist (explore, survey, passive first-contact read)
+and crosses all borders. A new **Club Scout** (Club-Formation-era tech) is the
+only unit that runs "Establish Scouting Network" on an independent — and it lands
+**immediately on arrival** (the trek across the map is already the cost; no
+on-site wait). Establishing reveals prospects, unlocks recruiting, speeds
+influence, and starts the Anchor Club race. This **supersedes the shipped v1**
+(D29/D31), where *any* scout carrying the `scouting-reports` tech established a
+network only after parking two months. Either scout kind can be *assigned* to an
+indie/major club for ongoing reports whose confidence grows while the scout stays
+and goes stale once it leaves (see D39). No per-club unique scout units — saves
+the uniques budget for later eras.
+
+## D39 — Scouting is squad voyeurism, earned on the map (extends fog-of-talent)
+The Act II continuation of shipped fog-of-talent (D32) and scout characters
+(D31) — not a new system. Confidence lives entirely in the **width of the
+estimate range** already rendered (`attrEstimates`/`potentialEstimate`); there is
+no separate confidence badge.
+- **Coverage** extends fog-of-talent from independents' prospects to *every*
+  roster: independents, rival majors (D32's "rung 4" rumor tier), and your own
+  players. **Your own roster is the most accurate** — tryout / near-exact (D32
+  rung 1), because you watched them play; independents and rivals stay fogged.
+- **Earned over time**: first contact with an independent or major club yields an
+  immediate low-confidence full-roster read (major-club cinematic via
+  tile/leader-overlay click; independent tile/ledger). A **Club Scout assigned**
+  to that entity then narrows the ranges each month it stays — the refinement D32
+  flagged as future work ("better intel should COLLAPSE the range").
+- **Staleness**: confidence holds only while a scout is actively assigned there;
+  if the scout leaves, the reports go stale (ranges widen / flag as outdated).
+- Ratings and scouting are the same feature from two sides; this rides on the
+  real per-attribute ratings pass (D40).
+
+## D40 — Player/team ratings need a real pass before any match engine (TODO)
+The 5-attribute, 20-scale `PlayerAttrs` is too thin to simulate hockey. Before
+Act III we need: expanded per-position attributes, current-vs-potential
+separation, per-attribute scouting confidence ranges, a derived overall/role
+fit, and **team-level aggregate ratings** (offense/defense/goaltending/special
+teams/cohesion) that a match engine composes from the roster. This is the gating
+design task; it graduates to its own doc (`docs/15_PLAYER_AND_TEAM_RATINGS.md`)
+when it matures.
+
+## D41 — The Log becomes an Inbox
+`EventLog` is promoted to an Inbox: existing monthly event entries plus news
+items with a sender/source — team notes, scout reports, rival-GM messages,
+independent overtures — with read/unread triage. Not a new parallel system;
+an evolution of the log categories.

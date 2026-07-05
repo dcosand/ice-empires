@@ -1,8 +1,8 @@
 # Ice Empires — The Five-Act Era Arc
 
-**Date:** 2026-07-02
-**Status:** Act I (Pond Hockey Era) implemented; Act II designed below, not yet coded.
-**Purpose:** Define the game's five-era narrative arc, each era's core question and exit criteria, the 40-tech tree, and the concrete designs for Act II systems.
+**Date:** 2026-07-02 (Act II design revised 2026-07-05)
+**Status:** Act I (Pond Hockey Era) implemented; Act II designed, not yet coded.
+**Purpose:** Define the game's five-era narrative arc, each era's core question and exit criteria, and the 40-tech tree. **The detailed Act II design now lives in `docs/14_ACT2_CLUB_FORMATION.md`** — §4 below is a summary that points there.
 
 ---
 
@@ -112,60 +112,42 @@ Build Rink; Stick & Gear Basics → Harvest Branches; Local Tryouts → Hold
 Tryouts; First Contact → Send Introduction; Rules of the Game → era exit;
 Scouting Reports → map Scout recruitment.
 
-## 4. Act II — Club Formation Era (designed, not yet coded)
+## 4. Act II — Club Formation Era (summary — full design in docs/14)
 
-Core question: *Can we become a real club?* Target exit shape: win a first
-scrimmage, establish a scouting network with an independent, visible borders,
-club identity techs. Systems to build:
+Core question: *Can we become a real club?* **Full system design:
+`docs/14_ACT2_CLUB_FORMATION.md`.** Headline shift from the original plan: the
+**match engine moves to Act III** — we do not yet know enough about player/team
+attributes to make competition feel good, so Act II builds the evaluation and
+territory systems a match engine will later read from.
 
-### 4.1 Match Engine v0 — the "combat" analog
+Proposed exit criteria (confirm before wiring `ERA_REQUIREMENTS`): establish a
+scouting network with ≥1 independent, project visible borders (HQ + rinks),
+research Club Identity, and complete one seasonal training-camp cycle.
 
-First competitive hockey with the rag-tag roster:
-- **Sim**: seeded from player attributes. Per period: team attack =
-  shooting+passing of the icing six; defense = checking+skating; goalie roll
-  vs. shot quality. 3-period ticker with 2–4 narrated moments ("Gord Toews
-  falls over the puck. Somehow this works.").
-- **Entry**: "Propose a Scrimmage" via the rival meeting surface (gated by
-  `first-scrimmage` tech) or an exhibition against an independent.
-- **Stakes**: reputation swing, player XP, injury risk later. Quality of play
-  scales with roster; losses still produce progress + story — losing must be
-  fun in Act II.
+Systems built in Act II (see docs/14 for each):
+- **Territory & borders** — every rink projects a claim (two-radius model: home
+  economy radius stays local, territory projection travels). Civ VI-style
+  club-colored borders from HQ + rinks. Territory *does things*: scales the
+  tryout pool (volume + quality), contests independents, and irritates rivals.
+- **Boundary enforcement** — min build distance from rival HQs/territory; basic
+  scouts cross all borders, Rink Rats/builders cannot enter rival territory.
+- **Seasonal tryouts & training camp** — tryouts windowed twice/year (spring +
+  camp) for player and AI; the calendar starts to matter (EHM feel).
+- **Scout tiers & networks** — base Scout (generalist) vs Club Scout
+  (establishes a scouting network at an independent → reveals prospects; Anchor
+  Club race). Scouts can be assigned for ongoing reports.
+- **Player evaluation & confidence** — first contact gives a low-confidence
+  full-roster read on the club/indie surface; assigned scouts tighten it.
+- **Scouting screen** — by-scout / by-subject views, sortable/filterable tables.
+- **Player & team ratings system** — expand attributes + add confidence and
+  team-level aggregates. This is the gating prerequisite for the Act III match
+  engine.
+- **The Inbox** — evolve the event Log into an inbox (events + scout/team/rival/
+  indie news).
 
-### 4.2 Rival roster fog-of-war
-
-Rivals get hidden generated rosters (same `Player` type, seeded). A scout that
-reaches a rival's HQ tile takes a **roster snapshot** — dated by month, goes
-stale — FHM-style squad voyeurism earned through 4X map play. Snapshot viewer
-lives on the rival's page of a future Rivals screen.
-
-### 4.3 Opponent results rumors
-
-Monthly log lines about games between rivals/independents you've contacted
-("Word from the east: Prague Lions beat a Barrie side 7–2"), seeded from
-rival era + roster strength. Becomes real standings once leagues exist (Act III).
-
-### 4.4 Borders / territory
-
-Tile ownership computed from HQ + club rinks + Affiliate independents (each
-projects a radius; ties broken by distance). Rendered in `IsoWorldMap` as a
-low-alpha club-secondary tint on owned tile tops plus a dashed edge stroke on
-the boundary ring. Rival borders appear once contacted. Expansion = building
-rinks + affiliating independents, NOT settling cities (see docs/11 §2).
-
-### 4.5 Scout Emissary — the scouting-network unit
-
-A map unit that stands adjacent to an independent and runs a 2-month
-"Establish Scouting Network" action → reveals that org's prospect slots
-(`prospects[].revealed = true` with real names/attrs), unlocks recruiting
-actions and faster influence growth. Rivals can do the same — competition for
-**Anchor Club** status (the suzerain analog) begins here.
-
-### 4.6 Water traversal
-
-`embark` capability for coastal tiles, unlocked by a Club-Formation-era tech
-(units become a slow "ferry" while embarked; `moveableTilesFor` gains a
-coastal-passable flag). Halifax's unique Harbor Ferry grants it from Act I —
-island/remote starts stop being a trap.
+Deferred to Act III: match engine v0 (blocked on ratings), opponent results
+rumors, and water traversal (`embark`; Halifax's Harbor Ferry) as a
+nice-to-have rather than an exit gate.
 
 ## 5. Acts III–V — sketch only
 

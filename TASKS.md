@@ -98,6 +98,88 @@
       not build card triggers. Revisit as Civ-VI "great people" special unit or
       remove. Roster players stay first-class (D24).
 
+## Act II — Club Formation Era (next major arc)
+
+Full design: `docs/14_ACT2_CLUB_FORMATION.md`. Decisions: D33–D41. Build roughly
+top-to-bottom — territory is the spine everything else reads from. **Match engine
+is deferred to Act III** (D33); do not build it here.
+
+### 1. Territory & borders (the spine — do first)
+- [ ] **Two-radius rink model** (D34) — split `CLUB_RINK_RADIUS` into a home
+      economy radius (income/upkeep/tryout gate, keep = 3) and a territory
+      projection radius (every rink, any distance). `rinkSystem.ts`.
+- [ ] **Computed tile ownership** (D34) — derive owned tiles each turn/render
+      from HQ + player rinks (level ≥ 1) + Affiliate independents, radius
+      projection, nearest-source tie-break. Rival ownership from their HQ +
+      rinks, shown only once contacted. New `engine/territorySystem.ts`.
+- [ ] **Civ VI-style border render** (D35) — club-colored boundary-ring stroke
+      (bright inner + dark outer) extending in the 4 diamond directions from HQ
+      and rinks; rival borders in their colors once contacted. `IsoWorldMap.tsx`
+      (edit surgically — ~2,800 lines); add minimap treatment.
+- [ ] **Territory → tryout pool** (D35) — in `holdTryouts`, add `+1 candidate
+      per ~6–8 owned tiles` and step the attribute floor up at territory
+      breakpoints, stacking with existing unique bonuses. `tryoutSystem.ts`.
+- [ ] **Territory → independent contention** (D35) — a player rink/Club Scout
+      inside an indie's zone feeds the Anchor Club influence race.
+      `independentsSystem.ts`.
+- [ ] **Territory → rival grievance** (D35) — building inside/against a
+      contacted rival's territory nudges `rival.attitude` wary + an inbox line.
+
+### 2. Boundary enforcement (D36)
+- [ ] **Min build distance** — reject builds within N tiles (default 3) of a
+      known rival HQ / inside rival territory. Placement check in `builderSystem`.
+- [ ] **Movement tiers by unit kind** — basic Scouts (+ Club Scout) cross all
+      borders; Rink Rats/builders cannot enter rival territory. Gate in the
+      move/`moveableTilesFor` path.
+
+### 3. Seasonal tryouts & training camp (D37)
+- [ ] **Windowed tryouts** — Hold Tryouts only in spring (~May) + camp
+      (~Aug–Sep); out-of-window copy names the next window. Apply to AI clubs.
+      `tryoutSystem.ts` + the tryout gate/UI.
+- [ ] **Training-camp cycle as an Act-II exit signal** — track a completed camp
+      window for the `training-camp` requirement.
+
+### 4. Scouts, networks & evaluation (D38, D39)
+- [ ] **Club Scout unit** — new map unit, Club-Formation-era tech gate; the only
+      unit that runs "Establish Scouting Network", established **on arrival**
+      beside an indie (no on-site wait) → reveals prospects, unlocks recruiting,
+      speeds influence. Rivals can too (Anchor race). Supersedes shipped v1
+      (any scout + `scouting-reports`, 2-month park — D38). `scoutSystem.ts` /
+      new `clubScoutSystem.ts`.
+- [ ] **Scout assignment + reports** — assign a scout to an indie/major club;
+      ongoing reports with detail/confidence that grow over time and go stale.
+- [ ] **First-contact roster read** — low-confidence full roster shown on the
+      major-club cinematic (tile + leader-overlay click) and the indie
+      tile/ledger. Rivals/indies already carry seeded `prospects` (D21).
+
+### 5. Player & team ratings system (D40 — prerequisite for Act III)
+- [ ] **TODO: expand the ratings model** — more per-position attributes,
+      current-vs-potential, per-attribute scouting confidence ranges, derived
+      overall/role fit, and **team-level aggregates** (offense/defense/
+      goaltending/special teams/cohesion). Graduate to
+      `docs/15_PLAYER_AND_TEAM_RATINGS.md`. This gates the match engine.
+
+### 6. Screens & information
+- [ ] **Scouting screen** — a v1 global board now ships in main
+      (`src/components/ScoutingScreen.tsx`, opened from the map dock): lists known
+      roster players (true ratings) + revealed prospects (fog ranges) with their
+      source. Act II extends it: toggle by-scout / by-subject, sortable/
+      filterable/searchable tables, per-row confidence, rival/major coverage.
+- [ ] **Log → Inbox** (D41) — promote `EventLog` to an inbox: events + news
+      (team/scout/rival-GM/indie) with sender/source and read/unread triage.
+
+### 7. Era wiring
+- [ ] **Confirm + wire `club-formation` `ERA_REQUIREMENTS`** — proposed:
+      `scouting-network`, `territory-projected`, `club-identity`,
+      `training-camp` (docs/14 §1). Add requirement ids to the `EraRequirement`
+      union + `selectors.isRequirementMet` cases.
+
+### Deferred to Act III (do NOT build in Act II)
+- [ ] Match Engine v0 (blocked on ratings, D33/D40).
+- [ ] Opponent results rumors (needs the sim).
+- [ ] Water traversal / `embark` (Halifax Harbor Ferry) — nice-to-have, not an
+      exit gate.
+
 ## Done
 - [x] M0 — Read docs, write plan, record decisions.
 - [x] M1 — Skeleton: Vite+React+TS app, Landing → Founding → Dashboard shell,
