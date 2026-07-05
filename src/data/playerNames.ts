@@ -2,12 +2,21 @@
 // enthusiastic locals, not prospects — the names and notes should feel like a
 // small town showed up after seeing one flyer.
 
-export const FIRST_NAMES = [
+export const MALE_FIRST_NAMES = [
   "Gord", "Dale", "Marty", "Cliff", "Bernie", "Ray", "Doug", "Earl",
   "Wayne", "Kirby", "Stu", "Hank", "Lars", "Sven", "Mikko", "Janne",
   "Pavel", "Tomas", "Karel", "Anton", "Red", "Buck", "Moose", "Ace",
   "Tibor", "Ollie", "Ned", "Vern", "Gus", "Alf", "Bruno", "Cecil",
 ];
+
+export const FEMALE_FIRST_NAMES = [
+  "Ada", "Anya", "Bea", "Camille", "Clara", "Daria", "Elise", "Freya",
+  "Greta", "Hanna", "Ines", "Iris", "Jana", "Katja", "Lena", "Mara",
+  "Mila", "Nadia", "Nika", "Noor", "Petra", "Raina", "Sasha", "Talia",
+  "Vera", "Willa", "Yara", "Zoe",
+];
+
+export const FIRST_NAMES = [...MALE_FIRST_NAMES, ...FEMALE_FIRST_NAMES];
 
 export const LAST_NAMES = [
   "Toews", "Lindqvist", "Marchetti", "Okafor", "Bergström", "Kowalski",

@@ -4,6 +4,9 @@ import type { GameAction } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { turnDateLabel } from "../engine/calendar";
 
+// Rival first-contact backdrop: the club's own wide scene, behind the stage —
+// matching the independent meeting beat (which uses the org's background art).
+
 // The first-contact "leader scene" — a Civ-style cinematic beat. Full-viewport
 // letterbox, the rival's palette floods the stage, their leader strides in, and
 // the player chooses how to greet them. The chosen attitude is stored on the
@@ -20,6 +23,7 @@ export function RivalMeetingScreen({
   const club = CLUBS[clubId];
   // Reveal the response choices only after the entrance beat has played.
   const [choicesReady, setChoicesReady] = useState(false);
+  const [bgFailed, setBgFailed] = useState(false);
   useEffect(() => {
     const t = setTimeout(() => setChoicesReady(true), 1400);
     return () => clearTimeout(t);
@@ -43,6 +47,15 @@ export function RivalMeetingScreen({
       aria-modal="true"
       aria-label={`First contact with ${club.name}`}
     >
+      {!bgFailed && (
+        <img
+          className="meeting-backdrop"
+          src={clubAsset(club, "background")}
+          alt=""
+          aria-hidden
+          onError={() => setBgFailed(true)}
+        />
+      )}
       <div className="meeting-letterbox top" />
       <div className="meeting-letterbox bottom" />
       <div className="meeting-stage">

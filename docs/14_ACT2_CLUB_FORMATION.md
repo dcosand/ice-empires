@@ -19,7 +19,8 @@ engine will later read from.
 checklist, all tied to systems built in this act:
 
 1. **`scouting-network`** — Establish a scouting network with ≥1 independent
-   (Scout Emissary completes the 2-month action → that org's prospects revealed).
+   (a Club Scout reaches that org and establishes the network on arrival → its
+   prospects revealed).
 2. **`territory-projected`** — Project visible borders: HQ + ≥3 rinks generating
    a contiguous claimed area (exact rink count TBD in balancing).
 3. **`club-identity`** — Research **Club Identity** (tech #9).
@@ -79,7 +80,7 @@ Split the single `CLUB_RINK_RADIUS = 3` into two independent radii:
      floor +1), the same lever the Rink Evangelist already pulls.
    This gives forward rinks *and* Affiliate independents a second reason to
    exist, and makes borders something the player feels every tryout.
-2. **Independent contention (Anchor race).** A player rink (or Scout Emissary,
+2. **Independent contention (Anchor race).** A player rink (or Club Scout,
    §5) inside an independent's zone counts toward influence / Anchor Club
    contention against rivals — landing a claim near an indie before a rival is a
    real land-grab.
@@ -127,7 +128,7 @@ balancing says otherwise.
 
 Once territory tiles exist, entry is gated by unit kind:
 
-- **Basic Scouts** (and the future Scout Emissary): cross **all** borders freely
+- **Basic Scouts** (and the future Club Scout): cross **all** borders freely
   from game start. Recon and diplomacy travel; that is their job.
 - **Rink Rats / builders** (and unique builder variants — Asphalt Crew, Barn
   Raisers, Foundry Crew): **cannot enter a rival's territory.** Work crews stay
@@ -169,20 +170,23 @@ reveal, survey, passive first-contact). No club has a unique *map* scout unit
 
 - **Scout** (existing, unchanged verbs): explore, survey regions, passive
   first-contact snapshot (§6). Cheap, early, generalist. Crosses all borders.
-- **Scout Emissary** (new, gated by a Club-Formation-era tech — reuse
+- **Club Scout** (new, gated by a Club-Formation-era tech — reuse
   **Scouting Reports** #15, or add a new Scouting & Reach tech): the only unit
-  that can run **Establish Scouting Network** — a 2-month action while parked
-  adjacent to an independent → reveals that org's real prospect slots
-  (`prospects[].revealed = true`, real names/attrs), unlocks recruiting actions,
-  and accelerates influence. Rivals can do the same: this is where **Anchor
-  Club** competition (the suzerain analog) begins.
+  that can run **Establish Scouting Network** — established **on arrival** beside
+  an independent (the trek across the map is already the cost; no on-site wait)
+  → reveals that org's real prospect slots (`prospects[].revealed = true`, real
+  names/attrs), unlocks recruiting actions, and accelerates influence. Rivals can
+  do the same: this is where **Anchor Club** competition (the suzerain analog)
+  begins. NOTE: this supersedes shipped v1 (D31/D32), where *any* scout carrying
+  the `scouting-reports` tech networked an org after parking two months; Act II
+  narrows network-building to the Club Scout and makes it immediate.
 
 Rather than per-club unique scouts, keep the split clean and save the uniques
 budget for later eras.
 
 ### 5.1 Assignment model
 
-A scout (basic or Emissary) can be **assigned** to an independent or a contacted
+A scout (basic or Club Scout) can be **assigned** to an independent or a contacted
 major club. An assigned scout produces ongoing reports whose **detail and
 confidence increase over time** (§6). This is the data source for the scouting
 screen (§7) and the on-tile/cinematic roster views (§6).
@@ -191,15 +195,23 @@ screen (§7) and the on-tile/cinematic roster views (§6).
 
 ## 6. Player evaluation & scouting confidence
 
-The FHM/EHM "squad voyeurism earned through map play" loop:
+The FHM/EHM "squad voyeurism earned through map play" loop. This is the Act II
+continuation of shipped **fog-of-talent (D32)** and **scout characters (D31)**,
+not a new system: confidence lives entirely in the **width of the estimate
+range** already rendered (`attrEstimates`/`potentialEstimate`) — there is no
+separate confidence badge.
 
+- **Coverage** extends the shipped prospect fog to *every* roster — independents,
+  rival majors, and your own players. **Your own roster is the most accurate**
+  (tryout / near-exact, D32 rung 1: you watched them play); independents and
+  rivals stay fogged until scouted.
 - **First contact** with an independent or major club grants an immediate
   **low-confidence full-roster read** — you see the whole player list, but with
   wide uncertainty (ranges/blurred ratings, not exact numbers).
 - That list is viewable on the entity's surface: the **major club full-screen
   cinematic** (click the club tile *or* their leader-image overlay) and the
   **independent tile / ledger**.
-- Assigning a scout (§5.1) — especially a Scout Emissary that has established a
+- Assigning a scout (§5.1) — especially a Club Scout that has established a
   network — **tightens confidence and reveals more attributes** the longer they
   observe. Reports go stale if the scout leaves.
 
@@ -218,7 +230,7 @@ This requires a real ratings system with confidence, which we do not have yet
 A full-screen scouting hub:
 
 - **Two organizing views, toggleable**:
-  - **By scout** — each of your scouts (basic + Emissary + assigned) with their
+  - **By scout** — each of your scouts (basic + Club Scout + assigned) with their
     current assignment, location, and latest report.
   - **By subject** — each team / independent / major club with the accumulated
     reports and current confidence on their players.

@@ -1290,13 +1290,15 @@ button {
 
 /* ---------- TopBar club logo ---------- */
 .topbar-club {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 12px;
+  min-height: 68px;
+  padding: 4px 8px 4px clamp(220px, 22vw, 300px);
   background: transparent;
   border: 1px solid transparent;
   border-radius: 10px;
-  padding: 4px 8px;
   margin: -4px -8px;
   cursor: pointer;
   text-align: left;
@@ -1311,9 +1313,9 @@ button {
   cursor: default;
 }
 .topbar-logo {
-  height: 68px;
+  height: clamp(118px, 9vw, 150px);
   width: auto;
-  max-width: 84px;
+  max-width: clamp(138px, 12vw, 190px);
   object-fit: contain;
   filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.6));
 }
@@ -2751,6 +2753,41 @@ button {
   text-transform: uppercase;
   color: var(--text-faint);
   margin-bottom: 10px;
+}
+.onb-panel-kicker {
+  margin-bottom: 4px;
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.onb-independent-card {
+  width: min(82%, 310px);
+}
+.onb-pipeline {
+  display: grid;
+  grid-template-columns: 1fr repeat(3, auto);
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.onb-pipeline strong {
+  display: inline-grid;
+  place-items: center;
+  min-width: 28px;
+  height: 22px;
+  padding: 0 6px;
+  border: 1px solid rgba(242, 193, 78, 0.36);
+  border-radius: 7px;
+  background: rgba(242, 193, 78, 0.1);
+  color: var(--text);
+  font-size: 10px;
+  font-weight: 800;
 }
 .onb-bar-row {
   display: grid;
@@ -4213,26 +4250,52 @@ button {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+  background: #07101a;
+}
+.tryout-scrimmage-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center;
+  opacity: 0.56;
+  filter: saturate(0.88) brightness(0.74);
+  transform: scale(1.03);
+}
+.tryout-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(95% 70% at 50% 38%, rgba(12, 29, 45, 0.14) 0%, rgba(5, 10, 16, 0.78) 74%),
+    linear-gradient(180deg, rgba(3, 8, 13, 0.46), rgba(3, 8, 13, 0.8));
+  pointer-events: none;
 }
 .tryout-sheet {
   position: relative;
   z-index: 1;
-  width: min(1040px, 94vw);
-  max-height: 86vh;
-  overflow-y: auto;
-  background: var(--panel);
+  width: 100vw;
+  height: 100dvh;
+  max-height: none;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(13, 25, 38, 0.72);
   border: 1px solid var(--border);
   border-top: 3px solid var(--club-accent, var(--accent));
-  border-radius: 14px;
-  padding: 22px 24px;
+  border-radius: 0;
+  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3.8vw, 56px);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(3px);
 }
 .tryout-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 16px;
-  margin-bottom: 16px;
+  margin-bottom: clamp(8px, 1.5vh, 16px);
+  flex: 0 0 auto;
 }
 .tryout-head h2 {
   margin: 2px 0 6px;
@@ -4325,6 +4388,15 @@ button {
   font-weight: 700;
   padding: 7px 0;
 }
+.tryout-card-actions {
+  display: grid;
+  grid-template-columns: minmax(76px, 0.7fr) minmax(110px, 1fr);
+  gap: 8px;
+}
+.tryout-card-actions .btn {
+  width: 100%;
+  min-height: 36px;
+}
 .tryout-foot {
   margin-top: 12px;
   text-align: center;
@@ -4368,6 +4440,29 @@ button {
   margin-bottom: 6px;
 }
 .line-slot-top > div { flex: 1; }
+.line-headshot {
+  flex: 0 0 38px !important;
+  width: 38px;
+  height: 38px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+.line-headshot .hc-headshot {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+.line-headshot .hc-headshot-img {
+  object-position: 50% 16%;
+}
+.line-headshot .hc-headshot-silhouette {
+  width: 74%;
+}
+.line-headshot .hc-initials {
+  font-size: 15px;
+}
 .line-pos {
   display: inline-flex;
   align-items: center;
@@ -4833,9 +4928,9 @@ button {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
-  min-width: 56px;
-  padding: 7px 8px 6px;
+  gap: 4px;
+  min-width: 80px;
+  padding: 10px 12px 8px;
   border: 1px solid transparent;
   border-radius: 9px;
   background: transparent;
@@ -4909,18 +5004,24 @@ button {
 
 /* TopBar identity: leader portrait beside the crest */
 .topbar-identity {
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  z-index: 1;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 14px;
+  transform: translateY(-50%);
+  pointer-events: none;
 }
 .topbar-leader {
-  width: 40px;
-  height: 40px;
+  width: clamp(84px, 6.8vw, 100px);
+  height: clamp(84px, 6.8vw, 100px);
   border-radius: 50%;
   object-fit: cover;
   object-position: top center;
-  border: 2px solid var(--club-secondary, var(--accent));
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  border: 3px solid var(--club-secondary, var(--accent));
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.58);
 }
 
 /* Met-rivals strip (Civ-style leader row, top-center of the map) */
@@ -4946,8 +5047,8 @@ button {
   box-shadow: var(--shadow);
 }
 .rival-face {
-  width: 44px;
-  height: 44px;
+  width: 64px;
+  height: 64px;
   padding: 0;
   border-radius: 50%;
   border: 2px solid var(--border-bright);
@@ -5069,8 +5170,8 @@ button {
 
 /* Tryouts: hockey-card breathing room on a wide sheet */
 .tryout-sheet {
-  width: min(1560px, 96vw);
-  padding: 30px 34px;
+  width: 100vw;
+  padding: clamp(18px, 2.4vw, 30px) clamp(22px, 3.8vw, 56px);
 }
 .tryout-head h2 { font-size: 30px; }
 .tryout-head .muted { font-size: 15px; }
@@ -5129,29 +5230,71 @@ button {
   position: relative;
   overflow: hidden;
 }
-.indy-detail-hero {
+/* Blended full-screen backdrop (the org's wide scene). */
+.indy-detail-bg {
   position: absolute;
-  top: 0;
-  right: 0;
-  width: min(360px, 32%);
-  height: auto;
-  max-height: 480px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
   object-position: top center;
-  border-radius: 0 0 0 16px;
-  border-left: 1px solid var(--border-bright);
-  border-bottom: 1px solid var(--border-bright);
-  box-shadow: -12px 12px 40px rgba(0, 0, 0, 0.45);
-  mask-image: linear-gradient(180deg, #000 78%, transparent 100%);
+  opacity: 0.16;
+  filter: saturate(0.85) brightness(0.7);
+  mask-image: linear-gradient(180deg, #000 0%, #000 42%, transparent 94%);
+  pointer-events: none;
 }
-.indy-detail-head,
-.indy-detail-blurb,
-.indy-detail .indy-influence {
-  max-width: calc(100% - min(380px, 34%));
+.indy-back { position: relative; }
+/* Card poster on the left, everything else to its right. */
+.indy-detail-body {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(200px, 290px) 1fr;
+  gap: 26px;
+  align-items: start;
+  margin-top: 14px;
 }
-@media (max-width: 900px) {
-  .indy-detail-hero { display: none; }
-  .indy-detail-head, .indy-detail-blurb, .indy-detail .indy-influence { max-width: none; }
+.indy-detail-card {
+  width: 100%;
+  border-radius: 12px;
+  border: 1px solid var(--border-bright);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.5);
+  object-fit: cover;
+}
+.indy-detail-main { min-width: 0; }
+
+/* Prospect pipeline as a scaling table (grows to a long list over the eras). */
+.indy-prospect-scroll { overflow-x: auto; }
+.indy-prospect-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+.indy-prospect-table th {
+  text-align: left;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim);
+  font-weight: 600;
+  padding: 2px 10px 8px;
+}
+.indy-prospect-table td {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  vertical-align: middle;
+}
+.indy-prospect-table .pp-pos { width: 1%; white-space: nowrap; }
+.indy-prospect-table tr.fogged .pp-name {
+  color: var(--text-dim);
+  letter-spacing: 0.12em;
+}
+.indy-prospect-table tr.fogged .pos-badge { filter: grayscale(0.5) brightness(0.8); }
+.pp-name { font-weight: 700; color: var(--text); white-space: nowrap; }
+.pp-teaser { font-style: italic; color: var(--text-dim); }
+
+@media (max-width: 720px) {
+  .indy-detail-body { grid-template-columns: 1fr; }
+  .indy-detail-card { max-width: 260px; }
 }
 
 /* Instant styled tooltips for HUD chrome (native title is too slow/small) */
@@ -5220,4 +5363,585 @@ button {
   margin: 8px 0 14px;
   font-size: 13.5px;
   color: var(--text-dim);
+}
+
+/* ===========================================================================
+   Hockey card (shared flip card) — tryout pack browsing + player reveal
+   =========================================================================== */
+.hockey-card {
+  --card-w: 300px;
+  --portrait-ratio: 4 / 3;
+  --portrait-position: 50% 18%;
+  width: var(--card-w);
+  max-width: 82vw;
+  aspect-ratio: 3 / 4.28;
+  perspective: 1500px;
+  flex: 0 0 auto;
+}
+.hc-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.hc-inner.flipped { transform: rotateY(180deg); }
+.hc-face {
+  position: absolute;
+  inset: 0;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow:
+    0 24px 54px rgba(0, 0, 0, 0.54),
+    0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+/* BACK — club crest over the club palette, like a real card's reverse */
+.hc-back {
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  cursor: pointer;
+  color: #fff;
+  border: 2px solid color-mix(in srgb, var(--club-secondary, #38bdf8) 55%, #000);
+  background:
+    radial-gradient(120% 85% at 50% 22%,
+      color-mix(in srgb, var(--club-secondary, #38bdf8) 42%, var(--club-primary, #0b1f3a)) 0%,
+      var(--club-primary, #0b1f3a) 72%);
+}
+.hc-back::after {
+  /* subtle diagonal sheen so the back reads as a printed card */
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    -35deg,
+    rgba(255, 255, 255, 0.05) 0 2px,
+    transparent 2px 12px
+  );
+  pointer-events: none;
+}
+.hc-back-crest {
+  width: 46%;
+  max-height: 46%;
+  object-fit: contain;
+  opacity: 0.92;
+  filter: drop-shadow(0 4px 12px rgba(0, 0, 0, 0.5));
+}
+.hc-back-mark {
+  font-family: var(--font-display);
+  font-size: 40px;
+  font-weight: 800;
+  opacity: 0.55;
+}
+.hc-back-label {
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  opacity: 0.75;
+}
+/* FRONT — the profile */
+.hc-front {
+  transform: rotateY(180deg);
+  padding: 0 0 16px;
+  gap: 9px;
+  border: 1.5px solid color-mix(in srgb, var(--club-secondary, #38bdf8) 34%, #203248);
+  border-top: 4px solid var(--club-accent, var(--accent));
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, transparent 38%),
+    linear-gradient(180deg, #152b40 0%, #0d1b2a 100%);
+}
+.hc-portrait {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--portrait-ratio);
+  overflow: hidden;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: #08111b;
+}
+.hc-portrait::after {
+  content: "";
+  position: absolute;
+  inset: 48% 0 0;
+  z-index: 3;
+  background: linear-gradient(180deg, transparent 0%, rgba(7, 15, 24, 0.44) 100%);
+  pointer-events: none;
+}
+.hc-headshot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 95% at 50% 12%,
+      hsl(var(--hue, 210) 45% 44%) 0%,
+      hsl(var(--hue, 210) 42% 20%) 78%);
+}
+.hc-headshot-silhouette {
+  position: absolute;
+  bottom: 0;
+  width: 66%;
+  height: 92%;
+  fill: rgba(255, 255, 255, 0.14);
+}
+.hc-headshot-img {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: var(--portrait-position);
+}
+.hc-headshot-fallback {
+  display: contents;
+}
+.hc-initials {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 34px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.92);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+.hc-portrait .pos-badge {
+  position: absolute;
+  z-index: 4;
+  left: 10px;
+  bottom: 10px;
+  width: 34px;
+  height: 34px;
+  font-size: 15px;
+  border-radius: 9px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.hc-ident {
+  margin: -1px 0 0;
+  padding: 12px 18px 2px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.hc-name {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 21px;
+  color: var(--text);
+  line-height: 1.1;
+}
+.hc-meta {
+  margin-top: 3px;
+  font-size: 12.5px;
+  color: var(--text-dim);
+}
+.hc-attrs {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 18px;
+}
+.hc-note {
+  font-size: 13.5px;
+  font-style: italic;
+  color: var(--text-dim);
+  line-height: 1.45;
+  flex: 1;
+  padding: 2px 18px 0;
+}
+.hc-footer { margin-top: auto; padding: 0 18px; }
+
+/* Tryout carousel: glide through hopefuls, focus one, peek the neighbours */
+.tryout-carousel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: clamp(10px, 1.8vh, 22px) 0 clamp(6px, 1vh, 12px);
+  flex: 0 0 clamp(360px, 44vh, 520px);
+  min-height: 0;
+}
+.carousel-viewport {
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+.carousel-track {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  /* 50% padding resolves against the viewport width → focal cell centres */
+  padding: 0 calc(50% - 160px);
+  transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.carousel-cell {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  transition: transform 0.35s ease, opacity 0.35s ease, filter 0.35s ease;
+}
+.carousel-cell .hockey-card {
+  --card-w: min(320px, 74vw);
+  --portrait-ratio: 16 / 9;
+  --portrait-position: 50% 24%;
+}
+.tryout-screen .hc-front {
+  gap: 7px;
+  padding-bottom: 12px;
+}
+.tryout-screen .hc-ident { padding: 10px 16px 1px; }
+.tryout-screen .hc-name { font-size: 19px; }
+.tryout-screen .hc-attrs { gap: 5px; padding: 0 16px; }
+.tryout-screen .hc-note {
+  font-size: 12.5px;
+  line-height: 1.35;
+  padding: 0 16px;
+}
+.tryout-screen .hc-footer { padding: 0 16px; }
+.carousel-cell.side {
+  transform: scale(0.86);
+  opacity: 0.48;
+  filter: saturate(0.7);
+  cursor: pointer;
+}
+.carousel-cell.focal { transform: scale(1); opacity: 1; }
+.pack-nav {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(13, 24, 36, 0.85);
+  color: var(--text);
+  font-size: 26px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pack-nav:hover:not(:disabled) { background: rgba(30, 48, 68, 0.95); transform: scale(1.06); }
+.pack-nav:disabled { opacity: 0.3; cursor: default; }
+.pack-dots {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 0;
+  flex: 0 0 auto;
+}
+.pack-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(120, 150, 180, 0.3);
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.pack-dot.active { background: var(--club-accent, var(--accent)); transform: scale(1.2); }
+.pack-dot.recruited { background: var(--good); }
+.tryout-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  flex: 0 0 auto;
+  margin-top: 10px;
+  padding: 10px 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tryout-actions-status {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-weight: 700;
+}
+.tryout-actions-buttons {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* Roster compare table: "is this hopeful better than my current line?" */
+.tryout-compare {
+  margin-top: clamp(8px, 1.2vh, 14px);
+  padding-top: 0;
+  flex: 1 1 auto;
+  min-height: 112px;
+  overflow: hidden;
+}
+.compare-head {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-dim);
+  margin-bottom: 8px;
+}
+.compare-sub { font-weight: 400; opacity: 0.8; }
+.compare-scroll {
+  overflow: auto;
+  max-height: min(250px, calc(100dvh - 740px));
+}
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.compare-table th,
+.compare-table td {
+  padding: 6px 10px;
+  text-align: center;
+  white-space: nowrap;
+}
+.compare-table th {
+  color: var(--text-dim);
+  font-weight: 600;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.compare-table .c-name { text-align: left; }
+.compare-table tbody tr { border-top: 1px solid rgba(255, 255, 255, 0.06); }
+.compare-table .c-candidate {
+  background: color-mix(in srgb, var(--club-accent, #38bdf8) 12%, transparent);
+}
+.c-candidate .c-name { font-weight: 700; color: var(--text); }
+.c-badge {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  background: var(--club-accent, #38bdf8);
+  color: #06121d;
+  padding: 1px 5px;
+  border-radius: 5px;
+  margin-left: 4px;
+  font-weight: 800;
+}
+.c-better { color: var(--good); font-weight: 700; }
+.c-arrow { font-size: 10px; }
+
+@media (max-width: 720px) {
+  .tryout-head {
+    flex-direction: column;
+  }
+  .tryout-head > .btn {
+    align-self: stretch;
+  }
+  .tryout-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+  .tryout-actions-buttons {
+    justify-content: stretch;
+  }
+  .tryout-actions-buttons .btn {
+    flex: 1 1 0;
+  }
+  .tryout-card-actions {
+    grid-template-columns: 1fr;
+  }
+  .tryout-carousel {
+    flex-basis: clamp(330px, 48vh, 440px);
+  }
+}
+
+/* ===========================================================================
+   Player reveal cinematic — the signing moment (first player / goodie hut)
+   =========================================================================== */
+.reveal-scene {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background:
+    radial-gradient(120% 90% at 50% 38%, var(--meet-primary, #10202f) 0%, #05090f 78%);
+  animation: meeting-fade-in 0.5s ease both;
+  overflow: hidden;
+}
+/* Darkened scrimmage photo behind the signing stage (club "<key>-scrimmage.png"). */
+.reveal-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0.28;
+  filter: saturate(0.85) brightness(0.7);
+  -webkit-mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 82%);
+  mask-image: radial-gradient(120% 100% at 50% 40%, #000 30%, transparent 82%);
+  animation: reveal-bg-in 1.4s ease both;
+  pointer-events: none;
+}
+@keyframes reveal-bg-in {
+  from { opacity: 0; transform: scale(1.06); }
+  to { opacity: 0.28; transform: scale(1); }
+}
+.reveal-stage {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(360px, 560px);
+  align-items: center;
+  gap: 0 72px;
+  width: min(1180px, 94vw);
+}
+.reveal-stage .hockey-card {
+  --card-w: clamp(360px, 25vw, 430px);
+  z-index: 1;
+  animation: reveal-card-in 0.9s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes reveal-card-in {
+  from { opacity: 0; transform: translateY(28px) scale(0.94); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.reveal-panel {
+  align-self: center;
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+}
+.reveal-panel.ready { opacity: 1; transform: translateY(0); }
+.reveal-eyebrow {
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--meet-accent, var(--accent));
+  margin-bottom: 8px;
+}
+.reveal-headline {
+  margin: 0 0 12px;
+  font-family: var(--font-display);
+  font-size: 34px;
+  color: var(--text);
+}
+.reveal-line {
+  color: var(--text);
+  opacity: 0.92;
+  font-size: 16.5px;
+  line-height: 1.6;
+  margin: 0 0 22px;
+}
+@media (max-width: 720px) {
+  .reveal-stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+    gap: 22px 0;
+  }
+  .reveal-stage .hockey-card { --card-w: min(330px, 82vw); }
+  .reveal-panel { text-align: center; }
+}
+
+/* ---- Scouting staff (D29: scout characters, tiers, XP) ------------------- */
+.prod-tier-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+.prod-tier-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 5px 10px;
+  border: 1px solid var(--line, rgba(148, 187, 220, 0.25));
+  border-radius: 8px;
+  background: rgba(10, 24, 38, 0.55);
+  color: var(--text);
+  cursor: pointer;
+  font: inherit;
+}
+.prod-tier-chip.on {
+  border-color: var(--gold, #f2c14e);
+  background: rgba(242, 193, 78, 0.12);
+}
+.prod-tier-chip.unaffordable {
+  opacity: 0.55;
+}
+.prod-tier-name {
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.prod-tier-cost {
+  font-size: 11.5px;
+  opacity: 0.75;
+}
+
+.hq-scout-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.hq-scout-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid rgba(148, 187, 220, 0.18);
+  border-radius: 10px;
+  background: rgba(9, 22, 35, 0.5);
+}
+.hq-scout-body {
+  flex: 1;
+  min-width: 0;
+}
+.hq-scout-xp {
+  margin-left: auto;
+  font-size: 11.5px;
+  opacity: 0.75;
+  white-space: nowrap;
+}
+.hq-scout-attrs {
+  max-width: 340px;
+  margin: 6px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.pp-age {
+  opacity: 0.65;
+  font-size: 0.92em;
+}
+
+/* Full-color PNG dock icons (eras/independents/people/scouting). Unlike the
+   game-icons SVGs these ship already styled, so skip the invert filter. */
+.dock-btn img.dock-btn-png {
+  filter: none;
+  object-fit: contain;
+  width: 58px;
+  height: 58px;
+}
+
+/* Global scouting board (ScoutingScreen) — roster + all scouted prospects. */
+.scouting-panel .indy-col-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 22px;
+}
+.scouting-count {
+  font-size: 12px;
+  font-weight: 800;
+  color: #0a1018;
+  background: var(--gold);
+  border-radius: 999px;
+  padding: 1px 8px;
+}
+.scouting-table .scouting-source {
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+.scouting-flag {
+  margin-left: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #f0b24a;
+  border: 1px solid rgba(240, 178, 74, 0.5);
+  border-radius: 5px;
+  padding: 1px 5px;
+  vertical-align: middle;
 }

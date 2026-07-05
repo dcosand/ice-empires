@@ -1,5 +1,36 @@
 # Ice Empires — Progress Log
 
+## 2026-07-03 — Economy pay-upfront (D30) + scouting system v1 (D29/D31)
+The two deferred design tasks from the 2026-07-03 handoff. Both validated with
+headless sims through the real reducer (20 + 23 assertions, all passing).
+- **D30 economy**: full cost charged when production starts, for units AND
+  facilities; `ActiveProduction` became a `monthsRemaining/totalMonths` timer.
+  Kills the old drip model's double-count (funds income used to land in the
+  treasury AND advance the build — production was effectively free). Base
+  income 5 → 3/mo; cancel refunds until work begins; End Turn no longer
+  requires a production pick (saving up is legitimate; research still gates).
+- **D31 scout characters** (the settled D29 fork): every map scout is a named
+  person in `state.scoutStaff` with Judging Potential/Ability. Quality tiers
+  at production (Volunteer/Traveled/Ace, ×1/×1.75/×2.5 funds); fieldwork XP
+  (+2 goodie hut, +3 org first contact, +5 network) earns promotions (+1 to
+  the weaker judging attr every 5 XP). Founding scout is a free volunteer.
+- **Establish Scouting Network** (Act II, docs/13 §4.5): scout with
+  `scouting-reports` parks 2 months beside a contacted independent →
+  `networkedByPlayer`, +10 influence, prospect pipeline revealed.
+- **Fog-of-talent v1 (D32)**: revealed prospects store true attrs + ceiling
+  engine-side; the ledger renders only ESTIMATE ranges ("Sk 3–6 · Ceiling
+  8–13") from `engine/talentFog.ts` — width scales with the establishing
+  scout's Judging Ability/Potential, truth always inside the range, center
+  seeded off-true. Tryouts stay near-exact; rival-rumor rung waits on Act II
+  roster snapshots.
+- **UI**: tier picker in the production confirm bar; Scouting Staff section in
+  ClubHQ → Personnel (judging bars + XP); revealed pipeline table in the
+  Independents ledger; "Establish Scouting Network" order in the map unit
+  overlay; production copy moved to upfront-cost language everywhere.
+- Still ahead from D29: fog-of-talent confidence ranges, rival networks /
+  Anchor Club race, recruiting revealed prospects (Act III), later-era scout
+  types, Level-1 rinks drawing local talent.
+
 ## 2026-07-02 — Act I: the five-era arc + Pond Hockey gameplay loop
 The 5-act era arc lands (Pond Hockey → Club Formation → Competitive Hockey →
 Hockey Operations → Dynasty) plus the complete Act I loop. Engine validated

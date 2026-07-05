@@ -10,11 +10,9 @@ import {
   trackRivalOrgContacts,
 } from "./independentsSystem";
 import { progressResearch } from "./researchSystem";
-import { resolveDiscovery } from "./discoverySystem";
-import { progressConnection } from "./regionDevelopment";
-import { maybeRivalRumor } from "./rivalSystem";
 import { runRivalTurns } from "./rivalAI";
-import { refreshScoutMoves } from "./scoutSystem";
+import { progressScoutWork, refreshScoutMoves } from "./scoutSystem";
+import { applyScoutPromotions } from "./scoutStaff";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
 import { getMonthlyEquipment, getMonthlyUpkeep } from "./selectors";
@@ -59,15 +57,14 @@ export function endMonth(state: GameState): GameState {
   // 2+. Systems — each contributes a readable world/club update.
   progressProduction(draft, push);
   progressBuilderWork(draft, push); // map crews: rink builds advance/finish
+  progressScoutWork(draft, push); // scout fieldwork: scouting networks advance/finish
   progressResearch(draft, push);
-  resolveDiscovery(draft, push); // Local Hockey Search creates leads; units reveal map fog.
-  progressConnection(draft, push); // Establish Local Connection -> influenced
-  maybeRivalRumor(draft, push); // rival pressure as rumors / contested regions
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)
   checkIndependentContact(draft, push); // a unit parked beside an org meets them
   progressRivalEras(draft, push); // rivals advance eras on their own clock
+  applyScoutPromotions(draft, push); // banked fieldwork XP becomes promotions
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);
 
