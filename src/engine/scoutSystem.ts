@@ -125,6 +125,21 @@ export function selectScout(state: GameState, scoutId?: string): GameState {
   return { ...state, world: syncLegacyScout(world, scouts, selectedScoutId) };
 }
 
+function nextReadyUnitId(scouts: WorldUnit[], moved: WorldUnit): string | null {
+  if (moved.id && moved.movesRemaining > 0 && !moved.working) return moved.id;
+  const ready = scouts.filter((s) => s.id && s.movesRemaining > 0 && !s.working);
+  if (ready.length === 0) return null;
+
+  const movedIndex = Math.max(
+    0,
+    scouts.findIndex((s) => s.id === moved.id),
+  );
+  return (
+    ready.find((s) => scouts.findIndex((unit) => unit.id === s.id) > movedIndex) ??
+    ready[0]
+  ).id ?? null;
+}
+
 // Tiles a unit may move to right now (adjacent, valid land/ice, points left).
 // Movement tiers (D36): scouts cross all borders freely — recon and diplomacy
 // travel; builders (work crews) cannot enter a known rival's territory.
@@ -181,7 +196,7 @@ export function moveScout(state: GameState, x: number, y: number, scoutId?: stri
         ),
       },
       nextScouts,
-      moved.id ?? selectedId ?? null,
+      nextReadyUnitId(nextScouts, moved),
     ),
   };
 }
