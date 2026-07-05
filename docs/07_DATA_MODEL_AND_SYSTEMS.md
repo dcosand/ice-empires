@@ -539,7 +539,6 @@ Useful derived selectors:
 - `getAffiliateSlots(state)`
 - `getEraProgress(state)`
 - `getActiveBuildProgress(state)`
-- `getActiveResearchProgress(state)`
 - `getUnlockedActions(state)`
 
 ---
