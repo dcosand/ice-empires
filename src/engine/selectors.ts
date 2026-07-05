@@ -1,17 +1,14 @@
 import type {
   EraRequirementId,
-  FacilityDef,
   GameState,
   ResearchDef,
   ResourceSet,
 } from "../types/game";
-import { FACILITIES } from "../data/facilities";
 import {
   ALL_FACILITY_DEFS_BY_ID,
   ALL_UNIT_DEFS_BY_ID,
 } from "../data/clubUniques";
-import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
-import { CARDS_BY_ID } from "../data/cards";
+import { RESEARCH } from "../data/research";
 import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
 import { getClubRinks } from "./rinkSystem";
@@ -102,18 +99,6 @@ export function getMonthlyEquipment(state: GameState): number {
   return total;
 }
 
-// Facilities that are not built and not currently building.
-export function getAvailableFacilities(state: GameState): FacilityDef[] {
-  return FACILITIES.filter(
-    (f) =>
-      !state.facilities.includes(f.id) &&
-      !(
-        state.activeProduction?.kind === "facility" &&
-        state.activeProduction.itemId === f.id
-      ),
-  );
-}
-
 // Research not yet completed, not active, and with prerequisites met.
 export function getAvailableResearch(state: GameState): ResearchDef[] {
   return RESEARCH.filter(
@@ -185,24 +170,3 @@ export function allEraRequirementsMet(state: GameState): boolean {
   if (reqs.length === 0) return false;
   return reqs.every((req) => isRequirementMet(state, req.id));
 }
-
-// Production progress as a 0..1 fraction for the active item (months worked).
-export function getActiveProductionProgress(state: GameState): number {
-  const prod = state.activeProduction;
-  if (!prod || prod.totalMonths <= 0) return 0;
-  return (prod.totalMonths - prod.monthsRemaining) / prod.totalMonths;
-}
-
-export function getActiveResearchProgress(state: GameState): number {
-  const research = state.activeResearch;
-  if (!research) return 0;
-  const def = RESEARCH_BY_ID[research.techId];
-  if (!def || def.cost === 0) return 0;
-  return research.progressKnowledge / def.cost;
-}
-
-export const lookups = {
-  facility: (id: string) => ALL_FACILITY_DEFS_BY_ID[id],
-  research: (id: string) => RESEARCH_BY_ID[id],
-  card: (id: string) => CARDS_BY_ID[id],
-};

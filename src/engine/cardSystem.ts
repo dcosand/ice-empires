@@ -20,20 +20,3 @@ export function grantCard(
   push("card", `${def.name} ${kind}`, def.flavor);
   return true;
 }
-
-// Pick and grant the first available card matching a predicate, using a seeded
-// index. Returns the granted card id, or null if none available.
-export function grantRandomCard(
-  draft: GameState,
-  pool: string[],
-  index: number,
-  push: PushLog,
-): string | null {
-  const available = pool.filter(
-    (id) => CARDS_BY_ID[id] && !draft.cards.some((c) => c.id === id),
-  );
-  if (available.length === 0) return null;
-  const chosen = available[index % available.length];
-  grantCard(draft, chosen, push);
-  return chosen;
-}

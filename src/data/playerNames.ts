@@ -16,8 +16,6 @@ export const FEMALE_FIRST_NAMES = [
   "Vera", "Willa", "Yara", "Zoe",
 ];
 
-export const FIRST_NAMES = [...MALE_FIRST_NAMES, ...FEMALE_FIRST_NAMES];
-
 export const LAST_NAMES = [
   "Toews", "Lindqvist", "Marchetti", "Okafor", "Bergström", "Kowalski",
   "Tremblay", "Novak", "Virtanen", "MacIsaac", "Delacroix", "Hartikainen",

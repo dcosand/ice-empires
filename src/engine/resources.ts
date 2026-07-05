@@ -19,24 +19,3 @@ export function addResources(a: ResourceSet, b: Partial<ResourceSet>): ResourceS
     reputation: a.reputation + (b.reputation ?? 0),
   };
 }
-
-// Reputation is a standing stat, not a wallet — costs should never charge it
-// (canAfford/subtract still handle it defensively for old data).
-export function canAfford(have: ResourceSet, cost: Partial<ResourceSet>): boolean {
-  return (
-    have.funds >= (cost.funds ?? 0) &&
-    have.hockeyKnowledge >= (cost.hockeyKnowledge ?? 0) &&
-    have.reputation >= (cost.reputation ?? 0)
-  );
-}
-
-export function subtractResources(
-  a: ResourceSet,
-  cost: Partial<ResourceSet>,
-): ResourceSet {
-  return {
-    funds: a.funds - (cost.funds ?? 0),
-    hockeyKnowledge: a.hockeyKnowledge - (cost.hockeyKnowledge ?? 0),
-    reputation: a.reputation - (cost.reputation ?? 0),
-  };
-}

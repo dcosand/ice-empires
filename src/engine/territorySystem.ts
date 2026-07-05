@@ -107,14 +107,6 @@ export function computeTerritory(
   return { ownerByTile, playerTileCount };
 }
 
-export function territoryOwnerAt(
-  ownership: TerritoryOwnership,
-  x: number,
-  y: number,
-): string | null {
-  return ownership.ownerByTile[tileKey(x, y)] ?? null;
-}
-
 // The contacted rival whose territory (x,y) sits inside or hard against
 // (within 1 tile of), if any — the grievance trigger (D35): you can't build
 // INSIDE their borders (D36), but raising boards against them still stings.

@@ -74,17 +74,6 @@ export function progressResearch(draft: GameState, push: PushLog): void {
   }
 }
 
-// Does the club have a research unlock active? (used by discovery tuning)
-export function hasUnlock(
-  state: GameState,
-  unlock: "deeperDiscovery" | "prospectGeneration" | "goalieEvents",
-): boolean {
-  return state.completedResearch.some((id) => {
-    const def = RESEARCH_BY_ID[id];
-    return def?.unlocks.some((u) => u.type === unlock);
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Research-chooser data (drives the era-tiered ResearchPanel UI).
 // ---------------------------------------------------------------------------
