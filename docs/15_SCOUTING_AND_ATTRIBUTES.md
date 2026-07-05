@@ -128,10 +128,11 @@ This is the emotional throughline every mechanic serves.
    up (your fresh reports catch it). The window to act is closing.
 5. **Signed — or lost.** You commit to a **contested signing race**: your scouting
    depth + org relationship + funds + map proximity vs the rivals bidding. Win and
-   he joins your roster; dawdle and he's gone.
-6. **Developed.** As a homegrown/signed young player he **grows toward his (fogged)
-   potential** in your rink/academy system; your own read on him sharpens from
-   "rough" to precise as he plays.
+   he enters your **system** (not the big club yet); dawdle and he's gone.
+6. **Developed — and not rushed.** He climbs the pyramid — **junior → minors
+   (Affiliate) → big club** — growing toward his (still-fogged) ceiling. You watch
+   his *current* ability firm up fast, but his *potential* stays murky, so **when to
+   promote him is a real gamble**: rush him and you permanently cap what he becomes.
 7. **Peak & decline.** He primes, stars for you, then **ages out** — forcing you
    back to step 1 for the next generation. The empire must keep scouting.
 
@@ -202,19 +203,72 @@ and the Scouting screen** (`docs/14` §7). Nudge, then drill-down.
 
 ## 6. Fog, development & aging
 
-### Self-fog (your own roster)
+### Self-fog (your own roster) — the current/potential asymmetry
 
-Your own players show **rough estimates immediately**, with a narrow-but-nonzero
-fog that **tightens with games played / your own evaluation**. Learning to read
-your own guys is the early-game teacher for reading outsiders. *(This reverses
-today's invariant that the own roster is fully known — the boldest single change,
-and it touches every roster UI surface.)*
+The key insight: **current ability and future ceiling do not resolve at the same
+speed.**
+
+- **Current ability reads fast.** A player on your own ice, watched every practice
+  and game, resolves to a **tight (near-exact) current-attribute read quickly** —
+  you know what he can do *today*.
+- **Potential reads slow.** His **ceiling stays fogged much longer** — projecting a
+  young player's future is hard even for the club that owns him. The
+  `potentialEstimate` range narrows only with **time, games played, and dedicated
+  evaluation** (a Development Coach, below), and never collapses to certainty until
+  he's essentially reached it.
+
+This mirrors EHM, where you can and do **scout your own players** — on the big club
+*and* on your farm/affiliate — precisely because the ceiling is never obvious.
+Self-scouting is not redundant; it is how you decide whom to promote and whom to
+be patient with.
 
 > **⚠ Revises Act II §6.** Act II specifies the own roster is *near-exact* ("you
-> watched them play"). This doc intentionally changes that to **rough-then-precise**
-> per the design interview — the early game should make you *earn* an accurate read
-> of your own talent. Update `docs/14` §6 (and `docs/10_DECISIONS.md`) to match when
-> this lands.
+> watched them play"). Refined here: **current ability is near-exact fast, but
+> potential stays fogged and must be earned.** The early game teaches evaluation on
+> your own guys (where current ability is easy) before you face outsiders (where
+> even current ability is fogged). Update `docs/14` §6 (and `docs/10_DECISIONS.md`)
+> to match when this lands.
+
+### The development pyramid (junior → minors → big club)
+
+Drafting/signing a prospect does **not** put him on your big club. Like EHM and real
+hockey, young talent moves up a pyramid, and **managing each prospect's curve — not
+rushing him — is a core GM pleasure.**
+
+- **Where they develop: Affiliate independents are your farm system.** Reuse the
+  existing relationship ladder (`independentsSystem.ts`:
+  `RELATIONSHIP_TIERS` → **Affiliate**, level 3, ≥50 influence via
+  `INFLUENCE_THRESHOLDS = [10, 25, 50]`). Once an independent is your **Affiliate**,
+  it becomes a **junior / minor-league club** where your signed prospects play and
+  grow until you promote them. This gives the Anchor/Affiliate influence race real
+  teeth (Act II §2.3, §5) — an Affiliate is not just a talent *source*, it is your
+  *development pipeline*, and it deepens the reason to win that race.
+- **The ladder:** signed prospect → **junior** (raw, biggest growth) → **minors /
+  Affiliate** (rounding out) → **big club** (your active `roster`) via an explicit
+  **PROMOTE** action.
+- **Rushing has permanent teeth.** Promote a prospect before he's developed enough
+  (his fogged *current* ability below a readiness bar for the era/level) and he takes
+  a **permanent hit to his realized ceiling** — he develops slower and may never
+  reach his potential. Because the ceiling is fogged (self-fog above), **deciding
+  when he's ready is a genuine gamble**, and a mismanaged blue-chipper is wasted.
+  This is the mechanic that makes patient, planned development the smart, tense play.
+
+### Development Coach (a new personnel card, parallels scouts)
+
+A **Development Coach** is a person-card modeled directly on `ScoutCharacter`
+(`state.scoutStaff`: `id, name, tier, judgingPotential, judgingAbility, xp`,
+`Volunteer/Traveled/Ace` tiers, XP promotions). Store the analog in a parallel staff
+list (e.g. `state.devStaff`). Assigned to your **club or an Affiliate**, it does two
+jobs:
+
+1. **Self-scouting** — sharpens your read on your own players' **potential** (narrows
+   the `potentialEstimate` faster; a high `judgingPotential` coach is how you resolve
+   the slow-fogging ceiling above).
+2. **Development** — **accelerates growth** toward potential for the players/prospects
+   under its care (the facility/coaching multiplier in Development, below).
+
+Reusing the scout person-card model keeps this cheap to build and consistent with the
+scouting UI (tiers, XP, promotions all already exist).
 
 ### Development
 
@@ -224,9 +278,11 @@ close the scouting loop, but the attribute model in §3, including a first-class
 `potential` on every `Player`, is the **Act II foundation** that makes them
 possible without a later data-model change.)*
 
-Young players carry a **fogged potential** and **grow toward it** monthly; rink /
-academy facilities + coaching **accelerate** growth. An age-keyed growth curve
-governs the rise.
+Young players carry a **fogged potential** and **grow toward it** monthly. Growth
+rate is an age-keyed curve (fastest in the junior years) multiplied by their
+**level in the pyramid** (junior fastest) and the **Development Coach** assigned to
+that level (above). Rushing a player up the pyramid before he's ready permanently
+depresses the ceiling he actually reaches (see The development pyramid, above).
 
 ### Aging: peak then decline
 
@@ -305,9 +361,15 @@ A multi-part effort; suggested sequencing, foundation first.
   step (`src/engine/scoutSystem.ts`, extend `revealOrgProspects`); scout taxonomy in
   `src/data/scouts.ts`; `SIGN_PROSPECT` contested-race resolver + prospect→`Player`
   conversion; report notification + card detail in `IndependentsScreen.tsx`.
-- **C — Development, aging, self-fog.** Monthly growth toward potential
-  (facility/coaching-scaled); age curve (rise → prime → fade → retire); self-fog on
-  own roster that tightens with games; tryouts reframed (homegrown + castoffs).
+- **C — Development, aging, self-fog, the pyramid.** Monthly growth toward
+  potential (age curve × pyramid level × coach multiplier); age curve (rise → prime
+  → fade → retire); **current/potential-asymmetric self-fog** (current firms fast,
+  ceiling slow); the **development pyramid** (junior → minors → big club) with
+  Affiliate independents as the farm system (reuse `independentsSystem.ts`
+  `RELATIONSHIP_TIERS`/`INFLUENCE_THRESHOLDS`), a **PROMOTE** action, and a
+  **permanent stunted-ceiling penalty for rushing**; a **Development Coach** staff
+  card mirroring `ScoutCharacter` (new `state.devStaff`, reusing the tier/XP model);
+  tryouts reframed (homegrown + castoffs).
 - **D — Traversal & match sketch.** Water/air traversal tech + `moveableTilesFor`
   reach; fold the §7 sketch into `docs/13_ERA_ARC.md` when the match engine lands.
 
@@ -334,15 +396,20 @@ should be read alone.
 | §5.1 "assigned scout produces ongoing reports that deepen over time" | §5: the mission model (duration + repeat viewings) |
 | §7 Scouting screen · §9 Inbox | §5 report delivery routes through both |
 | §5 Scout / Club Scout two-tier split | §5: kept as-is; amateur/pro deferred to Act IV |
+| §2.3/§5 Affiliate independents (relationship ladder, Anchor race) | §6: Affiliate becomes your **farm/development club** — deepens the reason to win that race |
 
 **Deviations (deliberate — reconcile the older doc when this lands):**
 
-1. **Own-roster fog.** Act II §6 says own roster is *near-exact*; this doc changes
-   it to **rough-then-precise self-fog** (design interview). Update §6.
-2. **Development & aging.** Act II holds these out; this doc specs them as **Act IV**
-   mechanics but requires the `potential`/attribute foundation built in Act II.
+1. **Own-roster fog.** Act II §6 says own roster is *near-exact*; this doc refines it
+   to **current-fast / potential-slow self-fog** (§6): current ability firms quickly,
+   the ceiling stays fogged. Update §6.
+2. **Development, aging & the pyramid.** Act II holds these out; this doc specs them
+   as **Act IV** mechanics (junior → minors → big club, Development Coach, rushing
+   penalty) but they require the `potential`/attribute foundation built in Act II,
+   and they *reuse* Act II's Affiliate tier as the farm system.
 3. **Contested signing.** This doc's `SIGN_PROSPECT` race is the concrete form of
-   Act II §5's unspecified "recruiting actions."
+   Act II §5's unspecified "recruiting actions" — and it deposits the player into
+   the **development pyramid**, not straight onto the big club.
 
 **No conflicts** on: match engine deferral to Act III, territory/borders, the
 seasonal tryout calendar, water traversal scheduling — those remain Act II's.
@@ -351,8 +418,17 @@ seasonal tryout calendar, water traversal scheduling — those remain Act II's.
 
 ## 10. Open questions (for the build session)
 
-- **Self-fog scope:** exactly how rough is the initial own-roster read, and does it
-  tighten purely from games played, or also from spending a scout on your own guys?
+- **Self-fog scope:** how fast does *current* ability firm up, and how slow should
+  *potential* stay — purely time/games, or does a Development Coach dominate the
+  ceiling read?
+- **Readiness bar & rushing curve:** what current-ability threshold marks a prospect
+  "ready" at each pyramid level, and how severe is the permanent ceiling penalty for
+  promoting early (a cliff, or a sliding scale by how early)?
+- **Development Coach vs scouts:** does the coach share the scout job market /
+  production, or is it a distinct hire? Can one person both self-scout and develop,
+  or do those split as separate cards?
+- **Pyramid capacity:** how many prospects can an Affiliate develop at once, and does
+  a higher Affiliate tier (or multiple Affiliates) raise that cap?
 - **Aging pace vs era length:** eras can be long — does a player live across
   multiple eras, and how fast is the decline so churn feels real but not punishing?
 - **Signing-race inputs & weighting:** the relative weight of scouting depth vs org
