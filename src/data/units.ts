@@ -68,17 +68,21 @@ export const UNITS: UnitDef[] = [
       "Carries sticks, rules nobody understands, and the bold claim that standing on ice can become a civilization.",
   },
   {
-    id: "basic-scout",
-    name: "Basic Scout",
+    // The professional tier above the Pond Scout (D38): the ONLY unit that
+    // establishes scouting networks with independents — instantly, on arrival.
+    id: "club-scout",
+    name: "Club Scout",
     category: "scouting",
     eraId: "club-formation",
     description:
-      "Turns rink rumors into real reports, improving scouting outcomes and region information.",
-    cost: { funds: 10 },
+      "A professional set of eyes. Walks up to an independent and opens their prospect pipeline on arrival — the trek across the map is the cost.",
+    cost: { funds: 14 },
     buildMonths: 2,
     requiredTechIds: ["scouting-reports"],
     effects: [{ type: "improveDiscovery" }],
-    abilitySummary: "Improves the quality of region reports (future assignment).",
+    spawnsMapUnit: "scout",
+    abilitySummary:
+      "Map scout: crosses all borders; establishes a scouting network the moment it reaches a contacted independent.",
     flavor: "Rumors become reports. Reports become arguments.",
   },
   {

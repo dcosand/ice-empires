@@ -154,12 +154,14 @@ is deferred to Act III** (D33); do not build it here.
       `training-camp` era requirement (§7) will read it.
 
 ### 4. Scouts, networks & evaluation (D38, D39)
-- [ ] **Club Scout unit** — new map unit, Club-Formation-era tech gate; the only
-      unit that runs "Establish Scouting Network", established **on arrival**
-      beside an indie (no on-site wait) → reveals prospects, unlocks recruiting,
-      speeds influence. Rivals can too (Anchor race). Supersedes shipped v1
-      (any scout + `scouting-reports`, 2-month park — D38). `scoutSystem.ts` /
-      new `clubScoutSystem.ts`.
+- [x] **Club Scout unit** (D38, 2026-07-04) — the dead `basic-scout` placeholder
+      became the `club-scout` map unit (club-formation era, `scouting-reports`
+      tech, 14 funds, scout-tier picker applies). Only Club Scouts network:
+      `networkTargetOrg` requires `unitDefId === "club-scout"`; `establishNetwork`
+      is INSTANT (no 2-month park); `autoEstablishNetworks` fires after every
+      move + a monthly sweep catches standing scouts. Pond scouts lost the
+      verb (v1 superseded). STILL AHEAD: rival networks / the AI side of the
+      Anchor race (rivals have no network state yet).
 - [ ] **Scout assignment + reports** — assign a scout to an indie/major club;
       ongoing reports with detail/confidence that grow over time and go stale.
 - [ ] **First-contact roster read** — low-confidence full roster shown on the

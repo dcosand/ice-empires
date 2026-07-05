@@ -447,7 +447,7 @@ export function refreshScoutMoves(draft: GameState): void {
 export function spawnProducedScout(
   draft: GameState,
   instanceId: string,
-  _defName = "Pond Scout",
+  unitDefId = "pond-scout",
   tier: ScoutQualityTier = "volunteer",
 ): void {
   const world = draft.world;
@@ -462,6 +462,7 @@ export function spawnProducedScout(
     world.hqTile.x,
     world.hqTile.y,
     rolled.character.name,
+    unitDefId,
   );
   draft.world = syncLegacyScout(
     {
@@ -474,15 +475,18 @@ export function spawnProducedScout(
 }
 
 // ---------------------------------------------------------------------------
-// Establish Scouting Network (Act II, docs/13 §4.5): park a scout beside a
-// contacted independent for 2 months to reveal their prospect pipeline.
+// Establish Scouting Network (D38): the Club Scout is the ONLY unit that opens
+// an independent's prospect pipeline, and it lands INSTANTLY on arrival beside
+// a contacted org — the trek across the map is the cost, not an on-site wait.
+// Supersedes v1 (any scout + scouting-reports, 2-month park).
 // ---------------------------------------------------------------------------
 
-export const NETWORK_MONTHS = 2;
+export const CLUB_SCOUT_UNIT_ID = "club-scout";
 export const NETWORK_INFLUENCE_GAIN = 10;
 
-// The org this scout could network with right now (adjacent or same tile,
+// The org this Club Scout could network with right now (adjacent or same tile,
 // contacted, not already networked). Null when there's nothing in reach.
+// No movement-points check: networks land on arrival, spent legs and all.
 export function networkTargetOrg(
   state: GameState,
   unitId: string,
@@ -490,9 +494,7 @@ export function networkTargetOrg(
   const world = state.world;
   if (!world) return null;
   const unit = allScouts(world).find((u) => u.id === unitId);
-  if (!unit || unit.kind === "builder" || unit.working) return null;
-  if (unit.movesRemaining <= 0) return null;
-  if (!state.completedResearch.includes("scouting-reports")) return null;
+  if (!unit || unit.unitDefId !== CLUB_SCOUT_UNIT_ID || unit.working) return null;
   return (
     world.hockeyOrgs.find(
       (o) =>
@@ -507,82 +509,76 @@ export function canEstablishNetwork(state: GameState, unitId: string): boolean {
   return !!networkTargetOrg(state, unitId);
 }
 
+// Shared completion (draft-mutating): open the pipeline, pay influence and XP.
+function completeNetworkDraft(
+  draft: GameState,
+  unitId: string,
+  org: WorldHockeyOrg,
+): void {
+  org.networkedByPlayer = true;
+  org.networkMonth = draft.month;
+  org.influencePoints += NETWORK_INFLUENCE_GAIN;
+  org.relationshipLevel = levelForInfluence(org.influencePoints);
+  revealOrgProspects(draft, org, scoutCharacterFor(draft, unitId));
+  awardScoutXpDraft(draft, unitId, SCOUT_XP_NETWORK);
+}
+
+function networkLogMessage(scoutName: string | undefined, orgName: string): string {
+  return `${scoutName ?? "Your Club Scout"} arrives with a notebook full of names — ${orgName}'s prospect pipeline is open to you (+${NETWORK_INFLUENCE_GAIN} Influence).`;
+}
+
+// Reducer-path establish (also the ledger/overlay button): instant.
 export function establishNetwork(
   state: GameState,
   unitId: string,
   orgId: string,
 ): GameState {
-  const org = networkTargetOrg(state, unitId);
-  if (!org || org.id !== orgId) return state;
-  const world = state.world!;
-  const unit = allScouts(world).find((u) => u.id === unitId);
-  if (!unit) return state;
-  const scouts = allScouts(world).map((u) =>
-    u.id === unitId
-      ? {
-          ...u,
-          movesRemaining: 0,
-          working: {
-            task: "establish-network" as const,
-            orgId,
-            monthsRemaining: NETWORK_MONTHS,
-          },
-        }
-      : u,
-  );
-  const next: GameState = {
-    ...state,
-    world: syncLegacyScout({ ...world }, scouts, nextReadyUnitId(scouts, unit)),
-  };
-  const who = scoutCharacterFor(state, unitId);
+  const target = networkTargetOrg(state, unitId);
+  if (!target || target.id !== orgId) return state;
+  const draft: GameState = structuredClone(state);
+  const org = draft.world!.hockeyOrgs.find((o) => o.id === orgId)!;
+  completeNetworkDraft(draft, unitId, org);
   return prependLog(
-    next,
+    draft,
     "discovery",
-    `Scouting network underway: ${org.name}`,
-    `${who?.name ?? "Your scout"} settles in with ${org.name} — rink coffees, junior games, names in a notebook (${NETWORK_MONTHS} months).`,
+    `Scouting network established: ${org.name}`,
+    networkLogMessage(scoutCharacterFor(draft, unitId)?.name, org.name),
   );
 }
 
-// Monthly tick for scout fieldwork (runs alongside progressBuilderWork, which
-// owns rink tasks). Completing a network reveals the org's prospects, grants
-// influence, and pays the scout XP.
+// On-arrival sweep, run after every move (and monthly below): any Club Scout
+// standing beside a contacted, un-networked independent networks it now.
+export function autoEstablishNetworks(state: GameState): GameState {
+  let next = state;
+  for (const unit of allScouts(state.world)) {
+    if (!unit.id) continue;
+    const org = networkTargetOrg(next, unit.id);
+    if (org) next = establishNetwork(next, unit.id, org.id);
+  }
+  return next;
+}
+
+// Monthly tick for scout fieldwork: catches Club Scouts already in position
+// when an org becomes contacted (or produced next to one).
 export function progressScoutWork(draft: GameState, push: PushLog): void {
   const world = draft.world;
   if (!world) return;
   for (const unit of allScouts(world)) {
-    if (!unit.working || unit.working.task !== "establish-network") continue;
-    unit.working.monthsRemaining -= 1;
-    const org = world.hockeyOrgs.find((o) => o.id === (unit.working as { orgId: string }).orgId);
-    if (!org) {
-      unit.working = undefined;
-      continue;
-    }
-    if (unit.working.monthsRemaining > 0) {
-      push(
-        "discovery",
-        "Scouting network taking shape",
-        `${unit.name ?? "Your scout"} keeps the visits up at ${org.name} — ${unit.working.monthsRemaining} month${
-          unit.working.monthsRemaining === 1 ? "" : "s"
-        } to a working network.`,
-      );
-      continue;
-    }
-    unit.working = undefined;
-    org.networkedByPlayer = true;
-    org.networkMonth = draft.month;
-    org.influencePoints += NETWORK_INFLUENCE_GAIN;
-    org.relationshipLevel = levelForInfluence(org.influencePoints);
-    revealOrgProspects(draft, org, scoutCharacterFor(draft, unit.id));
-    awardScoutXpDraft(draft, unit.id, SCOUT_XP_NETWORK);
+    if (!unit.id || unit.unitDefId !== CLUB_SCOUT_UNIT_ID || unit.working) continue;
+    const org = world.hockeyOrgs.find(
+      (o) =>
+        o.playerContacted &&
+        !o.networkedByPlayer &&
+        ((o.x === unit.x && o.y === unit.y) || isAdjacent(unit, o)),
+    );
+    if (!org) continue;
+    completeNetworkDraft(draft, unit.id, org);
     push(
       "discovery",
       `Scouting network established: ${org.name}`,
-      `Their prospect pipeline is open to you — real names, real reads (+${NETWORK_INFLUENCE_GAIN} Influence). ${
-        unit.name ?? "Your scout"
-      } earns their keep.`,
+      networkLogMessage(unit.name, org.name),
     );
   }
-  draft.world = syncLegacyScout(world, allScouts(world), world.selectedScoutId);
 }
 
 // Fill in a networked org's prospect identities (seeded). True attributes and

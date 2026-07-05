@@ -452,11 +452,13 @@ function placeRivals(
   const rivals: RivalClub[] = [];
   // Bias toward tiles far from the human so the AI majors fan out across the map.
   const candidates = scoredCandidates(tiles, start, seed + 54091, 0.5);
+  const landmassSize = landmassSizesByTile(tiles, WORLD_WIDTH, WORLD_HEIGHT);
 
   for (const club of rivalClubs) {
     const chosen = findSettlementSpot(candidates, (t, relax) => {
       const min = sep.majorMajor * relax;
       return (
+        (landmassSize.get(tileKey(t.x, t.y)) ?? 0) >= MIN_START_LAND &&
         Math.hypot(t.x - start.x, t.y - start.y) >= min &&
         rivals.every((r) => Math.hypot(t.x - r.hqTile.x, t.y - r.hqTile.y) >= min)
       );
@@ -475,15 +477,61 @@ function placeRivals(
   return rivals;
 }
 
+function landmassSizesByTile(
+  tiles: WorldTile[],
+  w: number,
+  h: number,
+): Map<string, number> {
+  const comp = new Int32Array(w * h).fill(-1);
+  const sizes: number[] = [];
+  for (let i = 0; i < w * h; i++) {
+    if (comp[i] !== -1 || !tiles[i].valid) continue;
+    const id = sizes.length;
+    let n = 0;
+    const stack = [i];
+    comp[i] = id;
+    while (stack.length) {
+      const c = stack.pop()!;
+      n++;
+      const cx = c % w;
+      const cy = (c / w) | 0;
+      for (const [nx, ny] of [
+        [cx + 1, cy],
+        [cx - 1, cy],
+        [cx, cy + 1],
+        [cx, cy - 1],
+      ]) {
+        if (nx < 0 || ny < 0 || nx >= w || ny >= h) continue;
+        const j = ny * w + nx;
+        if (comp[j] === -1 && tiles[j].valid) {
+          comp[j] = id;
+          stack.push(j);
+        }
+      }
+    }
+    sizes.push(n);
+  }
+
+  const out = new Map<string, number>();
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const id = comp[y * w + x];
+      if (id >= 0) out.set(tileKey(x, y), sizes[id] ?? 0);
+    }
+  }
+  return out;
+}
+
 export function createScoutUnit(
   id: string,
   x: number,
   y: number,
   name = "Pond Scout",
+  unitDefId = "pond-scout",
 ): WorldUnit {
   return {
     id,
-    unitDefId: "pond-scout",
+    unitDefId,
     name,
     kind: "scout",
     x,

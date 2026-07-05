@@ -11,7 +11,7 @@ import type { ResearchDef } from "../types/game";
 //   local-tryouts      -> Hold Tryouts action (engine/tryoutSystem.ts)
 //   first-contact      -> Send Introduction (engine/independentsSystem.ts)
 //   rules-of-the-game  -> Pond Hockey era exit requirement (engine/selectors.ts)
-//   scouting-reports   -> map Scout recruitment (engine/scoutSystem.ts) + basic-scout
+//   scouting-reports   -> map Scout recruitment (engine/scoutSystem.ts) + club-scout
 //   local-recruitment / regional-scouting / development-partnership -> unit gates
 //   basic-skating / organized-practice -> requiredAnyOf + encounter grantTech targets
 //

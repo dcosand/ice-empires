@@ -1,5 +1,22 @@
 # Ice Empires — Progress Log
 
+## 2026-07-04 (later still) — Act II: the Club Scout (D38)
+Two scout tiers land. Headless sim now 82 assertions, all passing.
+- The dead `basic-scout` org-unit placeholder (region-era leftover) became the
+  **Club Scout** map unit: club-formation era, `scouting-reports` tech,
+  14 funds, 2 months, scout-quality tier picker applies (it rolls a D31 scout
+  character like any map scout).
+- **Networks supersede v1**: only Club Scouts network (`networkTargetOrg`
+  checks `unitDefId`), and establishing is INSTANT — `autoEstablishNetworks`
+  runs at the end of every MOVE_SCOUT chain and a monthly sweep catches scouts
+  already in position (produced beside an org, or an org contacted while they
+  stood there). No more 2-month park; pond scouts lost the verb. The overlay's
+  Establish order still works as a manual fallback (same instant path).
+- `createScoutUnit`/`spawnProducedScout` now thread the unit def id, so map
+  scouts know their tier.
+- Still ahead in §4: rival networks (Anchor-race AI), scout assignment +
+  reports (D39 — rides on the D40 ratings pass), first-contact roster reads.
+
 ## 2026-07-04 (later) — Act II phase 1b: territory teeth + seasonal tryouts
 Finishes TASKS §1 and lands §3. Headless sim extended to 69 assertions (all
 passing); typecheck clean. Territory now claims impassable tiles too (water/

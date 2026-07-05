@@ -10,6 +10,7 @@ import {
 } from "./world";
 import {
   allScouts,
+  autoEstablishNetworks,
   establishNetwork,
   moveScout,
   recruitScout,
@@ -167,18 +168,22 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // After the move, popups stage in priority order — goodie hut, then rival
       // first contact, then independent first contact. Each trigger bails if
       // something is already pending, so the player only ever sees one pop-up.
-      return triggerIndependentContact(
-        triggerRivalContact(
-          triggerPondEncounter(
-            moveScout(state, action.x, action.y, action.scoutId),
+      // Last, a Club Scout that just arrived beside a contacted independent
+      // networks it instantly (D38 — a log line, not a popup).
+      return autoEstablishNetworks(
+        triggerIndependentContact(
+          triggerRivalContact(
+            triggerPondEncounter(
+              moveScout(state, action.x, action.y, action.scoutId),
+              action.x,
+              action.y,
+            ),
             action.x,
             action.y,
           ),
           action.x,
           action.y,
         ),
-        action.x,
-        action.y,
       );
 
     case "CLEAR_SNOW":

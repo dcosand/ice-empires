@@ -224,7 +224,7 @@ function completeUnit(
     createdMonth: draft.month,
   });
   if (def.spawnsMapUnit === "scout") {
-    spawnProducedScout(draft, instanceId, def.name, scoutTier ?? "volunteer");
+    spawnProducedScout(draft, instanceId, def.id, scoutTier ?? "volunteer");
   } else if (def.spawnsMapUnit === "builder") {
     spawnProducedBuilder(draft, instanceId, def.name, def.id);
   }

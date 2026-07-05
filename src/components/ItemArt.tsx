@@ -105,7 +105,7 @@ const UNIT_SCENES: Record<string, Scene> = {
       <path d="M40 26 a10 10 0 0 1 0 14 M44 22 a16 16 0 0 1 0 22" fill="none" stroke="#7dd3fc" strokeWidth="2.4" strokeLinecap="round" />
     </g>
   ),
-  "basic-scout": () => (
+  "club-scout": () => (
     <g>
       <rect x="16" y="16" width="24" height="30" rx="2" fill="#eae4d2" stroke="#4a4636" strokeWidth="1.5" />
       <line x1="20" y1="23" x2="36" y2="23" stroke="#9aa6b0" strokeWidth="2" />

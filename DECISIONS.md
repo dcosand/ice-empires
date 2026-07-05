@@ -400,6 +400,13 @@ indie/major club for ongoing reports whose confidence grows while the scout stay
 and goes stale once it leaves (see D39). No per-club unique scout units — saves
 the uniques budget for later eras.
 
+**Partially shipped 2026-07-04**: the Club Scout unit + instant on-arrival
+networks are in (`club-scout` unit def replaces the dead `basic-scout`
+placeholder; `networkTargetOrg` is club-scout-only; establish is instant via
+move-chain auto-sweep + monthly sweep; the map-overlay order button still works
+as a fallback). Still ahead: rival networks (Anchor race AI) and scout
+assignment/reports (rides on D39/D40).
+
 ## D39 — Scouting is squad voyeurism, earned on the map (extends fog-of-talent)
 The Act II continuation of shipped fog-of-talent (D32) and scout characters
 (D31) — not a new system. Confidence lives entirely in the **width of the
