@@ -696,7 +696,8 @@ function seedOrgProspects(
   const prospects: WorldHockeyOrg["prospects"] = [];
   for (let i = 0; i < count; i++) {
     const roll = noise2d(x + i * 13, y + i * 7, seed + 77031);
-    const position = roll < 0.5 ? "F" : roll < 0.85 ? "D" : "G";
+    const position =
+      roll < 0.25 ? "C" : roll < 0.5 ? "W" : roll < 0.85 ? "D" : "G";
     const teaser =
       PROSPECT_TEASERS[
         Math.floor(noise2d(x + i, y - i, seed + 77061) * PROSPECT_TEASERS.length) %

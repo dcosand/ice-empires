@@ -16,6 +16,15 @@ import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
 import { playerTerritorySize } from "./territorySystem";
 import {
+  POND_TRYOUT_BAND,
+  WANDERER_BAND,
+  rollAttrs,
+  rollPosition,
+  rollPotential,
+  rollStyle,
+  rollTraits,
+} from "./playerGen";
+import {
   nextTryoutWindowMonth,
   turnMonthName,
   tryoutWindowFor,
@@ -27,13 +36,14 @@ import type { PushLog } from "./turnContext";
 
 // Local tryouts: the Act I recruiting verb. Post flyers at your rink, curious
 // locals show up, and you pick your first team from whoever appears. Attribute
-// rolls are deliberately terrible (1–6 on a 20 scale) — the fantasy is
-// coaching these people into a hockey club, not drafting stars.
+// rolls are deliberately humble (pond locals ≈ 20–45 on the 1–100 scale) —
+// the fantasy is coaching these people into a hockey club, not drafting stars.
 
 export const TRYOUT_COST_FUNDS = 3;
 export const ROSTER_CAP = 10;
-const POND_ATTR_MIN = 1;
-const POND_ATTR_SPAN = 5; // rolls land in [1, 6]
+// Each floor "step" (territory growth, Rink Evangelist) lifts the band's
+// bottom by this many 1–100 points.
+const FLOOR_STEP_POINTS = 5;
 
 // Territory → turnout (D35): a bigger claimed area is a bigger population.
 // The HQ alone claims at most TERRITORY_BASELINE_TILES at founding (its full
@@ -131,17 +141,30 @@ function rollCandidate(
     state.rngSeed = roll.seed;
     return roll.value;
   };
+  const thread = <T>(rolled: T & { seed: number }): T => {
+    state.rngSeed = rolled.seed;
+    return rolled;
+  };
   // A Rink Evangelist raises the floor: nobody shows up completely hopeless.
   // Territory raises it further — a wider claim draws better locals (D35).
-  const floor =
-    (ownsUnit(state, "rink-evangelist") ? POND_ATTR_MIN + 1 : POND_ATTR_MIN) +
-    territoryFloor;
-  const attr = () => floor + Math.floor(draw() * (POND_ATTR_SPAN + 1));
+  const floorSteps =
+    (ownsUnit(state, "rink-evangelist") ? 1 : 0) + territoryFloor;
+  const band = {
+    min: POND_TRYOUT_BAND.min + floorSteps * FLOOR_STEP_POINTS,
+    span: POND_TRYOUT_BAND.span,
+  };
 
-  const goalieCut = ownsUnit(state, "goalie-whisperer") ? 0.6 : 0.78;
-  const posRoll = draw();
-  const position: PlayerPosition =
-    posRoll < 0.45 ? "F" : posRoll < goalieCut ? "D" : "G";
+  // Helsinki's Goalie Whisperer roughly doubles goalie turnout.
+  const goalieOdds = ownsUnit(state, "goalie-whisperer") ? 0.36 : 0.18;
+  const { position } = thread(rollPosition(state.rngSeed, { goalieOdds }));
+  const { style } = thread(rollStyle(state.rngSeed, position));
+  const { attrs } = thread(rollAttrs(state.rngSeed, position, style, band));
+  // Pond-era kids carry real upside — the coaching fantasy needs headroom.
+  const { potential } = thread(
+    rollPotential(state.rngSeed, position, attrs, { min: 10, span: 30 }),
+  );
+  const { traits } = thread(rollTraits(state.rngSeed));
+
   const gender: PlayerGender = draw() < 0.32 ? "female" : "male";
   const firstPool = gender === "female" ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
   const first = firstPool[Math.floor(draw() * firstPool.length)];
@@ -155,13 +178,10 @@ function rollCandidate(
     gender,
     position,
     age: 14 + Math.floor(draw() * 6),
-    attrs: {
-      skating: attr(),
-      shooting: attr(),
-      passing: attr(),
-      checking: attr(),
-      goaltending: position === "G" ? Math.max(2, attr()) : 1,
-    },
+    attrs,
+    potential,
+    style,
+    traits,
     imageUrl: playerImageFor({
       gender,
       kind: "prospect",
@@ -300,23 +320,30 @@ export function createWandererPlayer(
     draft.rngSeed = roll.seed;
     return roll.value;
   };
-  const attr = () => 2 + Math.floor(draw() * 7); // 2..8
+  const thread = <T>(rolled: T & { seed: number }): T => {
+    draft.rngSeed = rolled.seed;
+    return rolled;
+  };
   const geared = draft.equipment >= 1;
   if (geared) draft.equipment -= 1;
   const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
+  // Wanderers roll a cut above tryout locals — they've clearly played before.
+  const { style } = thread(rollStyle(draft.rngSeed, position));
+  const { attrs } = thread(rollAttrs(draft.rngSeed, position, style, WANDERER_BAND));
+  const { potential } = thread(
+    rollPotential(draft.rngSeed, position, attrs, { min: 8, span: 22 }),
+  );
+  const { traits } = thread(rollTraits(draft.rngSeed));
   const player: Player = {
     id: `wanderer-${draft.month}-${Math.floor(draw() * 1e6)}`,
     name,
     gender,
     position,
     age: 16 + Math.floor(draw() * 8),
-    attrs: {
-      skating: attr(),
-      shooting: attr(),
-      passing: attr(),
-      checking: attr(),
-      goaltending: position === "G" ? Math.max(4, attr()) : 1,
-    },
+    attrs,
+    potential,
+    style,
+    traits,
     imageUrl: playerImageFor({
       gender,
       kind: "player",

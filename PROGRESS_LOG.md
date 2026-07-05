@@ -1,5 +1,31 @@
 # Ice Empires — Progress Log
 
+## 2026-07-05 — Ratings foundation (docs/15 build order A + report history)
+The attribute/ratings pass docs/15 reserved as the Act III gate. Compiler-guided
+sweep across engine + UI; headless sim now 96 assertions, all passing; D42–D44.
+- **1–100 scale everywhere** (owner: show players 1–100, never 1–20). Skaters:
+  10 attrs in 5 EA-style groups; goalies: their own 6 (`PlayerAttrs` is a
+  kind-discriminated union). Positions C/W/D/G. Hidden Durability/Discipline.
+- **Derived ratings**: `engine/ratings.ts` — position-weighted `computeOverall`
+  (never stored), 0.5–5 star tiers, `teamRatings` sketch for the future match
+  engine. `Player.potential` is a first-class true-ceiling OVR, engine-side
+  only — the UI shows your own players' ceilings as UNKNOWN until scouting
+  earns the read (docs/15 §6 self-fog display lands with missions).
+- **Shared generation**: `engine/playerGen.ts` (position/style/attr-band/
+  potential/trait rolls; style biases distribution) feeds tryouts (pond band
+  20–45; territory floor now +5 pts/step), wanderers (30–55), and org
+  prospects (25–55, academy +5). Goalie Whisperer = goalie odds ×2.
+- **Fog rescaled**: `talentFog` on 1–100 — volunteer ±20, traveled ±15, ace ±5;
+  truth always inside; `estimateLine` shared by Independents + Scouting UIs.
+- **Scout reports (D44)**: every prospect reveal files `state.scoutReports` —
+  the establishing scout's ranges + deterministic scout's-voice prose
+  (`engine/scoutReport.ts`), never leaking truth.
+- **Scouting screen v2 (EHM)**: sortable/filterable/searchable board + player
+  file (true bars vs fog-range bars, ceiling, scouting history). HockeyCard:
+  OVR + stars + style + grouped bars (goalie block). Roster compare gains OVR.
+- Still ahead (docs/15 §8B–D): missions/watch slots/range-narrowing,
+  SIGN_PROSPECT race, development/aging/pyramid (Act IV), traversal.
+
 ## 2026-07-04 (later still) — Act II: the Club Scout (D38)
 Two scout tiers land. Headless sim now 82 assertions, all passing.
 - The dead `basic-scout` org-unit placeholder (region-era leftover) became the

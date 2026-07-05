@@ -168,19 +168,32 @@ is deferred to Act III** (D33); do not build it here.
       major-club cinematic (tile + leader-overlay click) and the indie
       tile/ledger. Rivals/indies already carry seeded `prospects` (D21).
 
-### 5. Player & team ratings system (D40 — prerequisite for Act III)
-- [ ] **TODO: expand the ratings model** — more per-position attributes,
-      current-vs-potential, per-attribute scouting confidence ranges, derived
-      overall/role fit, and **team-level aggregates** (offense/defense/
-      goaltending/special teams/cohesion). Graduate to
-      `docs/15_PLAYER_AND_TEAM_RATINGS.md`. This gates the match engine.
+### 5. Player & team ratings system (docs/15 — build order A SHIPPED 2026-07-05)
+- [x] **Attribute model & ratings (docs/15 §8A, D42/D43)** — 1–100 scale;
+      10 skater attrs in 5 EA groups + 6 goalie attrs (`PlayerAttrs` is a
+      kind-discriminated union); positions C/W/D/G; first-class `potential`
+      (true ceiling, engine-side) + `PlayerStyle` biasing generation + hidden
+      Durability/Discipline traits. New: `data/attributes.ts`,
+      `engine/ratings.ts` (derived `computeOverall`, star tiers, `teamRatings`
+      sketch), `engine/playerGen.ts` (shared generation: tryouts, wanderers,
+      prospects). `talentFog` rescaled to 1–100 (volunteer ±20 → ace ±5).
+      Validated headless (96 assertions).
+- [ ] **Ratings still ahead (docs/15 §8B–C)** — mission model (`ScoutMission`,
+      watch slots, depth→range-narrowing, staleness), `SIGN_PROSPECT` contested
+      race, self-fog (current-fast/potential-slow), development & aging + the
+      pyramid + Development Coach (Act IV), tryouts reframed (homegrown +
+      castoffs).
 
 ### 6. Screens & information
-- [ ] **Scouting screen** — a v1 global board now ships in main
-      (`src/components/ScoutingScreen.tsx`, opened from the map dock): lists known
-      roster players (true ratings) + revealed prospects (fog ranges) with their
-      source. Act II extends it: toggle by-scout / by-subject, sortable/
-      filterable/searchable tables, per-row confidence, rival/major coverage.
+- [x] **Scouting screen v2 (2026-07-05, docs/15 §7 + D44)** — EHM-style board:
+      one sortable/filterable/searchable table (scope + position chips, name
+      search, click-sort columns: Pos/Name/Age/Style/OVR/Ceiling/Source/
+      Reports); row click opens the player file — true attribute bars for
+      roster, fog-RANGE bars for prospects, ceiling read, and the scouting
+      history (each filed report: scout, org, date, ceiling read, prose).
+      `state.scoutReports` filed on every prospect reveal
+      (`engine/scoutReport.ts` — deterministic prose from the scout's own
+      ranges). Still ahead: by-scout view, rival/major coverage, report depth.
 - [ ] **Log → Inbox** (D41) — promote `EventLog` to an inbox: events + news
       (team/scout/rival-GM/indie) with sender/source and read/unread triage.
 

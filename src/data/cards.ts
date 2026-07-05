@@ -21,7 +21,7 @@ export const CARDS: CardDef[] = [
     id: "raw-desert-winger",
     type: "prospect",
     name: "Raw Desert Winger",
-    position: "F",
+    position: "W",
     potential: "medium-high",
     risk: "high",
     effects: [{ type: "flavorOnly" }],

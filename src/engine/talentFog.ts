@@ -1,20 +1,23 @@
-import type { AttrEstimate, AttrEstimates, PlayerAttrs } from "../types/game";
+import type { AttrEstimate, AttrEstimates, AttrKey, PlayerAttrs } from "../types/game";
+import { ATTR_ABBR } from "../data/attributes";
+import { attrEntries } from "./ratings";
 import { nextRandom } from "./rng";
 
-// Fog-of-talent (D29, docs/13 §6.3): scouted attributes are estimates whose
-// tightness depends on the judging skill of whoever did the looking. The
-// contract: the TRUE value is always inside the range (the fog is honest),
-// but the range's center is seeded off-true (the fog misleads) — a wide range
-// centered high can make a dud look like a gem.
+// Fog-of-talent (D29/D32, docs/15 §5–6): scouted attributes are estimates
+// whose tightness depends on the judging skill of whoever did the looking.
+// The contract: the TRUE value is always inside the range (the fog is
+// honest), but the range's center is seeded off-true (the fog misleads) — a
+// wide range centered high can make a dud look like a gem.
 
 const ATTR_MIN = 1;
-const ATTR_MAX = 20;
+const ATTR_MAX = 99;
 
-// Range half-width from a judging attribute (20-point scale):
-//   judging 3 (volunteer)  -> ±4     judging 13 (ace) -> ±1
-//   judging 7 (traveled)   -> ±3     judging 16+      -> ±1 (floor)
+// Range half-width on the 1–100 scale, from a judging attribute (judging
+// itself stays on the scout 20-point scale):
+//   judging 3 (volunteer)  -> ±20     judging 13 (ace) -> ±5
+//   judging 7 (traveled)   -> ±15     judging 16+      -> ±5 (floor)
 export function fogWidth(judging: number): number {
-  return Math.max(1, Math.round((16 - judging) / 3));
+  return Math.max(5, Math.round((16 - judging) / 3) * 5);
 }
 
 // One estimated attribute. Threads the seed (D3).
@@ -37,22 +40,44 @@ export function estimateAttr(
   };
 }
 
-// Estimate a full attribute block with one judging rating.
+// Estimate a full attribute block (skater or goalie) with one judging rating.
 export function estimateAttrs(
   seed: number,
   attrs: PlayerAttrs,
   judging: number,
 ): { estimates: AttrEstimates; seed: number } {
   let s = seed;
-  const out = {} as AttrEstimates;
-  for (const key of Object.keys(attrs) as (keyof PlayerAttrs)[]) {
-    const rolled = estimateAttr(s, attrs[key], judging);
+  const out: AttrEstimates = {};
+  for (const [key, value] of attrEntries(attrs)) {
+    const rolled = estimateAttr(s, value, judging);
     s = rolled.seed;
-    out[key] = rolled.estimate;
+    out[key as AttrKey] = rolled.estimate;
   }
   return { estimates: out, seed: s };
 }
 
 export function formatEstimate(e: AttrEstimate): string {
   return e.low === e.high ? `${e.low}` : `${e.low}–${e.high}`;
+}
+
+// Compact one-line scouted readout for tables: three headline attributes for
+// the position plus the ceiling read. Falls back to the teaser when the
+// subject hasn't been scouted at all.
+const SKATER_HEADLINE: AttrKey[] = ["shooting", "passing", "speed"];
+const GOALIE_HEADLINE: AttrKey[] = ["reflexes", "positioning", "gloveHands"];
+
+export function estimateLine(p: {
+  position: string;
+  teaser?: string;
+  attrEstimates?: AttrEstimates;
+  potentialEstimate?: AttrEstimate;
+}): string {
+  const e = p.attrEstimates;
+  if (!e) return p.teaser ? `“${p.teaser}”` : "No read yet.";
+  const keys = p.position === "G" ? GOALIE_HEADLINE : SKATER_HEADLINE;
+  const parts = keys
+    .filter((k) => e[k])
+    .map((k) => `${ATTR_ABBR[k]} ${formatEstimate(e[k]!)}`);
+  if (p.potentialEstimate) parts.push(`Ceiling ${formatEstimate(p.potentialEstimate)}`);
+  return parts.join(" · ");
 }

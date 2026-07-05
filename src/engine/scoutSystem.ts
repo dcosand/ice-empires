@@ -37,6 +37,8 @@ import {
 } from "./scoutStaff";
 import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK } from "../data/scouts";
 import { estimateAttr, estimateAttrs } from "./talentFog";
+import { PROSPECT_BAND, rollAttrs, rollPotential, rollStyle } from "./playerGen";
+import { prospectReport } from "./scoutReport";
 import { levelForInfluence } from "./independentsSystem";
 import {
   computeTerritory,
@@ -586,7 +588,8 @@ function revealOrgProspects(
   org: WorldHockeyOrg,
   scout: ScoutCharacter | null,
 ): void {
-  const academyBonus = org.archetype === "academy" ? 1 : 0;
+  // Academies grow better prospects: their whole band floors higher.
+  const academyBoost = org.archetype === "academy" ? 5 : 0;
   const judgingAbility = scout?.judgingAbility ?? 3;
   const judgingPotential = scout?.judgingPotential ?? 3;
   for (const p of org.prospects) {
@@ -595,17 +598,10 @@ function revealOrgProspects(
     const r2 = nextRandom(r1.seed);
     const r3 = nextRandom(r2.seed);
     const r4 = nextRandom(r3.seed);
-    const r5 = nextRandom(r4.seed);
-    const r6 = nextRandom(r5.seed);
-    const r7 = nextRandom(r6.seed);
-    const r8 = nextRandom(r7.seed);
-    const r9 = nextRandom(r8.seed);
-    draft.rngSeed = r9.seed;
+    draft.rngSeed = r4.seed;
 
     const female = r1.value < 0.32;
     const firstPool = female ? FEMALE_FIRST_NAMES : MALE_FIRST_NAMES;
-    const roll = (v: number, min: number, die: number) =>
-      min + 1 + Math.floor(v * die) + academyBonus;
 
     p.revealed = true;
     p.knownVia = "scout-network";
@@ -613,29 +609,35 @@ function revealOrgProspects(
       LAST_NAMES[Math.floor(r3.value * LAST_NAMES.length)]
     }`;
     p.age = 15 + Math.floor(r4.value * 5);
-    p.attrs = {
-      skating: roll(r5.value, 2, 6),
-      shooting: roll(r6.value, p.position === "G" ? 1 : 2, p.position === "G" ? 4 : 6),
-      passing: roll(r7.value, p.position === "G" ? 1 : 2, p.position === "G" ? 4 : 6),
-      checking: roll(r8.value, p.position === "D" ? 3 : 1, 5),
-      goaltending: p.position === "G" ? roll(r5.value, 3, 6) : 1,
-    };
-    // True ceiling: somewhere above their best current attribute.
-    const best = Math.max(
-      p.attrs.skating,
-      p.attrs.shooting,
-      p.attrs.passing,
-      p.attrs.checking,
-      p.attrs.goaltending,
-    );
-    p.potential = Math.min(20, best + 2 + Math.floor(r9.value * 6));
+
+    const style = rollStyle(draft.rngSeed, p.position);
+    draft.rngSeed = style.seed;
+    p.style = style.style;
+    const attrs = rollAttrs(draft.rngSeed, p.position, style.style, {
+      min: PROSPECT_BAND.min + academyBoost,
+      span: PROSPECT_BAND.span,
+    });
+    draft.rngSeed = attrs.seed;
+    p.attrs = attrs.attrs;
+    // Prospects carry the biggest upside — that's why they're worth scouting.
+    const pot = rollPotential(draft.rngSeed, p.position, attrs.attrs, {
+      min: 12,
+      span: 30,
+    });
+    draft.rngSeed = pot.seed;
+    p.potential = pot.potential;
 
     // The scout's read: estimates, not truth.
-    const est = estimateAttrs(draft.rngSeed, p.attrs, judgingAbility);
+    const est = estimateAttrs(draft.rngSeed, attrs.attrs, judgingAbility);
     draft.rngSeed = est.seed;
     p.attrEstimates = est.estimates;
-    const pot = estimateAttr(draft.rngSeed, p.potential, judgingPotential);
-    draft.rngSeed = pot.seed;
-    p.potentialEstimate = pot.estimate;
+    const potEst = estimateAttr(draft.rngSeed, pot.potential, judgingPotential);
+    draft.rngSeed = potEst.seed;
+    p.potentialEstimate = potEst.estimate;
+
+    // File the establishing scout's report (docs/15 §5) — the first entry in
+    // this player's scouting history.
+    const report = prospectReport(p, scout, org, draft.month);
+    if (report) draft.scoutReports = [report, ...draft.scoutReports];
   }
 }

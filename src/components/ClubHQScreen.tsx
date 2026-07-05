@@ -35,7 +35,8 @@ import {
   tryoutGateHint,
 } from "../engine/tryoutSystem";
 import { AttrBar } from "./TryoutScreen";
-import { PlayerHeadshot } from "./HockeyCard";
+import { cardBars, PlayerHeadshot } from "./HockeyCard";
+import { computeOverall } from "../engine/ratings";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 import { primeTryoutMusic } from "./BackgroundMusic";
@@ -268,25 +269,22 @@ function assignLines(roster: Player[]): {
   };
 
   const goalies = roster.filter((p) => p.position === "G");
-  const goalie = take(goalies, (p) => p.attrs.goaltending, 1)[0] ?? null;
+  const goalie = take(goalies, (p) => computeOverall(p), 1)[0] ?? null;
 
   const dPool = roster.filter((p) => p.position === "D");
-  let defense: Player[] = take(dPool, (p) => p.attrs.checking + p.attrs.skating, 2);
-  const fPool = roster.filter((p) => p.position === "F");
-  let forwards: Player[] = take(
-    fPool,
-    (p) => p.attrs.shooting + p.attrs.passing + p.attrs.skating,
-    3,
-  );
+  let defense: Player[] = take(dPool, (p) => computeOverall(p), 2);
+  // Forwards = Centers + Wings; best line regardless of the C/W split.
+  const fPool = roster.filter((p) => p.position === "C" || p.position === "W");
+  let forwards: Player[] = take(fPool, (p) => computeOverall(p), 3);
   // Fill gaps with any remaining skater — pond hockey is not fussy.
   const anySkater = roster.filter((p) => p.position !== "G");
   while (defense.length < 2) {
-    const extra = take(anySkater, (p) => p.attrs.checking + p.attrs.skating, 1);
+    const extra = take(anySkater, (p) => computeOverall(p), 1);
     if (!extra.length) break;
     defense = [...defense, ...extra];
   }
   while (forwards.length < 3) {
-    const extra = take(anySkater, (p) => p.attrs.shooting + p.attrs.passing, 1);
+    const extra = take(anySkater, (p) => computeOverall(p), 1);
     if (!extra.length) break;
     forwards = [...forwards, ...extra];
   }
@@ -479,18 +477,10 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
       </div>
     );
   }
-  const attrs: { key: keyof Player["attrs"]; label: string }[] =
-    player.position === "G"
-      ? [
-          { key: "goaltending", label: "Goaltending" },
-          { key: "skating", label: "Skating" },
-        ]
-      : [
-          { key: "skating", label: "Skating" },
-          { key: "shooting", label: "Shooting" },
-          { key: "passing", label: "Passing" },
-          { key: "checking", label: "Checking" },
-        ];
+  // Compact read: OVR headline + the card's grouped bars (goalies show their
+  // real six attributes).
+  const bars = cardBars(player.attrs).slice(0, 4);
+  const overall = computeOverall(player);
   return (
     <div className="line-slot">
       <div className="line-slot-top">
@@ -499,9 +489,11 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
           <PlayerHeadshot subject={player} />
         </div>
         <div>
-          <div className="line-name">{player.name}</div>
+          <div className="line-name">
+            {player.name} <span className="line-ovr">{overall}</span>
+          </div>
           <div className="line-meta">
-            Age {player.age} · Joined {turnDateLabel(player.joinedMonth)}
+            Age {player.age} · {player.style} · Joined {turnDateLabel(player.joinedMonth)}
           </div>
         </div>
         <span
@@ -512,8 +504,8 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
         </span>
       </div>
       <div className="line-attrs">
-        {attrs.map((a) => (
-          <AttrBar key={a.key} label={a.label} value={player.attrs[a.key]} />
+        {bars.map((a) => (
+          <AttrBar key={a.label} label={a.label} value={a.value} />
         ))}
       </div>
       <div className="line-note">“{player.note}”</div>

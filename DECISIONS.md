@@ -440,3 +440,33 @@ when it matures.
 items with a sender/source — team notes, scout reports, rival-GM messages,
 independent overtures — with read/unread triage. Not a new parallel system;
 an evolution of the log categories.
+
+## D42 — One honest 1–100 rating scale; 10 skater + 6 goalie attributes (SHIPPED 2026-07-05)
+Per docs/15 §3: the 5-attribute 1–20 model is replaced by a 1–100 scale
+everywhere the player sees numbers (elite ≈ 90–99, average ≈ 75, pond locals ≈
+20–45). Skaters carry 10 attributes in five EA-style display groups
+(Offense/Defense/Skating/Sense/Mental); goalies carry their own 6 (goaltending
+is a mini-game, not one number). `PlayerAttrs` is a `kind`-discriminated union;
+hidden traits (Durability, Discipline) live off-card on `Player.traits`.
+Never add: Form/Morale/Contract depth.
+
+## D43 — Positions are C/W/D/G; OVR + stars derived; Player Style at generation (SHIPPED 2026-07-05)
+`PlayerPosition` expands F→C/W (Center/Wing) so Faceoffs and line construction
+matter. OVR is a position-weighted roll-up (`engine/ratings.computeOverall`) —
+DERIVED at read time like income, never stored — with a 0.5–5 star tier.
+Every player rolls a `PlayerStyle` (Sniper/Playmaker/… per position) that
+biases attribute generation (`engine/playerGen.ts`, shared by tryouts,
+wanderers, and org prospects) and later feeds match matchups. `potential` is a
+first-class true-ceiling OVR on every Player, engine-side; the UI never shows
+your own players' ceilings until scouting/development earns the read
+(docs/15 §6 self-fog — the display side lands with the mission system).
+
+## D44 — Scout reports are first-class state (SHIPPED 2026-07-05, extends D31/D32)
+`state.scoutReports: ScoutReport[]` — every prospect reveal files the
+establishing scout's report: their estimate ranges, ceiling read, and
+deterministic scout's-voice prose built from the ranges they actually filed
+(`engine/scoutReport.ts` — no RNG, never leaks truth). The Scouting screen is
+now an EHM-style board (sortable/filterable/searchable) with a per-player
+detail file: attributes (true bars for roster, fog-range bars for prospects),
+ceiling read, and the full scouting history. Report depth/missions (docs/15
+§5) will append to the same store.

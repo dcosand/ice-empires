@@ -21,26 +21,14 @@ import {
   leadingSuitor,
   tierName,
 } from "../engine/independentsSystem";
-import { formatEstimate } from "../engine/talentFog";
+import { estimateLine } from "../engine/talentFog";
 
 // Compact scouted readout for a revealed prospect. Fog-of-talent: these are
-// your scout's ESTIMATE ranges ("Sk 3–6"), never the true numbers — tighter
-// ranges come from better judging. Ceiling is the Judging-Potential read.
+// your scout's ESTIMATE ranges ("SHO 32–52"), never the true numbers —
+// tighter ranges come from better judging. Ceiling is the Judging-Potential
+// read.
 function prospectAttrLine(p: OrgProspect): string {
-  const e = p.attrEstimates;
-  if (!e) return `“${p.teaser}”`;
-  const f = formatEstimate;
-  const parts =
-    p.position === "G"
-      ? [`Gt ${f(e.goaltending)}`, `Sk ${f(e.skating)}`, `Pa ${f(e.passing)}`]
-      : [
-          `Sk ${f(e.skating)}`,
-          `Sh ${f(e.shooting)}`,
-          `Pa ${f(e.passing)}`,
-          `Ch ${f(e.checking)}`,
-        ];
-  if (p.potentialEstimate) parts.push(`Ceiling ${f(p.potentialEstimate)}`);
-  return parts.join(" · ");
+  return estimateLine(p);
 }
 
 // The Independents ledger — list view (one row per org, built to scale to a

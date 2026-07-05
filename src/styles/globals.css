@@ -4510,7 +4510,8 @@ button {
   font-size: 13px;
   color: #0a1018;
 }
-.pos-F { background: #f2c14e; }
+.pos-C { background: #f2c14e; }
+.pos-W { background: #f28e4e; }
 .pos-D { background: #7dd3fc; }
 .pos-G { background: #b58cf0; }
 .tryout-attrs {
@@ -6112,4 +6113,136 @@ button {
   border-radius: 5px;
   padding: 1px 5px;
   vertical-align: middle;
+}
+
+/* =========================================================================
+   Scouting board v2 (docs/15) — EHM table + player detail
+   ========================================================================= */
+.scouting-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0 14px;
+}
+.sc-search {
+  flex: 1 1 180px;
+  min-width: 160px;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(8, 14, 22, 0.6);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+.sc-search:focus { outline: 1px solid var(--accent); }
+.sc-chips { display: flex; gap: 4px; }
+.sc-chip {
+  padding: 5px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 12px;
+  cursor: pointer;
+}
+.sc-chip.on {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: rgba(56, 189, 248, 0.1);
+}
+.sc-board th.sc-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.sc-board th.sc-sort:hover { color: var(--accent); }
+.sc-board th.sc-sort.on { color: var(--accent); }
+.sc-row { cursor: pointer; }
+.sc-row:hover td { background: rgba(56, 189, 248, 0.07); }
+.sc-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.sc-style { white-space: nowrap; }
+
+/* Detail view */
+.sc-back { margin-bottom: 12px; }
+.sc-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.sc-detail-name { font-family: var(--font-display, inherit); font-size: 20px; font-weight: 700; }
+.sc-detail-meta { font-size: 12px; color: var(--text-dim); }
+.sc-detail-ovr {
+  margin-left: auto;
+  text-align: right;
+  display: grid;
+  line-height: 1.2;
+}
+.sc-detail-ovr strong { font-size: 26px; color: var(--gold); }
+.sc-detail-ovr span { font-size: 12px; color: var(--text-dim); }
+.sc-attr-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px 22px;
+  margin-bottom: 6px;
+}
+.sc-attr-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.sc-attr-row .attr-label { width: 110px; flex: none; color: var(--text-dim); }
+.sc-attr-row .attr-bar {
+  position: relative;
+  flex: 1;
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(125, 211, 252, 0.12);
+  overflow: hidden;
+}
+.sc-attr-row .attr-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--accent);
+  border-radius: 4px;
+}
+.sc-attr-row .attr-range {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: rgba(242, 193, 78, 0.55);
+  border-radius: 4px;
+}
+.sc-attr-row .attr-value { width: 52px; flex: none; text-align: right; font-variant-numeric: tabular-nums; }
+.sc-ceiling { font-size: 13px; margin-bottom: 6px; }
+.sc-reports { display: grid; gap: 10px; }
+.sc-report {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(8, 14, 22, 0.45);
+}
+.sc-report-head { font-size: 12px; color: var(--text-dim); }
+.sc-report-head strong { color: var(--text); }
+.sc-report-date { float: right; color: var(--text-faint); }
+.sc-report-prose { margin: 6px 0; font-size: 13px; line-height: 1.45; font-style: italic; }
+.sc-report-foot { font-size: 12px; color: var(--gold); }
+
+/* Card OVR corner + line-slot OVR chip */
+.hc-ovr {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: grid;
+  text-align: right;
+  line-height: 1.1;
+}
+.hc-ovr strong { font-size: 20px; color: var(--gold); }
+.hc-stars { font-size: 10px; color: var(--gold-dim, #b8923a); letter-spacing: 1px; }
+.line-ovr {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 6px;
+  border-radius: 6px;
+  background: rgba(242, 193, 78, 0.16);
+  color: var(--gold);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+@media (max-width: 720px) {
+  .sc-attr-grid { grid-template-columns: 1fr; }
 }

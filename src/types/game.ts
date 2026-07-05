@@ -246,7 +246,7 @@ export type CardDef = {
   type: CardType;
   name: string;
   // position only meaningful for prospect/player
-  position?: "F" | "D" | "G";
+  position?: PlayerPosition;
   potential?: string;
   risk?: string;
   role?: string;
@@ -258,18 +258,63 @@ export type CardDef = {
 // Players (the roster — actual humans who show up and try to play hockey)
 // ---------------------------------------------------------------------------
 
-export type PlayerPosition = "F" | "D" | "G";
+// Positions: Center / Wing / Defense / Goalie (docs/15 §3). The C/W split
+// makes Faceoffs and line construction meaningful without handedness fuss.
+export type PlayerPosition = "C" | "W" | "D" | "G";
 export type PlayerGender = "male" | "female";
 
-// Attributes on a 20-point scale. Pond-era locals roll 1–6 — they are terrible,
-// and that's the point.
-export type PlayerAttrs = {
-  skating: number;
+// One honest 1–100 scale everywhere (docs/15 — EA-NHL skin over an EHM soul).
+// Elite ≈ 90–99, league-average ≈ 75, pond-era locals ≈ 20–45.
+
+// Ten skater attributes in five display groups (Offense/Defense/Skating/
+// Sense/Mental — see data/attributes.ts for grouping + labels).
+export type SkaterAttrs = {
   shooting: number;
   passing: number;
+  puckControl: number;
   checking: number;
-  goaltending: number;
+  physicality: number;
+  speed: number;
+  agility: number;
+  hockeyIq: number;
+  faceoffs: number;
+  compete: number;
 };
+
+// Six goalie attributes — goaltending is its own mini-game, not one number.
+export type GoalieAttrs = {
+  reflexes: number;
+  positioning: number;
+  gloveHands: number;
+  reboundControl: number;
+  athleticism: number;
+  composure: number;
+};
+
+// A player's ratings block: skaters and goalies carry different attribute
+// sets (EA-style — a goalie card shows only goalie stats).
+export type PlayerAttrs =
+  | { kind: "skater"; skater: SkaterAttrs }
+  | { kind: "goalie"; goalie: GoalieAttrs };
+
+// Any attribute name from either set (fog estimates key on these).
+export type AttrKey = keyof SkaterAttrs | keyof GoalieAttrs;
+
+// Player Style: assigned at generation, biases the attribute distribution
+// (role-weighting) and later feeds match matchups (docs/15 §3, §7).
+export type PlayerStyle =
+  | "Sniper"
+  | "Playmaker"
+  | "Two-Way"
+  | "Power Forward"
+  | "Grinder"
+  | "Offensive D"
+  | "Two-Way D"
+  | "Defensive D"
+  | "Enforcer"
+  | "Butterfly"
+  | "Hybrid"
+  | "Standup";
 
 export type Player = {
   id: string;
@@ -278,6 +323,14 @@ export type Player = {
   position: PlayerPosition;
   age: number;
   attrs: PlayerAttrs;
+  // True ceiling OVR (1–100), engine-side. UI reads arrive via fog — the
+  // ceiling resolves slowly even for your own players (docs/15 §6). OVR is
+  // NOT stored: derive it via engine/ratings.computeOverall (like income).
+  potential: number;
+  style: PlayerStyle;
+  // Hidden traits — never on the card; feed report prose + the future match
+  // sim (docs/15 §3): injury/stamina tendency and penalty tendency.
+  traits: { durability: number; discipline: number };
   imageUrl?: string;
   // One stick+gear from the equipment inventory. Ungeared players don't count
   // toward the "full line" era requirement.
@@ -504,7 +557,9 @@ export type KnownVia = "tryout" | "scout-network" | "org-word" | "rumor";
 // but the center is seeded off-true — a dud can look like a gem.
 export type AttrEstimate = { low: number; high: number };
 
-export type AttrEstimates = Record<keyof PlayerAttrs, AttrEstimate>;
+// Fog estimates keyed by attribute name — a skater's map holds skater keys,
+// a goalie's the goalie keys.
+export type AttrEstimates = Partial<Record<AttrKey, AttrEstimate>>;
 
 // A prospect in an independent's pipeline. Seeded at worldgen; `revealed`
 // stays false until a scouting network uncovers the details — the ledger
@@ -514,18 +569,40 @@ export type AttrEstimates = Record<keyof PlayerAttrs, AttrEstimate>;
 export type OrgProspect = {
   id: string;
   revealed: boolean;
-  position: "F" | "D" | "G";
+  position: PlayerPosition;
   teaser: string;
   name?: string;
   age?: number;
   knownVia?: KnownVia;
   // True values — engine-only; never render these directly.
   attrs?: PlayerAttrs;
-  potential?: number; // true ceiling, 1–20
+  potential?: number; // true ceiling OVR, 1–100
+  style?: PlayerStyle;
   // What your scout believes (render these): width scales with the
   // establishing scout's Judging Ability / Judging Potential.
   attrEstimates?: AttrEstimates;
   potentialEstimate?: AttrEstimate;
+};
+
+// A filed scouting report (docs/15 §5): one scout's read on one subject at a
+// point in time. The Scouting screen's player detail shows a subject's full
+// report history — who looked, when, what they believed, in their own words.
+export type ScoutReport = {
+  id: string;
+  month: number;
+  subjectId: string; // OrgProspect id (or, later, a Player id)
+  subjectName: string;
+  position: PlayerPosition;
+  style?: PlayerStyle;
+  scoutId: string;
+  scoutName: string;
+  orgId?: string;
+  orgName?: string;
+  // The scout's belief at filing time (ranges — never the truth).
+  attrEstimates: AttrEstimates;
+  potentialEstimate: AttrEstimate;
+  // Deterministic scout's-voice prose built from the estimates.
+  prose: string;
 };
 
 // Relationship ladder with an independent (Civ city-state analog):
@@ -637,6 +714,7 @@ export type GameState = {
   equipment: number;
   roster: Player[]; // recruited players (the actual team)
   scoutStaff: ScoutCharacter[]; // named scouts tied to map scout units (D29)
+  scoutReports: ScoutReport[]; // filed reports, newest first (docs/15 §5)
   pendingTryout: PendingTryout | null; // open tryout modal, if any
   // A newly-signed player awaiting their reveal cinematic (see PlayerReveal).
   pendingPlayerReveal: PlayerReveal | null;

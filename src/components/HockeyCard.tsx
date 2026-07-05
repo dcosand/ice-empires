@@ -1,42 +1,49 @@
 import type { CSSProperties, ReactNode } from "react";
-import type { ClubDef, PlayerAttrs, PlayerPosition } from "../types/game";
+import type { ClubDef, PlayerAttrs, PlayerPosition, PlayerStyle } from "../types/game";
 import { clubAsset } from "../data/clubs";
+import {
+  ATTR_LABELS,
+  GOALIE_ATTR_ORDER,
+  POSITION_LABELS,
+  SKATER_GROUPS,
+} from "../data/attributes";
+import { computeOverall, starString, starTier } from "../engine/ratings";
 
 // A flippable hockey card — the shared visual language for candidates (tryout
 // pack browsing) and freshly-signed players (the reveal cinematic). The BACK is
 // the club's palette + crest, like a real card's reverse; the FRONT is the
-// player's profile: position, name, what we know (attributes + a one-line
-// scouting note). Both TryoutCandidate and Player satisfy CardSubject.
+// player's profile: OVR + stars + style, grouped 1–100 attribute bars (a
+// goalie card shows the six goalie attributes), and a one-line scouting note.
+// Both TryoutCandidate and Player satisfy CardSubject.
 
 export type CardSubject = {
   name: string;
   position: PlayerPosition;
   age: number;
   attrs: PlayerAttrs;
+  style?: PlayerStyle;
   note: string;
   imageUrl?: string;
 };
 
-export const ATTR_LABELS: { key: keyof PlayerAttrs; label: string }[] = [
-  { key: "skating", label: "Skating" },
-  { key: "shooting", label: "Shooting" },
-  { key: "passing", label: "Passing" },
-  { key: "checking", label: "Checking" },
-  { key: "goaltending", label: "Goaltending" },
-];
+export const POSITION_LABEL = POSITION_LABELS;
 
-// Goalies show goaltending; skaters hide the (always-1) crease number.
-export function attrsForPosition(position: PlayerPosition) {
-  return ATTR_LABELS.filter(
-    (a) => position === "G" || a.key !== "goaltending",
-  );
+// The card's compact bar list: skaters show the five EA-style group roll-ups;
+// goalies show their six real attributes (goaltending is its own mini-game).
+export function cardBars(attrs: PlayerAttrs): { label: string; value: number }[] {
+  if (attrs.kind === "goalie") {
+    return GOALIE_ATTR_ORDER.map((key) => ({
+      label: ATTR_LABELS[key],
+      value: attrs.goalie[key],
+    }));
+  }
+  return SKATER_GROUPS.map((g) => ({
+    label: g.group,
+    value: Math.round(
+      g.keys.reduce((sum, key) => sum + attrs.skater[key], 0) / g.keys.length,
+    ),
+  }));
 }
-
-export const POSITION_LABEL: Record<PlayerPosition, string> = {
-  F: "Forward",
-  D: "Defense",
-  G: "Goalie",
-};
 
 export function HockeyCard({
   subject,
@@ -55,7 +62,9 @@ export function HockeyCard({
   footer?: ReactNode;
   recruited?: boolean;
 }) {
-  const attrs = attrsForPosition(subject.position);
+  const bars = cardBars(subject.attrs);
+  const overall = computeOverall(subject);
+  const stars = starTier(overall);
 
   const style = {
     "--club-accent": club?.accent ?? "#38bdf8",
@@ -93,16 +102,21 @@ export function HockeyCard({
             <span className={`pos-badge pos-${subject.position}`}>
               {subject.position}
             </span>
+            <span className="hc-ovr" title={`Overall ${overall}`}>
+              <strong>{overall}</strong>
+              <span className="hc-stars">{starString(stars)}</span>
+            </span>
           </div>
           <div className="hc-ident">
             <div className="hc-name">{subject.name}</div>
             <div className="hc-meta">
               {POSITION_LABEL[subject.position]} · Age {subject.age}
+              {subject.style ? ` · ${subject.style}` : ""}
             </div>
           </div>
           <div className="hc-attrs">
-            {attrs.map((a) => (
-              <AttrBar key={a.key} label={a.label} value={subject.attrs[a.key]} />
+            {bars.map((a) => (
+              <AttrBar key={a.label} label={a.label} value={a.value} />
             ))}
           </div>
           <div className="hc-note">“{subject.note}”</div>
@@ -155,7 +169,7 @@ export function PlayerHeadshot({ subject }: { subject: CardSubject }) {
   );
 }
 
-// A 20-point attribute bar. Pond-era values (1–6) read as honestly tiny.
+// A 1–100 attribute bar. Pond-era values (20–45) read as honestly modest.
 export function AttrBar({ label, value }: { label: string; value: number }) {
   return (
     <div className="attr-row">
@@ -163,7 +177,7 @@ export function AttrBar({ label, value }: { label: string; value: number }) {
       <span className="attr-bar">
         <span
           className="attr-fill"
-          style={{ width: `${Math.min(100, (value / 20) * 100)}%` }}
+          style={{ width: `${Math.min(100, value)}%` }}
         />
       </span>
       <span className="attr-value">{value}</span>

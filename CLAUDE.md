@@ -79,10 +79,18 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   territory (`scoutSystem.moveableTilesFor` — it lives there, not in world.ts,
   to avoid an import cycle). Borders render via `territoryBorderMarker`
   (IsoWorldMap) + a minimap color wash.
-- **Roster**: `state.roster: Player[]` (attrs on a 20 scale; pond-era rolls
-  1–6). `engine/tryoutSystem.ts` = Hold Tryouts gate/generation/recruiting +
-  monthly FIFO auto-equip. UI: `TryoutScreen` modal + ClubHQ "Team" tab.
-  Era exit wants 6 geared players incl. a goalie (`selectors.hasFullLine`).
+- **Roster & ratings (docs/15, D42–D44)**: `state.roster: Player[]` on a 1–100
+  scale (pond locals ≈ 20–45). Positions C/W/D/G; `PlayerAttrs` is a
+  kind-discriminated union (10 skater attrs / 6 goalie attrs —
+  `data/attributes.ts` has groups/labels/weights/style biases). OVR is DERIVED
+  (`ratings.computeOverall` — never stored); `potential` (true ceiling) +
+  hidden traits are engine-side only — never render them for your own players.
+  All humans generate through `engine/playerGen.ts` (style-biased band rolls).
+  Tryouts: `engine/tryoutSystem.ts` (seasonal windows from Club Formation,
+  D37) + monthly FIFO auto-equip. Prospect reveals file `state.scoutReports`
+  (ranges + prose, `engine/scoutReport.ts`). UI: `TryoutScreen`, ClubHQ Team
+  tab, `ScoutingScreen` (EHM board + player file). Era exit wants 6 geared
+  players incl. a goalie (`selectors.hasFullLine`).
 - **Meetings**: `state.pendingMeeting: { kind: "rival"|"independent", id }`.
   **One-popup rule**: encounter > rival > independent; every trigger
   early-returns if anything is pending (see the MOVE_SCOUT chain in

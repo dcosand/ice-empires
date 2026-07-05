@@ -6,10 +6,12 @@ import { ROSTER_CAP } from "../engine/tryoutSystem";
 import { turnDateLabel } from "../engine/calendar";
 import { playSfx } from "../engine/sfx";
 import {
-  HockeyCard,
-  POSITION_LABEL,
-  attrsForPosition,
-} from "./HockeyCard";
+  ATTR_ABBR,
+  GOALIE_ATTR_ORDER,
+  SKATER_ATTR_ORDER,
+} from "../data/attributes";
+import { attrValue, computeOverall } from "../engine/ratings";
+import { HockeyCard, POSITION_LABEL } from "./HockeyCard";
 
 // AttrBar lives with the shared card now; re-exported so ClubHQScreen's import
 // (`from "./TryoutScreen"`) keeps working.
@@ -241,17 +243,27 @@ function RosterCompare({
   candidate,
   roster,
 }: {
-  candidate: { name: string; position: Player["position"]; attrs: PlayerAttrs };
+  candidate: {
+    name: string;
+    position: Player["position"];
+    attrs: PlayerAttrs;
+  };
   roster: Player[];
 }) {
-  const attrs = attrsForPosition(candidate.position);
+  const keys: string[] =
+    candidate.attrs.kind === "goalie"
+      ? [...GOALIE_ATTR_ORDER]
+      : [...SKATER_ATTR_ORDER];
   const samePos = roster.filter((p) => p.position === candidate.position);
   const posWord = `${POSITION_LABEL[candidate.position]}s`;
+  const ovrOf = (p: { position: Player["position"]; attrs: PlayerAttrs }) =>
+    computeOverall(p);
 
-  const bestOf = (key: keyof PlayerAttrs) =>
+  const bestOf = (key: string) =>
     samePos.length
-      ? Math.max(...samePos.map((p) => p.attrs[key]))
+      ? Math.max(...samePos.map((p) => attrValue(p.attrs, key)))
       : -Infinity;
+  const bestOvr = samePos.length ? Math.max(...samePos.map(ovrOf)) : -Infinity;
 
   return (
     <div className="tryout-compare">
@@ -266,8 +278,9 @@ function RosterCompare({
           <thead>
             <tr>
               <th className="c-name">Player</th>
-              {attrs.map((a) => (
-                <th key={a.key}>{a.label.slice(0, 4)}</th>
+              <th>OVR</th>
+              {keys.map((key) => (
+                <th key={key}>{ATTR_ABBR[key as keyof typeof ATTR_ABBR]}</th>
               ))}
             </tr>
           </thead>
@@ -276,11 +289,17 @@ function RosterCompare({
               <td className="c-name">
                 {candidate.name} <span className="c-badge">new</span>
               </td>
-              {attrs.map((a) => {
-                const v = candidate.attrs[a.key];
-                const beatsBest = v > bestOf(a.key) && samePos.length > 0;
+              <td className={ovrOf(candidate) > bestOvr && samePos.length > 0 ? "c-better" : undefined}>
+                {ovrOf(candidate)}
+                {ovrOf(candidate) > bestOvr && samePos.length > 0 && (
+                  <span className="c-arrow"> ▲</span>
+                )}
+              </td>
+              {keys.map((key) => {
+                const v = attrValue(candidate.attrs, key);
+                const beatsBest = v > bestOf(key) && samePos.length > 0;
                 return (
-                  <td key={a.key} className={beatsBest ? "c-better" : undefined}>
+                  <td key={key} className={beatsBest ? "c-better" : undefined}>
                     {v}
                     {beatsBest && <span className="c-arrow"> ▲</span>}
                   </td>
@@ -290,8 +309,9 @@ function RosterCompare({
             {samePos.map((p) => (
               <tr key={p.id}>
                 <td className="c-name">{p.name}</td>
-                {attrs.map((a) => (
-                  <td key={a.key}>{p.attrs[a.key]}</td>
+                <td>{ovrOf(p)}</td>
+                {keys.map((key) => (
+                  <td key={key}>{attrValue(p.attrs, key)}</td>
                 ))}
               </tr>
             ))}

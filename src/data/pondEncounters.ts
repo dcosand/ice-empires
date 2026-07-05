@@ -24,7 +24,7 @@ export const POND_ENCOUNTERS: PondEncounter[] = [
     kind: "wanderer",
     description:
       "A garage-rink kid joins practice and immediately becomes your best skater.",
-    possibleEffects: [{ type: "addRosterPlayer", position: "F" }],
+    possibleEffects: [{ type: "addRosterPlayer", position: "W" }],
   },
   {
     id: "suspicious-equipment",
