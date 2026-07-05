@@ -8,12 +8,3 @@ export function nextRandom(seed: number): { value: number; seed: number } {
   const value = ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   return { value, seed: t >>> 0 };
 }
-
-// Roll an integer in [0, max). Returns the next seed alongside it.
-export function nextInt(
-  seed: number,
-  max: number,
-): { value: number; seed: number } {
-  const r = nextRandom(seed);
-  return { value: Math.floor(r.value * max), seed: r.seed };
-}

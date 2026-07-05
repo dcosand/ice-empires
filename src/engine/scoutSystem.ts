@@ -505,10 +505,6 @@ export function networkTargetOrg(
   );
 }
 
-export function canEstablishNetwork(state: GameState, unitId: string): boolean {
-  return !!networkTargetOrg(state, unitId);
-}
-
 // Shared completion (draft-mutating): open the pipeline, pay influence and XP.
 function completeNetworkDraft(
   draft: GameState,

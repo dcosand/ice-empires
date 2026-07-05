@@ -78,16 +78,7 @@ function grab(src: string, volume: number): HTMLAudioElement {
   return a;
 }
 
-let muted = false;
-export function setSfxMuted(value: boolean): void {
-  muted = value;
-}
-export function isSfxMuted(): boolean {
-  return muted;
-}
-
 export function playSfx(name: SfxName): void {
-  if (muted) return;
   const now = performance.now();
   if (now - (lastPlayedAt.get(name) ?? -Infinity) < 40) return;
   lastPlayedAt.set(name, now);

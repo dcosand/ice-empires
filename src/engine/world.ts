@@ -21,10 +21,6 @@ export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
 // Rival scouts wander at the same pace as the player's Pond Scout.
 export const RIVAL_SCOUT_MOVES = 3;
-// How far HQ and a unit can currently SEE (and permanently reveal) around them.
-// Drives both the rolling "currently visible" bubble and the explored set, so a
-// tile that has ever been seen stays explored forever (never reverts to fog).
-export const VISION_RADIUS = 2;
 // A club may only be founded on a landmass with at least this many connected
 // passable tiles — so the player never starts stranded on a tiny island.
 const MIN_START_LAND = 60;
@@ -260,10 +256,6 @@ export function addReveal(
   radius = SCOUT_SIGHT,
 ): string[] {
   return Array.from(new Set([...revealed, ...visibleKeysFrom(world, x, y, radius)]));
-}
-
-export function isRevealed(world: WorldState, x: number, y: number): boolean {
-  return world.revealed.includes(tileKey(x, y));
 }
 
 // The set of tiles a player can CURRENTLY see — used to gate LIVE information

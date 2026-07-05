@@ -23,7 +23,6 @@ import type { PushLog } from "./turnContext";
 const RINK_BUILD_MONTHS = 2;
 const HARVEST_EQUIPMENT = 2;
 const CLEAR_SNOW_FUNDS = 1;
-export const HARVEST_MIN_FOLIAGE = 0.35;
 
 // The unit for an action: must exist, be a builder, and not be mid-project.
 function actionableBuilder(state: GameState, unitId: string): WorldUnit | null {
