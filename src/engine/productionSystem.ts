@@ -179,7 +179,7 @@ export function progressProduction(draft: GameState, push: PushLog): void {
     push(
       "build",
       `${name} underway`,
-      `${name} is ${prod.monthsRemaining} month${
+      `${name} is ${prod.monthsRemaining} turn${
         prod.monthsRemaining === 1 ? "" : "s"
       } from completion.`,
     );
@@ -283,8 +283,8 @@ function facilityEffectSummary(facilityId: string): string {
   if (!def) return "";
   const parts = def.effects.map((e) => {
     if (e.type === "monthlyIncome")
-      return `+${e.amount} ${RESOURCE_LABELS[e.resource]}/mo`;
-    if (e.type === "equipmentPerMonth") return `+${e.amount} Equipment/mo`;
+      return `+${e.amount} ${RESOURCE_LABELS[e.resource]}/turn`;
+    if (e.type === "equipmentPerMonth") return `+${e.amount} Equipment/turn`;
     if (e.type === "unlockRecruitment") return "Unlocks basic recruitment";
     return "Improves local recruitment events";
   });

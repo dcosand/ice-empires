@@ -160,7 +160,7 @@ function statusText(opt: ProductionOption): string {
     case "locked":
       return opt.lockReason ?? "Locked";
     default:
-      return `${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`;
+      return `${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`;
   }
 }
 
@@ -303,7 +303,7 @@ function ConfirmBar({
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {costLine} · {selected.buildMonths} month
+            {costLine} · {selected.buildMonths} turn
             {selected.buildMonths === 1 ? "" : "s"} to build
           </div>
           {selected.spawnsScout && (
@@ -392,7 +392,7 @@ function DetailsModal({
           <DetailRow label="Cost" value={`${upfront || "Free"} — paid upfront`} />
           <DetailRow
             label="Build time"
-            value={`${opt.buildMonths} month${opt.buildMonths === 1 ? "" : "s"}`}
+            value={`${opt.buildMonths} turn${opt.buildMonths === 1 ? "" : "s"}`}
           />
           <DetailRow
             label="Requirements"

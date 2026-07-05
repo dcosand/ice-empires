@@ -355,7 +355,7 @@ function IndependentDetail({
           <div className="faint indy-foot-note">
             {org.networkedByPlayer
               ? "Your scouting network keeps this pipeline open — real names, real reads."
-              : "Park a scout beside them for two months to establish a scouting network and reveal who they actually are."}
+              : "Send a Club Scout to them — the scouting network opens the moment they arrive, revealing who these prospects actually are."}
           </div>
 
           <div className="indy-col-title">The race for their favor</div>

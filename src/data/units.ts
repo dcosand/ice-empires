@@ -63,7 +63,7 @@ export const UNITS: UnitDef[] = [
       { type: "improveEncounters" },
     ],
     abilitySummary:
-      "+1 Reputation/mo · +1 candidate at tryouts, and nobody shows up completely hopeless.",
+      "+1 Reputation/turn · +1 candidate at tryouts, and nobody shows up completely hopeless.",
     flavor:
       "Carries sticks, rules nobody understands, and the bold claim that standing on ice can become a civilization.",
   },
@@ -102,7 +102,7 @@ export const UNITS: UnitDef[] = [
       { type: "teamAttribute", attribute: "skating", amount: 1 },
     ],
     abilitySummary:
-      "+1 Hockey Knowledge / month, and will improve team attributes once those exist.",
+      "+1 Hockey Knowledge / turn, and will improve team attributes once those exist.",
     flavor: "He owns three whistles and uses all of them.",
   },
   {

@@ -100,9 +100,9 @@ export function ScoutingScreen({ state }: { state: GameState }) {
       </div>
       {prospects.length === 0 ? (
         <div className="faint">
-          No prospects uncovered yet. Contact an independent, then park a scout
-          beside them for two months to establish a network and reveal who they
-          actually are.
+          No prospects uncovered yet. Contact an independent, then send a Club
+          Scout to them — the network opens the moment they arrive, revealing
+          who their prospects actually are.
         </div>
       ) : (
         <table className="indy-prospect-table scouting-table">

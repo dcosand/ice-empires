@@ -128,7 +128,7 @@ export const CLUB_UNIQUES: Record<string, ClubUnique> = {
         requiredTechIds: ["ice-surveying"],
         spawnsMapUnit: "builder",
         abilitySummary:
-          "Unique builder: raises Level 1 rinks in a single month (plus all Rink Rats abilities).",
+          "Unique builder: raises Level 1 rinks in a single turn (plus all Rink Rats abilities).",
         flavor: "Bring a hammer, leave a rink.",
       },
       "rink-rats",
@@ -157,7 +157,7 @@ export const CLUB_UNIQUES: Record<string, ClubUnique> = {
       cost: { funds: 10 },
       buildMonths: 2,
       effects: [{ type: "monthlyIncome", resource: "hockeyKnowledge", amount: 1 }],
-      abilitySummary: "+1 Hockey Knowledge / month; future skating development boost.",
+      abilitySummary: "+1 Hockey Knowledge / turn; future skating development boost.",
       flavor: "In Prague, falling is merely an unfinished pivot.",
     }),
     uniqueFacility: F({
@@ -245,7 +245,7 @@ export const CLUB_UNIQUES: Record<string, ClubUnique> = {
       cost: { funds: 10 },
       buildMonths: 2,
       effects: [{ type: "monthlyIncome", resource: "hockeyKnowledge", amount: 1 }],
-      abilitySummary: "+1 Hockey Knowledge / month; future systems boost.",
+      abilitySummary: "+1 Hockey Knowledge / turn; future systems boost.",
       flavor: "Grace is a system. The system has diagrams.",
     }),
     uniqueFacility: F({

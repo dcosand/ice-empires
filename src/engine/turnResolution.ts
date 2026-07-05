@@ -79,5 +79,5 @@ function incomeSummary(income: ReturnType<typeof getMonthlyIncome>): string {
   const parts = (Object.keys(income) as (keyof typeof income)[])
     .filter((k) => income[k] !== 0)
     .map((k) => `+${income[k]} ${RESOURCE_LABELS[k]}`);
-  return parts.length ? parts.join(", ") : "No income this month.";
+  return parts.length ? parts.join(", ") : "No income this turn.";
 }

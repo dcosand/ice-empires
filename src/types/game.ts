@@ -443,22 +443,16 @@ export type WorldTile = {
   valid: boolean; // can be entered / founded on (water is not)
 };
 
-// Multi-month map work a field unit is committed to. While set, the unit
-// cannot move and its moves are not refreshed at month end. Builders build
-// rinks; scouts establish scouting networks with independents (D29).
-export type UnitWork =
-  | {
-      task: "build-rink";
-      x: number;
-      y: number;
-      rinkKind: "ice" | "inline";
-      monthsRemaining: number;
-    }
-  | {
-      task: "establish-network";
-      orgId: string;
-      monthsRemaining: number;
-    };
+// Multi-turn map work a field unit is committed to. While set, the unit
+// cannot move and its moves are not refreshed at turn end. Builders build
+// rinks. (Scout network-building was work too until D38 made it instant.)
+export type UnitWork = {
+  task: "build-rink";
+  x: number;
+  y: number;
+  rinkKind: "ice" | "inline";
+  monthsRemaining: number;
+};
 
 // A movable unit on the world (the Founding Group before founding; Scouts and
 // Builders after). All player field units share this shape and live in

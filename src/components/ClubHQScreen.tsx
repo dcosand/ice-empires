@@ -39,6 +39,7 @@ import { PlayerHeadshot } from "./HockeyCard";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 import { primeTryoutMusic } from "./BackgroundMusic";
+import { getClubRinks } from "../engine/rinkSystem";
 
 export type HQTab =
   | "overview"
@@ -186,6 +187,7 @@ function OverviewTab({ state }: { state: GameState }) {
           </div>
         ))}
       </div>
+      <FundsFlow state={state} />
       {upkeep.total > 0 ? (
         <div className="hq-upkeep-note">
           Funds income shown is net of <strong>{upkeep.total} upkeep</strong>/turn
@@ -212,7 +214,7 @@ function OverviewTab({ state }: { state: GameState }) {
                   {productionItemName(prod.kind, prod.itemId)}
                 </div>
                 <div className="faint">
-                  {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} remaining
+                  {turnsText(prod.monthsRemaining)} remaining
                 </div>
               </div>
             </div>
@@ -374,6 +376,100 @@ function TeamTab({
   );
 }
 
+function FundsFlow({ state }: { state: GameState }) {
+  const lines = fundsFlowLines(state);
+  const positive = lines.filter((line) => line.amount > 0);
+  const negative = lines.filter((line) => line.amount < 0);
+  return (
+    <div className="hq-funds-flow">
+      <div className="hq-funds-col">
+        <div className="hq-funds-title">Funds generated each turn</div>
+        {positive.length > 0 ? (
+          positive.map((line) => <FundsLine key={line.label} line={line} />)
+        ) : (
+          <div className="faint">No recurring Funds income yet.</div>
+        )}
+      </div>
+      <div className="hq-funds-col">
+        <div className="hq-funds-title">Funds spent each turn</div>
+        {negative.length > 0 ? (
+          negative.map((line) => <FundsLine key={line.label} line={line} />)
+        ) : (
+          <div className="faint">No recurring Funds upkeep right now.</div>
+        )}
+        <div className="hq-funds-note">
+          Production, tryouts, and independent introductions spend Funds
+          immediately when you confirm them.
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FundsLine({
+  line,
+}: {
+  line: { label: string; amount: number };
+}) {
+  return (
+    <div className={`hq-funds-line${line.amount < 0 ? " neg" : ""}`}>
+      <span>{line.label}</span>
+      <strong>
+        {line.amount > 0 ? "+" : ""}
+        {line.amount}
+      </strong>
+    </div>
+  );
+}
+
+function fundsFlowLines(state: GameState): { label: string; amount: number }[] {
+  const lines: { label: string; amount: number }[] = [];
+  const addLine = (label: string, amount: number) => {
+    if (amount !== 0) lines.push({ label, amount });
+  };
+
+  addLine("Club base", state.club?.monthlyBaseIncome.funds ?? 0);
+
+  // (reduce with an inline type check — .filter() doesn't narrow effect unions)
+  const monthlyFunds = (
+    effects: readonly { type: string; resource?: string; amount?: number }[] | undefined,
+  ): number =>
+    effects?.reduce(
+      (sum, effect) =>
+        effect.type === "monthlyIncome" && effect.resource === "funds"
+          ? sum + (effect.amount ?? 0)
+          : sum,
+      0,
+    ) ?? 0;
+
+  for (const facilityId of state.facilities) {
+    const facility = ALL_FACILITY_DEFS_BY_ID[facilityId];
+    addLine(facility?.name ?? facilityId, monthlyFunds(facility?.effects));
+  }
+
+  for (const card of state.cards) {
+    addLine(card.name, monthlyFunds(card.effects));
+  }
+
+  for (const owned of state.units) {
+    const def = ALL_UNIT_DEFS_BY_ID[owned.unitDefId];
+    addLine(owned.name, monthlyFunds(def?.effects));
+  }
+
+  const rinkFunds = state.world ? getClubRinks(state.world).length : 0;
+  addLine("Club rinks", rinkFunds);
+
+  const upkeep = getMonthlyUpkeep(state);
+  addLine("Field unit upkeep", -upkeep.units);
+  addLine("Rink maintenance", -upkeep.rinks);
+
+  return lines;
+}
+
+function turnsText(turns: number): string {
+  return `${turns} turn${turns === 1 ? "" : "s"}`;
+}
+
 function LineSlot({ label, player }: { label: string; player: Player | null }) {
   if (!player) {
     return (
@@ -466,7 +562,7 @@ function PersonnelTab({ state }: { state: GameState }) {
               role="Construction"
               note={
                 u.working?.task === "build-rink"
-                  ? `Building a rink — ${u.working.monthsRemaining} mo to go.`
+                  ? `Building a rink — ${turnsText(u.working.monthsRemaining)} to go.`
                   : "Clearing ponds, raising rinks, cutting sticks."
               }
             />
@@ -492,12 +588,9 @@ function ScoutRow({ scout, state }: { scout: ScoutCharacter; state: GameState })
   const tier = SCOUT_TIERS_BY_ID[scout.tier];
   const unit = allScouts(state.world).find((u) => u.id === scout.id);
   const { have, need } = xpToNextPromotion(scout);
-  const doing =
-    unit?.working?.task === "establish-network"
-      ? `Establishing a scouting network — ${unit.working.monthsRemaining} mo to go.`
-      : unit
-        ? "In the field, mapping the hockey world."
-        : "Between assignments.";
+  const doing = unit
+    ? "In the field, mapping the hockey world."
+    : "Between assignments.";
 
   return (
     <div className="hq-scout-row">
@@ -580,7 +673,7 @@ function ProductionTab({
                 <div className="hq-now-meta">
                   <span>Paid in full — the crew is on it.</span>
                   <span>
-                    {prod.monthsRemaining} month{prod.monthsRemaining === 1 ? "" : "s"} left
+                    {turnsText(prod.monthsRemaining)} left
                   </span>
                   {canCancelProduction(state) && (
                     <button

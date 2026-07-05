@@ -61,9 +61,9 @@ function ResourceIcon({ resource }: { resource: ResourceKey }) {
 
 const RESOURCE_TIP: Record<ResourceKey, string> = {
   funds:
-    "Funds — the club's money and muscle. Builds, tryouts, and introductions are paid in full upfront; income refills the treasury each month.",
+    "Funds — the club's money and muscle. Builds, tryouts, and introductions are paid in full upfront; income refills the treasury each turn.",
   hockeyKnowledge:
-    "Hockey Knowledge — research. Each month it flows into your active tech.",
+    "Hockey Knowledge — research. Each turn it flows into your active tech.",
   reputation:
     "Reputation — your standing in hockey. Never spent: doors open at higher standing.",
 };
@@ -192,6 +192,7 @@ export function TopBar({
         )}
         <span className="pill" title={`Turn ${state.month}`}>
           <strong>{monthLabel}</strong>
+          <span>Turn {state.month}</span>
         </span>
         <span className="pill pill-era">{era?.name}</span>
       </div>

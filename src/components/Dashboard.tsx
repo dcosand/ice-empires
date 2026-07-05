@@ -7,7 +7,7 @@ import type {
   PendingEncounter,
 } from "../types/game";
 import { Onboarding } from "./Onboarding";
-import { ERAS, ERA_UNLOCK_MESSAGES } from "../data/eras";
+import { ERAS } from "../data/eras";
 import { CLUBS, clubAsset } from "../data/clubs";
 import {
   ALL_FACILITY_DEFS_BY_ID,
@@ -143,15 +143,6 @@ export function Dashboard({
         dispatch={dispatch}
         onOpenHQ={() => openView("club")}
       />
-
-      {state.nextEraUnlocked && (
-        <div className="era-banner">
-          <h3>{ERAS[state.eraId]?.name ?? "New era"} reached</h3>
-          <div className="muted">
-            {state.club?.name} {ERA_UNLOCK_MESSAGES[state.eraId] ?? "has entered a new era."}
-          </div>
-        </div>
-      )}
 
       <div className="map-stage">
         <IsoWorldMap
@@ -403,7 +394,7 @@ function CommandRail({
         disabled={!canEndMonth}
         onClick={() => dispatch({ type: "END_MONTH" })}
       >
-        End Turn — {turnDateLabel(state.month)}
+        End Turn
       </button>
       {!canEndMonth && (
         <div className="rail-blocked">Needs: {missing.join(", ")}</div>
@@ -905,7 +896,7 @@ function facilityValue(id: string): string {
   if (!def) return "New club infrastructure is online.";
   const effects = def.effects.map((effect) => {
     if (effect.type === "monthlyIncome") {
-      return `+${effect.amount} ${RESOURCE_LABELS[effect.resource]}/mo`;
+      return `+${effect.amount} ${RESOURCE_LABELS[effect.resource]}/turn`;
     }
     if (effect.type === "unlockRecruitment") return "Unlocks basic player recruitment";
     return "Improves local recruitment events";

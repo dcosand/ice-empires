@@ -173,8 +173,8 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
     "build",
     rinkKind === "ice" ? "Rink construction begins" : "Street rink paving begins",
     rinkKind === "ice"
-      ? `Boards, lines, and a shoveling schedule: a Level 1 outdoor rink is underway (${months} month${months === 1 ? "" : "s"}).`
-      : `Asphalt, nets, and orange wheels: a street hockey rink is underway (${months} month${months === 1 ? "" : "s"}).`,
+      ? `Boards, lines, and a shoveling schedule: a Level 1 outdoor rink is underway (${months} turn${months === 1 ? "" : "s"}).`
+      : `Asphalt, nets, and orange wheels: a street hockey rink is underway (${months} turn${months === 1 ? "" : "s"}).`,
   );
   if (!grievedClubId) return logged;
   const grievedName = CLUBS[grievedClubId]?.name ?? "A rival club";
@@ -198,7 +198,7 @@ export function progressBuilderWork(draft: GameState, push: PushLog): void {
       push(
         "build",
         "Rink under construction",
-        `The crew keeps at it — ${unit.working.monthsRemaining} month${
+        `The crew keeps at it — ${unit.working.monthsRemaining} turn${
           unit.working.monthsRemaining === 1 ? "" : "s"
         } to playable ice.`,
       );

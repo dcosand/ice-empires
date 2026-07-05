@@ -2930,7 +2930,7 @@ function UnitOverlay({
               className="btn btn-gold btn-block"
               onClick={() => dispatch({ type: "BUILD_RINK", unitId })}
             >
-              Build Level 1 Rink (2 mo)
+              Build Level 1 Rink (2 turns)
             </button>
           )}
           {showPave && (
@@ -2938,7 +2938,7 @@ function UnitOverlay({
               className="btn btn-gold btn-block"
               onClick={() => dispatch({ type: "BUILD_RINK", unitId })}
             >
-              Pave Street Rink (2 mo)
+              Pave Street Rink (2 turns)
             </button>
           )}
           {showHarvest && (
@@ -2956,7 +2956,7 @@ function UnitOverlay({
                 dispatch({ type: "ESTABLISH_NETWORK", unitId, orgId: networkOrg.id })
               }
             >
-              Establish Scouting Network (2 mo)
+              Establish Scouting Network
             </button>
           )}
           {!isLeader && (
@@ -2971,21 +2971,14 @@ function UnitOverlay({
         {working ? (
           <div className="unit-hint muted">
             Working —{" "}
-            {working.task === "establish-network"
-              ? `building a scouting network with ${
-                  world.hockeyOrgs.find((o) => o.id === working.orgId)?.name ??
-                  "the independents"
-                }`
-              : working.rinkKind === "ice"
-                ? "building a rink"
-                : "paving a rink"}
-            , {working.monthsRemaining} mo to go.
+            {working.rinkKind === "ice" ? "building a rink" : "paving a rink"}
+            , {working.monthsRemaining} turn{working.monthsRemaining === 1 ? "" : "s"} to go.
           </div>
         ) : (
           !hasOrder && (
             <div className="unit-hint faint">
               {outOfMoves
-                ? "Out of moves this month."
+                ? "Out of moves this turn."
                 : isBuilder
                   ? "Move to a frozen pond to clear it, or a grove to harvest sticks."
                   : "Click a highlighted tile or use the arrow keys to move."}
@@ -3102,14 +3095,14 @@ function MapControls({
                 : "Cleared Pond"}
             </strong>
             <span className="region-resource">
-              {selRink.level >= 1 ? `Built Month ${selRink.builtMonth}` : "Ready for a rink"}
+              {selRink.level >= 1 ? `Built Turn ${selRink.builtMonth}` : "Ready for a rink"}
             </span>
           </div>
           <div className="region-report">
             {selRink.ownerClubId
               ? `Built by ${CLUBS[selRink.ownerClubId]?.name ?? "a rival club"} — their ice, their pride, none of your benefits.`
               : selRink.level >= 1
-                ? `${selRinkIsClub ? "A club rink — it pays +1 Funds/month and hosts tryouts. " : "Beyond your HQ's reach — no club benefits from here. "}${
+                ? `${selRinkIsClub ? "A club rink — it pays +1 Funds/turn and hosts tryouts. " : "Beyond your HQ's reach — no club benefits from here. "}${
                     selRink.kind === "ice" ? "Ice, boards, and pride." : "Asphalt, nets, and orange wheels."
                   }`
                 : "Shoveled clear by your crew. With Outdoor Rinkcraft, the Rink Rats can raise a Level 1 rink here."}

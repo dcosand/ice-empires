@@ -37,7 +37,7 @@ export function ThisMonthPanel({
       done: buildReady,
       hint:
         !buildReady && firstMonth
-          ? "Local Notice Board is cheapest (3 Funds) and finishes in 1 month."
+          ? "Local Notice Board is cheapest (3 Funds) and finishes in 1 turn."
           : !buildReady
             ? "Costs are paid upfront — it's fine to save Funds and build later."
             : undefined,
@@ -64,16 +64,16 @@ export function ThisMonthPanel({
 
   const endLabel =
     state.month >= state.maxMonths
-      ? `End Month ${state.month} →`
-      : `End Month ${state.month}`;
+      ? "End Turn →"
+      : "End Turn";
 
   return (
     <div className={`panel this-month${firstMonth ? " emphasis" : ""}`}>
-      <h3>{firstMonth ? "Your First Month" : "This Month"}</h3>
+      <h3>{firstMonth ? "Your First Turn" : "This Turn"}</h3>
       <div className="panel-sub">
         {firstMonth
-          ? "Make your opening decisions, then end the month."
-          : "Adjust your plans, then end the month."}
+          ? "Make your opening decisions, then end the turn."
+          : "Adjust your plans, then end the turn."}
       </div>
 
       {steps.map((s) => (
@@ -89,7 +89,7 @@ export function ThisMonthPanel({
       <div className="tm-step end-step">
         <span className="tm-box arrow">▶</span>
         <div style={{ flex: 1 }}>
-          <div className="tm-label">End the month</div>
+          <div className="tm-label">End the turn</div>
           <button
             className="btn btn-gold btn-block"
             style={{ marginTop: 6 }}
@@ -100,7 +100,7 @@ export function ThisMonthPanel({
           </button>
           {!canEndMonth && (
             <div className="tm-blocked">
-              Choose {missing.join(" and ")} before ending the month.
+              Choose {missing.join(" and ")} before ending the turn.
             </div>
           )}
         </div>
