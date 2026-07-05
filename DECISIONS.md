@@ -195,3 +195,76 @@ visible. No hills are rendered yet, so there is no vantage level — add it when
 elevation becomes visual. Sight radii: scouts/founder/HQ 3, builders 2,
 rinks 1. Verified by a headless LOS test (mountain shields, grove blocks flat,
 mountain shows over grove).
+
+## D28 — Match engine moves from Act II to Act III
+The original Act II plan (docs/13 §4.1) opened with competitive hockey. Reversed:
+we do not yet understand player/team attributes well enough to make a match feel
+good, and a shallow 5-attribute model would bake in bad assumptions. Act II now
+builds the *evaluation* substrate (expanded ratings + scouting confidence +
+team-level aggregates, see docs/14 §8) and competition becomes the Act III entry
+criterion. Act II exit no longer requires playing or winning a game.
+
+## D29 — Every rink projects territory; income stays local (two-radius model)
+`CLUB_RINK_RADIUS = 3` splits into two independent radii: a **home economy
+radius** (unchanged = 3) still gates income (+1 Funds/mo), the rinks/2 upkeep tax
+(D25), and Hold Tryouts; a **territory projection radius** applies to *every*
+rink regardless of distance and feeds computed tile ownership (HQ + rinks +
+Affiliate independents). Fixes the Act-I anti-pattern where a forward rink was
+strictly worse than a home rink. Territory is derived each turn/render from
+sources, not stored per tile (like income).
+
+## D30 — Territory has mechanical teeth (never just map paint)
+Owned territory drives, in priority order: (1) the tryout pool — more owned tiles
+⇒ more candidates and a higher attribute floor (`holdTryouts`), the population
+metaphor and the headline payoff; (2) independent contention (a rink/Emissary in
+an indie's zone feeds the Anchor Club race); (3) rival grievance — building
+inside/against a contacted rival's territory nudges `rival.attitude` wary + an
+inbox line; (4) movement/build gating (D31). Borders render Civ VI-style in club
+colors from HQ + rinks.
+
+## D31 — Boundary enforcement: min build distance + unit-kind movement tiers
+Builders cannot build within N tiles of a known rival HQ or inside rival
+territory (placement-time check; default N=3, possibly era-scaled). Movement is
+gated by unit kind: **basic Scouts (and Scout Emissary) cross all borders from
+game start; Rink Rats/builders cannot enter a rival's territory.** No
+open-borders negotiation for now — scouts already pass, so there is nothing to
+trade yet; revisit as a Diplomacy-branch payoff if builders ever need to cross.
+
+## D32 — Tryouts are seasonal (twice/year), not any-month
+Hold Tryouts is gated to two calendar windows — spring (≈ May) and training camp
+(≈ Aug–Sep) — for the player *and* AI major clubs, in addition to the Funds cost.
+Makes the month/year matter and pushes the game toward Eastside Hockey Manager's
+scheduled scouting/camp rhythm. A completed camp cycle is a proposed Act-II exit
+gate. Pool size/quality scale with territory (D30).
+
+## D33 — Two scout tiers; Emissary owns network-building; scouts are assignable
+Base **Scout** stays a generalist (explore, survey, passive first-contact read)
+and crosses all borders. A new **Scout Emissary** (Club-Formation-era tech) is
+the only unit that runs "Establish Scouting Network" on an independent (2 months
+→ reveals prospects, unlocks recruiting, speeds influence; starts the Anchor Club
+race). Either can be *assigned* to an indie/major club for ongoing reports whose
+detail/confidence grow over time and go stale if the scout leaves. No per-club
+unique scout units — saves the uniques budget for later eras.
+
+## D34 — Scouting is squad voyeurism with confidence, earned on the map
+First contact with an independent or major club yields an immediate
+**low-confidence full-roster read**, shown on that entity's surface (major-club
+cinematic via tile or leader-overlay click; independent tile/ledger). Assigning
+scouts narrows confidence and reveals more attributes. This requires a real
+ratings system with per-attribute uncertainty (D35) — scouting and ratings are
+the same feature from two sides.
+
+## D35 — Player/team ratings need a real pass before any match engine (TODO)
+The 5-attribute, 20-scale `PlayerAttrs` is too thin to simulate hockey. Before
+Act III we need: expanded per-position attributes, current-vs-potential
+separation, per-attribute scouting confidence ranges, a derived overall/role
+fit, and **team-level aggregate ratings** (offense/defense/goaltending/special
+teams/cohesion) that a match engine composes from the roster. This is the gating
+design task; it graduates to its own doc (`docs/15_PLAYER_AND_TEAM_RATINGS.md`)
+when it matures.
+
+## D36 — The Log becomes an Inbox
+`EventLog` is promoted to an Inbox: existing monthly event entries plus news
+items with a sender/source — team notes, scout reports, rival-GM messages,
+independent overtures — with read/unread triage. Not a new parallel system;
+an evolution of the log categories.
