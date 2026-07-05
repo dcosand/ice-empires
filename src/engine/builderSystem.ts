@@ -8,9 +8,10 @@ import {
   tileAt,
   tileKey,
 } from "./world";
-import { allScouts, syncLegacyScout } from "./scoutSystem";
+import { allScouts, nextReadyUnitId, syncLegacyScout } from "./scoutSystem";
 import { rinkAt } from "./rinkSystem";
-import { buildBlockedByRival } from "./territorySystem";
+import { buildBlockedByRival, rivalTerritoryNearby } from "./territorySystem";
+import { CLUBS } from "../data/clubs";
 import { prependLog } from "./log";
 import type { PushLog } from "./turnContext";
 
@@ -72,7 +73,7 @@ export function clearSnow(state: GameState, unitId: string): GameState {
     world: syncLegacyScout(
       { ...world, rinks: [...world.rinks, cleared] },
       units,
-      world.selectedScoutId,
+      nextReadyUnitId(units, unit),
     ),
   };
   return prependLog(
@@ -148,17 +149,40 @@ export function startRinkBuild(state: GameState, unitId: string): GameState {
         }
       : u,
   );
+  // Rival grievance (D35): a rink raised hard against a contacted rival's
+  // border sours them. Building INSIDE is already rejected (D36); this catches
+  // the legal-but-provocative claim on their doorstep.
+  const grievedClubId = rivalTerritoryNearby(world, builder.x, builder.y);
   const next: GameState = {
     ...state,
-    world: syncLegacyScout({ ...world }, units, world.selectedScoutId),
+    world: syncLegacyScout(
+      {
+        ...world,
+        rivals: grievedClubId
+          ? world.rivals.map((r) =>
+              r.clubId === grievedClubId ? { ...r, attitude: "wary" as const } : r,
+            )
+          : world.rivals,
+      },
+      units,
+      nextReadyUnitId(units, builder),
+    ),
   };
-  return prependLog(
+  const logged = prependLog(
     next,
     "build",
     rinkKind === "ice" ? "Rink construction begins" : "Street rink paving begins",
     rinkKind === "ice"
       ? `Boards, lines, and a shoveling schedule: a Level 1 outdoor rink is underway (${months} month${months === 1 ? "" : "s"}).`
       : `Asphalt, nets, and orange wheels: a street hockey rink is underway (${months} month${months === 1 ? "" : "s"}).`,
+  );
+  if (!grievedClubId) return logged;
+  const grievedName = CLUBS[grievedClubId]?.name ?? "A rival club";
+  return prependLog(
+    logged,
+    "rival",
+    `${grievedName} resents the build`,
+    `${grievedName} takes note of the boards rising against their border. Their attitude cools to wary.`,
   );
 }
 
@@ -251,7 +275,7 @@ export function harvestBranches(state: GameState, unitId: string): GameState {
     world: syncLegacyScout(
       { ...world, tiles, harvestedTiles: [...world.harvestedTiles, key] },
       units,
-      world.selectedScoutId,
+      nextReadyUnitId(units, unit),
     ),
   };
   return prependLog(

@@ -109,28 +109,33 @@ export function Dashboard({
     prevMetRef.current = eraMet.map((r) => r.id);
     if (fresh) {
       setEraToast(fresh.label);
-      playSfx("check");
       const t = setTimeout(() => setEraToast(null), 4200);
       return () => clearTimeout(t);
     }
   }, [eraMet.map((r) => r.id).join("|")]);
 
-  // Event sounds: the big beats get their own audio on top of button clicks.
-  useEffect(() => {
-    if (state.pendingMeeting) playSfx("fanfare");
-  }, [state.pendingMeeting?.id]);
-  useEffect(() => {
-    if (completion) playSfx("complete");
-  }, [completion?.id]);
+  // End Turn gets one rollover sound. Follow-up modals/banners stay silent so
+  // production notifications do not read as a second click.
   useEffect(() => {
     if (state.month > 1) playSfx("endTurn");
   }, [state.month]);
+
   useEffect(() => {
-    if (state.nextEraUnlocked) playSfx("fanfare");
-  }, [state.eraId]);
-  useEffect(() => {
-    if (state.pendingTryout) playSfx("confirm");
-  }, [!!state.pendingTryout]);
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.code !== "Enter" && e.code !== "NumpadEnter") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!document.querySelector('[role="dialog"][aria-modal="true"]')) return;
+
+      const target = e.target as HTMLElement | null;
+      if (isTypingTarget(target)) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      clickTopModalDismissButton();
+    };
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
 
   return (
     <div className="dashboard dashboard-map-mode">
@@ -394,7 +399,7 @@ function CommandRail({
           className="btn btn-block"
           style={{ marginTop: 6 }}
           disabled={!canHoldTryouts(state)}
-          title={tryoutGateHint(tryoutGate(state))}
+          title={tryoutGateHint(tryoutGate(state), state.month)}
           onClick={() => {
             primeTryoutMusic();
             dispatch({ type: "HOLD_TRYOUTS" });
@@ -728,6 +733,29 @@ function activeProductionName(state: GameState) {
 function activeResearchName(state: GameState) {
   if (!state.activeResearch) return undefined;
   return RESEARCH_BY_ID[state.activeResearch.techId]?.name;
+}
+
+function isTypingTarget(target: HTMLElement | null): boolean {
+  if (!target) return false;
+  if (target.isContentEditable) return true;
+  const tag = target.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+
+function clickTopModalDismissButton(): void {
+  const dialogs = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="dialog"][aria-modal="true"]'),
+  );
+  const dialog = dialogs[dialogs.length - 1];
+  if (!dialog) return;
+  const buttons = Array.from(
+    dialog.querySelectorAll<HTMLButtonElement>("button:not(:disabled)"),
+  );
+  const dismiss = buttons.find((button) => {
+    const label = `${button.getAttribute("aria-label") ?? ""} ${button.textContent ?? ""}`;
+    return /\b(close|continue|acknowledge)\b/i.test(label);
+  });
+  dismiss?.click();
 }
 
 function completionEvents(state: GameState): EventLogEntry[] {

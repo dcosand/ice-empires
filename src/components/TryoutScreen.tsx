@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, Player, PlayerAttrs } from "../types/game";
 import { clubAsset } from "../data/clubs";
@@ -37,9 +37,6 @@ export function TryoutScreen({
   const [index, setIndex] = useState(0);
 
   const cinematic = !!tryout?.firstEver;
-  useEffect(() => {
-    if (cinematic) playSfx("crowd");
-  }, [cinematic]);
 
   if (!tryout) return null;
 

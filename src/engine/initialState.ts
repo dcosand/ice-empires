@@ -24,6 +24,7 @@ export function createInitialState(): GameState {
     pendingPlayerReveal: null,
     seenFirstTryout: false,
     seenFirstPlayer: false,
+    trainingCampsHeld: 0,
     facilities: [],
     units: [],
     completedResearch: [],

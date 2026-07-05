@@ -115,6 +115,25 @@ export function territoryOwnerAt(
   return ownership.ownerByTile[tileKey(x, y)] ?? null;
 }
 
+// The contacted rival whose territory (x,y) sits inside or hard against
+// (within 1 tile of), if any — the grievance trigger (D35): you can't build
+// INSIDE their borders (D36), but raising boards against them still stings.
+export function rivalTerritoryNearby(
+  world: WorldState | null,
+  x: number,
+  y: number,
+): string | null {
+  if (!world) return null;
+  const ownership = computeTerritory(world);
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const owner = ownership.ownerByTile[tileKey(x + dx, y + dy)];
+      if (owner && owner !== PLAYER_OWNER) return owner;
+    }
+  }
+  return null;
+}
+
 // Is (x,y) inside the territory of any CONTACTED rival? Enforcement (build
 // rejection, builder movement — D36) only respects borders the player knows.
 export function isKnownRivalTerritory(

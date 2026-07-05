@@ -15,6 +15,12 @@ import {
 import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
 import { playerTerritorySize } from "./territorySystem";
+import {
+  nextTryoutWindowMonth,
+  turnMonthName,
+  tryoutWindowFor,
+} from "./calendar";
+import { PUND_HOCKEY_ERA_ID } from "../data/eras";
 import { prependLog } from "./log";
 import { nextRandom } from "./rng";
 import type { PushLog } from "./turnContext";
@@ -56,13 +62,24 @@ export type TryoutGate =
   | "ok"
   | "no-tech"
   | "no-rink"
+  | "out-of-season"
   | "no-funds"
   | "tryout-open"
   | "roster-full";
 
+// Seasonal windows (D37) start with Club Formation: pond-era tryouts stay
+// any-month so the first team comes together at its own pace (the same
+// doctrine that delays upkeep, D25).
+export function tryoutsAreSeasonal(state: GameState): boolean {
+  return state.eraId !== PUND_HOCKEY_ERA_ID;
+}
+
 export function tryoutGate(state: GameState): TryoutGate {
   if (!state.completedResearch.includes("local-tryouts")) return "no-tech";
   if (!state.world || getClubRinks(state.world).length === 0) return "no-rink";
+  if (tryoutsAreSeasonal(state) && !tryoutWindowFor(state.month)) {
+    return "out-of-season";
+  }
   if (state.pendingTryout) return "tryout-open";
   if (state.roster.length >= ROSTER_CAP) return "roster-full";
   if (state.resources.funds < TRYOUT_COST_FUNDS) return "no-funds";
@@ -73,12 +90,18 @@ export function canHoldTryouts(state: GameState): boolean {
   return tryoutGate(state) === "ok";
 }
 
-export function tryoutGateHint(gate: TryoutGate): string {
+export function tryoutGateHint(gate: TryoutGate, month?: number): string {
   switch (gate) {
     case "no-tech":
       return "Research Local Tryouts first.";
     case "no-rink":
       return "Needs a rink near your HQ — send the Rink Rats to a frozen pond.";
+    case "out-of-season":
+      return month === undefined
+        ? "Tryouts are seasonal — wait for spring tryouts (May) or training camp (Aug–Sep)."
+        : `Tryouts are seasonal — next window opens in ${turnMonthName(
+            nextTryoutWindowMonth(month),
+          )}.`;
     case "no-funds":
       return `Needs ${TRYOUT_COST_FUNDS} Funds for flyers and hot drinks.`;
     case "tryout-open":
@@ -150,8 +173,16 @@ function rollCandidate(
   };
 }
 
-export function holdTryouts(state: GameState): GameState {
-  if (!canHoldTryouts(state)) return state;
+// `force` (dev panel) bypasses every gate, including the seasonal window.
+export function holdTryouts(
+  state: GameState,
+  opts: { force?: boolean } = {},
+): GameState {
+  if (!opts.force && !canHoldTryouts(state)) return state;
+  // A tryout held in an Aug–Sep window is a training camp (D37) — counted
+  // toward the club-formation era's `training-camp` exit requirement.
+  const isCamp =
+    tryoutsAreSeasonal(state) && tryoutWindowFor(state.month) === "camp";
 
   // Thread the seeded RNG through a working copy (rollCandidate mutates
   // rngSeed on it) so the whole tryout is deterministic per seed.
@@ -182,11 +213,12 @@ export function holdTryouts(state: GameState): GameState {
     // The very first tryout earns the letterbox cinematic framing.
     pendingTryout: { candidates, recruitedIds: [], firstEver: !state.seenFirstTryout },
     seenFirstTryout: true,
+    trainingCampsHeld: state.trainingCampsHeld + (isCamp ? 1 : 0),
   };
   return prependLog(
     next,
     "card",
-    "Tryouts posted",
+    isCamp ? "Training camp opens" : "Tryouts posted",
     `Flyers go up at the rink. ${count} hopeful locals lace up whatever they own and wobble onto the ice.${
       territory.candidates > 0
         ? " Word has spread across your territory — the turnout is bigger than the pond alone could draw."

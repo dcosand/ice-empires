@@ -86,6 +86,7 @@ export function PlayerRevealScene({
           <p className="reveal-line">{line}</p>
           <button
             className="btn btn-gold reveal-continue"
+            aria-label="Continue"
             onClick={() => dispatch({ type: "ACKNOWLEDGE_PLAYER_REVEAL" })}
           >
             {player.hasEquipment ? "Hand them a stick" : "Welcome them aboard"}

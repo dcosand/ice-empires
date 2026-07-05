@@ -7,9 +7,11 @@ type Track = { name: string; url: string };
 
 const TITLE_TRACKS: Track[] = [
   { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
+  { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
 ];
 const ONBOARDING_TRACKS: Track[] = [
   { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
+  { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
 ];
 const ERA_TRACKS: Record<string, Track> = {
   "pond-hockey": { name: "Era 01", url: "/assets/audio/music/era01-music.wav" },
@@ -20,17 +22,25 @@ const ERA_TRACKS: Record<string, Track> = {
 };
 
 const GAME_VOLUME = 0.35;
+const CONTACT_GAME_VOLUME = 0.08;
+const CONTACT_VOLUME = 0.46;
 const TRYOUT_VOLUME = 0.42;
-const TRYOUT_START_VOLUME = 0.12;
+const TRYOUT_START_VOLUME = 0;
 const FADE_MS = 950;
 const MUSIC_CROSSFADE_MS = 2400;
 const RETURN_FADE_MS = 1800;
+const TRYOUT_CROSSFADE_MS = 2200;
 const TRYOUT_TRACK = {
   name: "Tryouts",
   url: "/assets/audio/scenes/tryouts%20or%20new%20signing.m4a",
 };
+const CONTACT_TRACK = {
+  name: "First Contact",
+  url: "/assets/audio/scenes/hockey-sounds.mp3",
+};
 const TRYOUT_AUDIO_PRIME_EVENT = "ice-empires:prime-tryout-audio";
 const MUSIC_SCENE_EVENT = "ice-empires:music-scene";
+const CONTACT_AUDIO_EVENT = "ice-empires:contact-audio";
 
 export function primeTryoutMusic() {
   window.dispatchEvent(new Event(TRYOUT_AUDIO_PRIME_EVENT));
@@ -38,6 +48,10 @@ export function primeTryoutMusic() {
 
 export function setBackgroundMusicScene(scene: MusicScene | null) {
   window.dispatchEvent(new CustomEvent(MUSIC_SCENE_EVENT, { detail: scene }));
+}
+
+export function setContactMusicActive(active: boolean) {
+  window.dispatchEvent(new CustomEvent(CONTACT_AUDIO_EVENT, { detail: active }));
 }
 
 function baseMusicScene(phase: Phase): MusicScene {
@@ -49,7 +63,9 @@ function baseMusicScene(phase: Phase): MusicScene {
 function tracksFor(scene: MusicScene, eraId: string): Track[] {
   if (scene === "title") return TITLE_TRACKS;
   if (scene === "onboarding") return ONBOARDING_TRACKS;
-  return [ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"]];
+  const current = ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"];
+  const rest = Object.values(ERA_TRACKS).filter((track) => track.url !== current.url);
+  return [current, ...rest.filter((track, i) => rest.findIndex((t) => t.url === track.url) === i)];
 }
 
 function fadeAudio(
@@ -92,10 +108,12 @@ export function BackgroundMusic({
 }) {
   const audioARef = useRef<HTMLAudioElement>(null);
   const audioBRef = useRef<HTMLAudioElement>(null);
+  const contactRef = useRef<HTMLAudioElement>(null);
   const tryoutRef = useRef<HTMLAudioElement>(null);
   const [index, setIndex] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [sceneOverride, setSceneOverride] = useState<MusicScene | null>(null);
+  const [contactActive, setContactActive] = useState(false);
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
@@ -131,11 +149,11 @@ export function BackgroundMusic({
     }, 0);
   };
 
-  const fadeOutGame = () => {
+  const fadeOutGame = (ms = FADE_MS) => {
     const game = gameAudio();
     if (!game || game.paused) return;
     fadeCleanupsRef.current.push(
-      fadeAudio(game, 0, FADE_MS, () => {
+      fadeAudio(game, 0, ms, () => {
         suppressGamePauseRef.current = true;
         game.pause();
         window.setTimeout(() => {
@@ -158,6 +176,12 @@ export function BackgroundMusic({
         }, 0);
       }),
     );
+  };
+
+  const fadeGameTo = (volume: number, ms = FADE_MS) => {
+    const game = gameAudio();
+    if (!game || game.paused) return;
+    fadeCleanupsRef.current.push(fadeAudio(game, volume, ms));
   };
 
   const returnToGameMusic = () => {
@@ -193,22 +217,35 @@ export function BackgroundMusic({
     tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
     tryout.load();
-    tryout.play().catch(() => {});
+    tryout
+      .play()
+      .then(() => {
+        suppressTryoutPauseRef.current = true;
+        tryout.pause();
+        tryout.currentTime = 0;
+        window.setTimeout(() => {
+          suppressTryoutPauseRef.current = false;
+        }, 0);
+      })
+      .catch(() => {});
   };
 
-  const startTryoutMusic = () => {
+  const startTryoutMusic = (restart = false) => {
     const game = gameAudio();
     const tryout = tryoutRef.current;
     if (!game || !tryout) return;
 
     cancelFades();
-    tryout.volume = Math.max(tryout.volume, TRYOUT_START_VOLUME);
+    if (restart) tryout.currentTime = 0;
+    tryout.volume = TRYOUT_START_VOLUME;
 
     const start = tryout.paused ? tryout.play() : Promise.resolve();
     start
       .then(() => {
-        fadeCleanupsRef.current.push(fadeAudio(tryout, TRYOUT_VOLUME));
-        fadeOutGame();
+        fadeCleanupsRef.current.push(
+          fadeAudio(tryout, TRYOUT_VOLUME, TRYOUT_CROSSFADE_MS),
+        );
+        fadeOutGame(TRYOUT_CROSSFADE_MS);
       })
       .catch(() => {
         // If browser policy blocks the event track, keep the normal track
@@ -255,10 +292,15 @@ export function BackgroundMusic({
     const onScene = (event: Event) => {
       setSceneOverride((event as CustomEvent<MusicScene | null>).detail ?? null);
     };
+    const onContact = (event: Event) => {
+      setContactActive(!!(event as CustomEvent<boolean>).detail);
+    };
     window.addEventListener(MUSIC_SCENE_EVENT, onScene);
+    window.addEventListener(CONTACT_AUDIO_EVENT, onContact);
     return () => {
       window.removeEventListener(TRYOUT_AUDIO_PRIME_EVENT, primeTryoutAudioElement);
       window.removeEventListener(MUSIC_SCENE_EVENT, onScene);
+      window.removeEventListener(CONTACT_AUDIO_EVENT, onContact);
     };
   }, []);
 
@@ -330,7 +372,7 @@ export function BackgroundMusic({
 
     if (tryoutActive) {
       tryoutWasActiveRef.current = true;
-      startTryoutMusic();
+      startTryoutMusic(true);
       return cancelFades;
     }
 
@@ -340,6 +382,40 @@ export function BackgroundMusic({
 
     return cancelFades;
   }, [tryoutActive]);
+
+  useEffect(() => {
+    const contact = contactRef.current;
+    if (!contact) return undefined;
+
+    if (contactActive) {
+      contact.currentTime = 0;
+      contact.volume = 0;
+      const start = contact.paused ? contact.play() : Promise.resolve();
+      start
+        .then(() => {
+          fadeGameTo(CONTACT_GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.7);
+          fadeCleanupsRef.current.push(fadeAudio(contact, CONTACT_VOLUME, MUSIC_CROSSFADE_MS * 0.7));
+        })
+        .catch(() => undefined);
+      return undefined;
+    }
+
+    if (!contact.paused) {
+      fadeCleanupsRef.current.push(
+        fadeAudio(contact, 0, MUSIC_CROSSFADE_MS * 0.7, () => {
+          contact.pause();
+          contact.currentTime = 0;
+        }),
+      );
+    }
+    if (musicIntentRef.current && !tryoutActive) {
+      const game = gameAudio();
+      if (game?.paused) game.play().catch(() => undefined);
+      fadeGameTo(GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.8);
+    }
+
+    return undefined;
+  }, [contactActive, tryoutActive]);
 
   useEffect(() => {
     if (!tryoutActive) return undefined;
@@ -429,6 +505,12 @@ export function BackgroundMusic({
             musicIntentRef.current = false;
           }
         }}
+      />
+      <audio
+        ref={contactRef}
+        src={CONTACT_TRACK.url}
+        preload="auto"
+        loop
       />
       <audio
         ref={tryoutRef}

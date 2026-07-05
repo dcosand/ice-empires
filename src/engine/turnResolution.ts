@@ -6,6 +6,7 @@ import { progressProduction } from "./productionSystem";
 import { progressBuilderWork } from "./builderSystem";
 import { autoEquipRoster } from "./tryoutSystem";
 import {
+  accrueRinkPresence,
   checkIndependentContact,
   trackRivalOrgContacts,
 } from "./independentsSystem";
@@ -62,6 +63,7 @@ export function endMonth(state: GameState): GameState {
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)
+  accrueRinkPresence(draft, push); // rinks near an indie court them monthly (D35)
   checkIndependentContact(draft, push); // a unit parked beside an org meets them
   progressRivalEras(draft, push); // rivals advance eras on their own clock
   applyScoutPromotions(draft, push); // banked fieldwork XP becomes promotions

@@ -42,7 +42,7 @@ export function ResearchPanel({
   const hkPerMonth = getMonthlyIncome(state).hockeyKnowledge;
   const slotBusy = !!active;
 
-  const monthsFor = (cost: number) =>
+  const turnsFor = (cost: number) =>
     hkPerMonth > 0 ? Math.max(1, Math.ceil(cost / hkPerMonth)) : Infinity;
 
   const lookup = useMemo(() => groups.flatMap((g) => g.options), [groups]);
@@ -74,6 +74,11 @@ export function ResearchPanel({
   const detail = lookup.find((o) => o.id === detailId) ?? null;
 
   const selectable = (o: ResearchOption) => o.status === "available" && !slotBusy;
+  const availableCount = lookup.filter(selectable).length;
+  const activeTurns =
+    active && hkPerMonth > 0
+      ? Math.max(1, Math.ceil(active.knowledgeRemaining / hkPerMonth))
+      : Infinity;
 
   // Drop a stale selection once the slot fills or the pick is no longer open.
   useEffect(() => {
@@ -99,9 +104,31 @@ export function ResearchPanel({
   return (
     <div className="panel production-panel tech-tree-panel">
       <div className="panel-sub">
-        Funded by Hockey Knowledge (+{hkPerMonth}/mo applied to active research).
-        The whole arc is visible — future eras are grayed out until you get
-        there. Click an available tech to select it, ⓘ for details.
+        Pick one project. Research advances at the end of each turn; cards show
+        the estimated turns required. Future eras remain visible but locked
+        until your club reaches them.
+      </div>
+
+      <div className="research-summary">
+        <div className="research-summary-card">
+          <span>Active project</span>
+          <strong>{activeDef?.name ?? "None selected"}</strong>
+          <em>
+            {active && activeDef
+              ? turnEstimateLabel(activeTurns, "left")
+              : "Choose a card below"}
+          </em>
+        </div>
+        <div className="research-summary-card">
+          <span>Research pace</span>
+          <strong>{hkPerMonth > 0 ? "Advancing" : "Stopped"}</strong>
+          <em>{hkPerMonth > 0 ? "Progress each turn" : "No knowledge income"}</em>
+        </div>
+        <div className="research-summary-card">
+          <span>Open choices</span>
+          <strong>{availableCount}</strong>
+          <em>{availableCount === 1 ? "available tech" : "available techs"}</em>
+        </div>
       </div>
 
       {active && activeDef && (
@@ -121,11 +148,11 @@ export function ResearchPanel({
           </div>
           <ProgressBar
             fraction={active.progressKnowledge / activeDef.cost}
-            left={`${active.progressKnowledge}/${activeDef.cost} Hockey Knowledge`}
+            left={`${Math.round((active.progressKnowledge / activeDef.cost) * 100)}% complete`}
             right={
-              hkPerMonth > 0
-                ? `funded by +${hkPerMonth} HK/turn · ~${Math.ceil(active.knowledgeRemaining / hkPerMonth)} turn${Math.ceil(active.knowledgeRemaining / hkPerMonth) === 1 ? "" : "s"} left`
-                : "needs Hockey Knowledge income"
+              activeTurns === Infinity
+                ? "needs knowledge income"
+                : turnEstimateLabel(activeTurns, "left")
             }
           />
         </div>
@@ -153,6 +180,7 @@ export function ResearchPanel({
               byEraBranch={byEraBranch}
               selectedId={selectedId}
               selectable={selectable}
+              turnsFor={turnsFor}
               onNodeClick={onNodeClick}
               onDetails={setDetailId}
             />
@@ -164,7 +192,7 @@ export function ResearchPanel({
         selected={selected}
         slotBusy={slotBusy}
         cancellable={canCancelResearch(state)}
-        estMonths={selected ? monthsFor(selected.cost) : Infinity}
+        estTurns={selected ? turnsFor(selected.cost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedId(null)}
       />
@@ -172,7 +200,7 @@ export function ResearchPanel({
       {detail && (
         <DetailsModal
           opt={detail}
-          estMonths={monthsFor(detail.cost)}
+          estTurns={turnsFor(detail.cost)}
           onClose={() => setDetailId(null)}
         />
       )}
@@ -185,6 +213,7 @@ function TechBranchRow({
   byEraBranch,
   selectedId,
   selectable,
+  turnsFor,
   onNodeClick,
   onDetails,
 }: {
@@ -192,6 +221,7 @@ function TechBranchRow({
   byEraBranch: Map<string, Map<ResearchBranch, ResearchOption[]>>;
   selectedId: string | null;
   selectable: (o: ResearchOption) => boolean;
+  turnsFor: (cost: number) => number;
   onNodeClick: (o: ResearchOption) => void;
   onDetails: (id: string) => void;
 }) {
@@ -211,6 +241,7 @@ function TechBranchRow({
                 opt={opt}
                 selected={opt.id === selectedId}
                 selectable={selectable(opt)}
+                estTurns={turnsFor(opt.cost)}
                 onClick={() => onNodeClick(opt)}
                 onDetails={() => onDetails(opt.id)}
               />
@@ -232,16 +263,26 @@ function TechNode({
   opt,
   selected,
   selectable,
+  estTurns,
   onClick,
   onDetails,
 }: {
   opt: ResearchOption;
   selected: boolean;
   selectable: boolean;
+  estTurns: number;
   onClick: () => void;
   onDetails: () => void;
 }) {
   const badge = statusBadge(opt.status);
+  const statusText =
+    opt.status === "completed"
+      ? "Done"
+      : opt.status === "active"
+        ? "Active"
+        : opt.status === "locked"
+          ? "Locked"
+          : turnEstimateLabel(estTurns);
   return (
     <div
       className={[
@@ -285,7 +326,7 @@ function TechNode({
               ⓘ
             </button>
           </div>
-          <div className="tech-node-cost">{opt.cost} HK</div>
+          <div className="tech-node-time">{statusText}</div>
         </div>
       </div>
       {opt.prereqs.length > 0 && (
@@ -309,14 +350,14 @@ function ConfirmBar({
   selected,
   slotBusy,
   cancellable,
-  estMonths,
+  estTurns,
   onConfirm,
   onCancel,
 }: {
   selected: ResearchOption | null;
   slotBusy: boolean;
   cancellable: boolean;
-  estMonths: number;
+  estTurns: number;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -345,10 +386,7 @@ function ConfirmBar({
         <ItemArt kind="research" id={selected.id} className="prod-confirm-art" />
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
-          <div className="prod-confirm-cost">
-            {selected.cost} HK ·{" "}
-            {estMonths === Infinity ? "needs knowledge" : `~${estMonths} mo`}
-          </div>
+          <div className="prod-confirm-cost">{turnEstimateLabel(estTurns)}</div>
         </div>
       </div>
       <div className="prod-confirm-actions">
@@ -365,11 +403,11 @@ function ConfirmBar({
 
 function DetailsModal({
   opt,
-  estMonths,
+  estTurns,
   onClose,
 }: {
   opt: ResearchOption;
-  estMonths: number;
+  estTurns: number;
   onClose: () => void;
 }) {
   return (
@@ -397,14 +435,13 @@ function DetailsModal({
         {opt.flavor && <p className="prod-detail-flavor">{opt.flavor}</p>}
         <div className="prod-detail-rows">
           <DetailRow label="Unlocks" value={opt.unlockSummary} tone="good" />
-          <DetailRow label="Cost" value={`${opt.cost} Hockey Knowledge`} />
           <DetailRow
-            label="Research time"
-            value={
-              estMonths === Infinity
-                ? "Needs Hockey Knowledge income"
-                : `~${estMonths} month${estMonths === 1 ? "" : "s"}`
-            }
+            label="Turns"
+            value={turnEstimateLabel(estTurns)}
+          />
+          <DetailRow
+            label="Research effort"
+            value={`${opt.cost} knowledge`}
           />
           <DetailRow
             label="Requirements"
@@ -419,6 +456,11 @@ function DetailsModal({
       </div>
     </div>
   );
+}
+
+function turnEstimateLabel(turns: number, suffix = ""): string {
+  if (turns === Infinity) return "Needs knowledge income";
+  return `${turns} turn${turns === 1 ? "" : "s"}${suffix ? ` ${suffix}` : ""}`;
 }
 
 function DetailRow({

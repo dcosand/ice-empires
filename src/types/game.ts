@@ -649,6 +649,9 @@ export type GameState = {
   // One-time flags gating the "first" cinematic beats.
   seenFirstTryout: boolean; // has the club held a tryout before?
   seenFirstPlayer: boolean; // has anyone ever joined the roster?
+  // Training camps completed (tryouts held in an Aug–Sep camp window, D37) —
+  // feeds the club-formation era's `training-camp` exit requirement.
+  trainingCampsHeld: number;
   facilities: string[]; // completed facility ids
   units: OwnedUnit[]; // owned organizational units (HQ roster)
   completedResearch: string[];

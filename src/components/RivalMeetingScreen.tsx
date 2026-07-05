@@ -3,6 +3,7 @@ import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
 import type { GameAction } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { turnDateLabel } from "../engine/calendar";
+import { setContactMusicActive } from "./BackgroundMusic";
 
 // Rival first-contact backdrop: the club's own wide scene, behind the stage —
 // matching the independent meeting beat (which uses the org's background art).
@@ -28,6 +29,12 @@ export function RivalMeetingScreen({
     const t = setTimeout(() => setChoicesReady(true), 1400);
     return () => clearTimeout(t);
   }, []);
+  useEffect(() => {
+    if (!club) return undefined;
+    setContactMusicActive(true);
+    return () => setContactMusicActive(false);
+  }, [club?.id]);
+
   if (!club) return null;
 
   const stageStyle = {

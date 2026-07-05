@@ -185,5 +185,5 @@ export function devForceTryouts(state: GameState): GameState {
           }
       : state.world,
   };
-  return holdTryouts(primed);
+  return holdTryouts(primed, { force: true });
 }

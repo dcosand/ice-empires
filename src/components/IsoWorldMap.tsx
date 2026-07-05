@@ -2065,6 +2065,18 @@ export function IsoWorldMap({
     seedRivalPortraits(state.world?.rivals),
   );
 
+  useEffect(() => {
+    const w = state.world;
+    const unit = activeScout(w);
+    if (!w || !unit || !cameraRef.current) return;
+    setSelectedKey(tileKey(unit.x, unit.y));
+    const cen = centroid(w);
+    cameraRef.current.centerOnLocal(
+      isoX(unit.x, unit.y) - cen.x,
+      isoY(unit.x, unit.y) - cen.y,
+    );
+  }, [state.world?.selectedScoutId, state.month]);
+
   // drawScene hands the live Scout node here so the ticker can animate it.
   const registerScout = (node: Container | null, baseY: number) => {
     scoutAnimRef.current = node ? { node, baseY } : null;
@@ -2336,6 +2348,10 @@ export function IsoWorldMap({
       }
       // Enter / Return: end the turn (like clicking the End Turn button).
       if ((e.code === "Enter" || e.code === "NumpadEnter") && !chord) {
+        if (document.querySelector('[role="dialog"][aria-modal="true"]')) {
+          e.preventDefault();
+          return;
+        }
         e.preventDefault();
         endTurnRef.current();
         return;

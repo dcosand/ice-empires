@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, WorldHockeyOrg } from "../types/game";
 import { hockeyOrgDisplayName } from "../engine/world";
@@ -8,6 +8,7 @@ import {
   ARCHETYPE_BLURBS,
   ARCHETYPE_LABELS,
 } from "../engine/independentsSystem";
+import { setContactMusicActive } from "./BackgroundMusic";
 
 // First contact with an independent hockey org — the city-state meeting beat.
 // Reuses the meeting-scene cinematic staging; instead of a leader portrait it
@@ -27,6 +28,12 @@ export function IndependentMeetingScreen({
   // Bespoke art when this indie has assets; archetype SVG otherwise.
   const [cardFailed, setCardFailed] = useState(false);
   const [bgFailed, setBgFailed] = useState(false);
+  useEffect(() => {
+    if (!org) return undefined;
+    setContactMusicActive(true);
+    return () => setContactMusicActive(false);
+  }, [org?.id]);
+
   if (!org) return null;
 
   const palette = ARCHETYPE_PALETTES[org.archetype];

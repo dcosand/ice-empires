@@ -333,7 +333,7 @@ function TeamTab({
         <button
           className="btn btn-gold"
           disabled={!canHoldTryouts(state)}
-          title={tryoutGateHint(gate)}
+          title={tryoutGateHint(gate, state.month)}
           onClick={() => {
             primeTryoutMusic();
             dispatch({ type: "HOLD_TRYOUTS" });

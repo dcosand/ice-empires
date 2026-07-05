@@ -115,15 +115,17 @@ function buttonText(el: HTMLElement): string {
     .toLowerCase();
 }
 
-function classifyButtonClick(button: HTMLElement): SfxName {
+function classifyButtonClick(button: HTMLElement): SfxName | null {
   const label = buttonText(button);
   const classes = button.className.toString();
+
+  if (/\b(end turn|let's begin)\b/.test(label)) return null;
 
   if (
     button.matches(".overlay-scrim") ||
     button.matches(".dock-btn, .task-button, .topbar-club, .notif-chip, .rival-face") ||
     button.matches(".tech-node-info, .prod-card-info, .prod-row-info") ||
-    /\b(close|back|skip|continue|restart|details|open|finish tryouts|let's begin|previous track|next track)\b/.test(
+    /\b(close|back|skip|continue|restart|details|open|finish tryouts|previous track|next track)\b/.test(
       label,
     )
   ) {
@@ -132,7 +134,7 @@ function classifyButtonClick(button: HTMLElement): SfxName {
 
   if (
     button.matches(".btn-gold") ||
-    /\b(begin|build|confirm|choose|end turn|found|finish|hold tryouts|recruit|send introduction|establish|harvest|clear snow|pave|welcome|hand them)\b/.test(
+    /\b(begin|build|confirm|choose|found|finish|hold tryouts|recruit|send introduction|establish|harvest|clear snow|pave|welcome|hand them)\b/.test(
       label,
     )
   ) {
@@ -157,7 +159,8 @@ export function installGlobalClickSfx(): void {
     (e) => {
       const el = e.target as HTMLElement | null;
       const button = el?.closest("button");
-      if (button) playSfx(classifyButtonClick(button));
+      const sound = button ? classifyButtonClick(button) : null;
+      if (sound) playSfx(sound);
     },
     { capture: true },
   );

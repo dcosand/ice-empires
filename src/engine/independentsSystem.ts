@@ -260,6 +260,60 @@ export function trackRivalOrgContacts(draft: GameState): void {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Territory → contention (D35): a standing rink inside an independent's zone
+// is a permanent courtship — the club that builds near an indie out-influences
+// the club that merely visits. Player rinks pay only after formal contact
+// (influence you can't see isn't a mechanic); a rival's rink counts as their
+// contact — you don't raise boards next door anonymously.
+// ---------------------------------------------------------------------------
+
+export const ORG_ZONE_RADIUS = 3; // Chebyshev — an independent's local ice
+const RINK_PRESENCE_INFLUENCE = 1; // per club per month, not per rink
+
+function rinkInZone(
+  rinks: { x: number; y: number; level: number; ownerClubId?: string }[],
+  org: WorldHockeyOrg,
+  ownerClubId: string | undefined,
+): boolean {
+  return rinks.some(
+    (r) =>
+      r.ownerClubId === ownerClubId &&
+      r.level >= 1 &&
+      Math.max(Math.abs(r.x - org.x), Math.abs(r.y - org.y)) <= ORG_ZONE_RADIUS,
+  );
+}
+
+export function accrueRinkPresence(draft: GameState, push: PushLog): void {
+  const world = draft.world;
+  if (!world) return;
+  for (const org of world.hockeyOrgs) {
+    if (org.playerContacted && rinkInZone(world.rinks, org, undefined)) {
+      org.influencePoints += RINK_PRESENCE_INFLUENCE;
+      const newLevel = levelForInfluence(org.influencePoints);
+      if (newLevel > org.relationshipLevel) {
+        org.relationshipLevel = newLevel;
+        push(
+          "discovery",
+          `${org.name} now ${tierName(newLevel)}`,
+          `Your rink on their doorstep does the quiet diplomatic work — the relationship deepens to ${tierName(newLevel)}.`,
+        );
+      }
+    }
+    for (const rival of world.rivals) {
+      if (!rinkInZone(world.rinks, org, rival.clubId)) continue;
+      if (!org.contactedByClubIds.includes(rival.clubId)) {
+        org.contactedByClubIds.push(rival.clubId);
+        org.rivalInfluence[rival.clubId] =
+          (org.rivalInfluence[rival.clubId] ?? 0) + RIVAL_FIRST_CONTACT_INFLUENCE;
+      } else {
+        org.rivalInfluence[rival.clubId] =
+          (org.rivalInfluence[rival.clubId] ?? 0) + RINK_PRESENCE_INFLUENCE;
+      }
+    }
+  }
+}
+
 // Who's winning this independent's favor (the player included)?
 export function leadingSuitor(
   org: WorldHockeyOrg,

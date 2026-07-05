@@ -125,8 +125,9 @@ export function selectScout(state: GameState, scoutId?: string): GameState {
   return { ...state, world: syncLegacyScout(world, scouts, selectedScoutId) };
 }
 
-function nextReadyUnitId(scouts: WorldUnit[], moved: WorldUnit): string | null {
-  if (moved.id && moved.movesRemaining > 0 && !moved.working) return moved.id;
+export function nextReadyUnitId(scouts: WorldUnit[], moved: WorldUnit): string | null {
+  const current = moved.id ? scouts.find((s) => s.id === moved.id) : null;
+  if (current?.id && current.movesRemaining > 0 && !current.working) return current.id;
   const ready = scouts.filter((s) => s.id && s.movesRemaining > 0 && !s.working);
   if (ready.length === 0) return null;
 
@@ -138,6 +139,17 @@ function nextReadyUnitId(scouts: WorldUnit[], moved: WorldUnit): string | null {
     ready.find((s) => scouts.findIndex((unit) => unit.id === s.id) > movedIndex) ??
     ready[0]
   ).id ?? null;
+}
+
+function selectedOrFirstReadyUnitId(
+  scouts: WorldUnit[],
+  selectedScoutId: string | null,
+): string | null {
+  const selected = scouts.find((s) => s.id === selectedScoutId);
+  if (selected?.id && selected.movesRemaining > 0 && !selected.working) {
+    return selected.id;
+  }
+  return scouts.find((s) => s.id && s.movesRemaining > 0 && !s.working)?.id ?? null;
 }
 
 // Tiles a unit may move to right now (adjacent, valid land/ice, points left).
@@ -425,7 +437,11 @@ export function refreshScoutMoves(draft: GameState): void {
   const scouts = allScouts(world).map((unit) =>
     unit.working ? { ...unit, movesRemaining: 0 } : { ...unit, movesRemaining: unit.movesPerTurn },
   );
-  draft.world = syncLegacyScout(world, scouts, world.selectedScoutId);
+  draft.world = syncLegacyScout(
+    world,
+    scouts,
+    selectedOrFirstReadyUnitId(scouts, world.selectedScoutId),
+  );
 }
 
 export function spawnProducedScout(
@@ -499,6 +515,8 @@ export function establishNetwork(
   const org = networkTargetOrg(state, unitId);
   if (!org || org.id !== orgId) return state;
   const world = state.world!;
+  const unit = allScouts(world).find((u) => u.id === unitId);
+  if (!unit) return state;
   const scouts = allScouts(world).map((u) =>
     u.id === unitId
       ? {
@@ -514,7 +532,7 @@ export function establishNetwork(
   );
   const next: GameState = {
     ...state,
-    world: syncLegacyScout({ ...world }, scouts, world.selectedScoutId),
+    world: syncLegacyScout({ ...world }, scouts, nextReadyUnitId(scouts, unit)),
   };
   const who = scoutCharacterFor(state, unitId);
   return prependLog(

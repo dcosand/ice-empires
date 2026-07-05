@@ -2,6 +2,7 @@ import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, ResourceKey } from "../types/game";
 import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
+import { RESEARCH_BY_ID } from "../data/research";
 import { RESOURCE_LABELS } from "../engine/resources";
 import { getMonthlyIncome } from "../engine/selectors";
 import { turnDateLabel } from "../engine/calendar";
@@ -67,9 +68,12 @@ const RESOURCE_TIP: Record<ResourceKey, string> = {
     "Reputation — your standing in hockey. Never spent: doors open at higher standing.",
 };
 
+function turnLabel(turns: number): string {
+  return `${turns} turn${turns === 1 ? "" : "s"}`;
+}
+
 export function TopBar({
   state,
-  dispatch,
   onOpenHQ,
 }: {
   state: GameState;
@@ -81,6 +85,16 @@ export function TopBar({
   const monthLabel = turnDateLabel(state.month);
 
   const income = getMonthlyIncome(state);
+  const researchDef = state.activeResearch
+    ? RESEARCH_BY_ID[state.activeResearch.techId]
+    : null;
+  const researchTurns =
+    state.activeResearch && income.hockeyKnowledge > 0
+      ? Math.max(
+          1,
+          Math.ceil(state.activeResearch.knowledgeRemaining / income.hockeyKnowledge),
+        )
+      : null;
 
   const themeStyle = {
     "--club-primary": club?.palette.primary ?? "#0f1d2c",
@@ -162,13 +176,24 @@ export function TopBar({
         </div>
       </div>
       <div className="meta">
+        {state.activeResearch && researchDef && (
+          <div
+            className="topbar-research"
+            title={`${researchDef.name} is the active research project`}
+          >
+            <span className="topbar-research-label">Research</span>
+            <strong>{researchDef.name}</strong>
+            <span>
+              {researchTurns
+                ? `${turnLabel(researchTurns)} left`
+                : "needs knowledge"}
+            </span>
+          </div>
+        )}
         <span className="pill" title={`Turn ${state.month}`}>
           <strong>{monthLabel}</strong>
         </span>
         <span className="pill pill-era">{era?.name}</span>
-        <button className="btn" onClick={() => dispatch({ type: "RESTART" })}>
-          Restart
-        </button>
       </div>
     </div>
   );
