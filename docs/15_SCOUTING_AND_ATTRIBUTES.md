@@ -253,6 +253,14 @@ rushing him — is a core GM pleasure.**
   when he's ready is a genuine gamble**, and a mismanaged blue-chipper is wasted.
   This is the mechanic that makes patient, planned development the smart, tense play.
 
+> **⏸ Deferred: the affiliate/relationship-tier side is not designed here yet.**
+> How Affiliate status is earned, what each `RELATIONSHIP_TIER` grants, farm
+> capacity, and the influence economy will be **refined after playtesting** — the
+> priority is first to feel what establishing a scouting network and reading reports
+> is actually like (Build order A–B) *before* massaging the independent-relationship
+> mechanics around it. Treat the Affiliate-as-farm reuse above as the intended
+> direction, not settled balance.
+
 ### Development Coach (a new personnel card, parallels scouts)
 
 A **Development Coach** is a person-card modeled directly on `ScoutCharacter`

@@ -217,3 +217,25 @@ is deferred to Act III** (D33); do not build it here.
 - [ ] Tune discovery odds / balance the 12-month arc so the era unlock lands well.
 - [ ] Light unit tests around `endMonth` and selectors.
 - [ ] Scouting map prototype (Step 9) — only after the loop is proven fun.
+
+## Icebox / design themes (not scheduled)
+- [ ] **Make the map more meaningful — urban footprint, districts & travel**
+      (parked 2026-07-05, unrelated to the scouting/attributes work). Sense-check
+      from playtest: building local rinks + harvesting stickwood is not enough to
+      make the map feel alive. Explore, roughly in Civ terms:
+      - **Roads / trade routes (movement).** Establishing a scouting network with an
+        independent lays a visible **route** between it and your HQ that **speeds
+        unit travel** along it (Civ-style roads). Makes the scouting network a
+        *physical* investment in the map, and rewards a hub-and-spoke footprint —
+        ties directly into the scout-reach/traversal theme in `docs/15` §5.
+      - **Districts / improvements (Civ VI-style urban footprint).** Let the player
+        build out the **hockey civilization's urban footprint within a few tiles of
+        HQ**: e.g. **Team Shop** (merch sales → recurring Funds), **Marketing /
+        Promo space** (grow community presence → reputation / influence / larger
+        tryout draw), arena-district tiles, etc. Some improvements could also be
+        placed **around independents** on the map to project presence/influence there
+        (feeds the Anchor/Affiliate race).
+      - **Why:** gives territory (Act II §2.3) more to *do* than income + claims,
+        makes expansion a real build-decision, and turns "the map" into an economy
+        and identity layer, not just a board for rinks. Design-explore before
+        committing; likely wants its own `docs/` doc once it firms up.
