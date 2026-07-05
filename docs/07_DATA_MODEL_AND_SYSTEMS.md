@@ -530,7 +530,6 @@ Do not implement full Club Formation Era yet.
 Useful derived selectors:
 
 - `getMonthlyIncome(state)`
-- `getAvailableFacilities(state)`
 - `getAvailableResearch(state)`
 - `getDiscoveredRegions(state)`
 - `getHockeyRegionReports(state)`
