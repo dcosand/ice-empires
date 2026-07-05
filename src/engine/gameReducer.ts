@@ -17,8 +17,11 @@ import {
   recruitScout,
   resolvePendingEncounter,
   selectScout,
+  toggleWatchProspect,
   triggerPondEncounter,
 } from "./scoutSystem";
+import { signProspect } from "./signingSystem";
+import { markInboxRead } from "./log";
 import { ensureScoutCharacters } from "./scoutStaff";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
 import { closeTryouts, holdTryouts, recruitPlayer } from "./tryoutSystem";
@@ -216,6 +219,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "RECALL_SCOUT":
       return recallScout(state, action.unitId);
+
+    case "WATCH_PLAYER":
+      return toggleWatchProspect(state, action.unitId, action.prospectId);
+
+    case "SIGN_PROSPECT":
+      return signProspect(state, action.prospectId);
+
+    case "MARK_INBOX_READ":
+      return markInboxRead(state, action.ids);
 
     case "RESOLVE_ENCOUNTER":
       // Resolving may stage a player reveal (wanderer); if so the retry bails

@@ -49,6 +49,16 @@ export const SCOUT_TIERS_BY_ID: Record<ScoutQualityTier, ScoutTierDef> =
     ScoutTierDef
   >;
 
+// Watch slots (docs/15 §5): how many players one scout can watch at once on
+// an assignment — the hard cap that makes "you can't watch everyone" bite.
+// The first report batch sweeps the whole roster; after that only watched
+// players get repeat viewings (and the sharpening that comes with them).
+export const WATCH_SLOTS: Record<ScoutQualityTier, number> = {
+  volunteer: 2,
+  traveled: 3,
+  ace: 4,
+};
+
 // Fieldwork XP awards (D29 hybrid acquisition: pay upfront, promote through
 // work). Promotions land every SCOUT_XP_PER_PROMOTION points, applied in the
 // monthly sweep.

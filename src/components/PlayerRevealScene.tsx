@@ -49,7 +49,9 @@ export function PlayerRevealScene({
     ? "The First Signing"
     : source === "encounter"
       ? "A Wanderer Signs On"
-      : "A New Signing";
+      : source === "signing"
+        ? "The Race Is Won"
+        : "A New Signing";
   const headline = firstEver
     ? `${club?.name ?? "The club"} has a player`
     : "Welcome to the club";
@@ -57,7 +59,9 @@ export function PlayerRevealScene({
     ? `For the first time, someone is wearing your colors. ${player.name} — a ${roleWord} out of ${player.origin} — laces up and calls this club home.`
     : source === "encounter"
       ? `${player.name}, a ${roleWord} you met out on the ice, throws in with your club.`
-      : `${player.name} makes the team as a ${roleWord}.`;
+      : source === "signing"
+        ? `The reports were right and the handshake held — ${player.name}, the ${roleWord} your scouts circled, is ${player.origin} and wearing your colors.`
+        : `${player.name} makes the team as a ${roleWord}.`;
 
   return (
     <div

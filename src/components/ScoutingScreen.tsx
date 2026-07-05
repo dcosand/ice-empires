@@ -1,11 +1,15 @@
 import { useMemo, useState } from "react";
+import type { Dispatch } from "react";
 import type {
+  GameAction,
   GameState,
   OrgProspect,
   Player,
   PlayerPosition,
+  ScoutMission,
   ScoutReport,
 } from "../types/game";
+import { CLUBS } from "../data/clubs";
 import { nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
 import {
@@ -17,15 +21,26 @@ import {
   starTier,
 } from "../engine/ratings";
 import { ATTR_LABELS, POSITION_LABELS } from "../data/attributes";
+import {
+  latestReportMonth,
+  prospectReadStale,
+  watchSlotsForUnit,
+} from "../engine/scoutSystem";
+import {
+  SIGN_COST_FUNDS,
+  signGate,
+  signGateHint,
+  signingOdds,
+} from "../engine/signingSystem";
 import { turnDateLabel } from "../engine/calendar";
 
 // The global scouting board (docs/15 §5, EHM-style): every player and
 // prospect the club knows about in one sortable/filterable/searchable table,
 // with a per-player detail view — attributes, potential read, and the full
 // scouting history (each scout's filed report). Signed players show true
-// current attributes; prospects obey fog-of-talent — ranges, never truth.
+// current attributes; prospects obey fog-of-talent — reads, never truth.
 
-type ScoutedProspect = OrgProspect & { orgName: string };
+type ScoutedProspect = OrgProspect & { orgName: string; orgId: string };
 
 type Row = {
   id: string;
@@ -42,6 +57,10 @@ type Row = {
   potSort: number;
   potLabel: string;
   reports: number;
+  // Prospect-only flags (watch/staleness/signing race, docs/15 §5–§6).
+  watched?: boolean;
+  stale?: boolean;
+  signedByName?: string;
   player?: Player;
   prospect?: ScoutedProspect;
 };
@@ -50,7 +69,13 @@ type SortKey = "name" | "position" | "age" | "style" | "ovr" | "pot" | "source" 
 type Scope = "all" | "roster" | "prospects";
 
 
-export function ScoutingScreen({ state }: { state: GameState }) {
+export function ScoutingScreen({
+  state,
+  dispatch,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+}) {
   const [scope, setScope] = useState<Scope>("all");
   const [posFilter, setPosFilter] = useState<PlayerPosition | "all">("all");
   const [search, setSearch] = useState("");
@@ -87,8 +112,10 @@ export function ScoutingScreen({ state }: { state: GameState }) {
   if (selected) {
     return (
       <PlayerDetail
+        state={state}
         row={selected}
         reports={state.scoutReports.filter((r) => r.subjectId === selected.id)}
+        dispatch={dispatch}
         onBack={() => setSelectedId(null)}
       />
     );
@@ -99,7 +126,8 @@ export function ScoutingScreen({ state }: { state: GameState }) {
       <div className="panel-sub">
         Everyone your club knows about. Signed players show true current
         ability; prospect numbers are your scout’s reads, never the truth —
-        tighter ranges come from sharper eyes. Click a row for the full file.
+        repeat viewings on watched players sharpen them. Click a row for the
+        full file.
       </div>
 
       <div className="scouting-controls">
@@ -156,13 +184,32 @@ export function ScoutingScreen({ state }: { state: GameState }) {
           </thead>
           <tbody>
             {visible.map((r) => (
-              <tr key={r.id} className="sc-row" onClick={() => setSelectedId(r.id)}>
+              <tr
+                key={r.id}
+                className={`sc-row${r.signedByName ? " signed-away" : ""}`}
+                onClick={() => setSelectedId(r.id)}
+              >
                 <td className="pp-pos">
                   <span className={`pos-badge pos-${r.position}`}>{r.position}</span>
                 </td>
                 <td className="pp-name">
                   {r.name}
                   <span className="scouting-flag">{r.nationality}</span>
+                  {r.watched && (
+                    <span className="scouting-flag flag-watched" title="On a scout's watch list — repeat viewings sharpen the read">
+                      watched
+                    </span>
+                  )}
+                  {r.stale && (
+                    <span className="scouting-flag flag-stale" title="No scout on station — this read has aged; trust it less">
+                      stale
+                    </span>
+                  )}
+                  {r.signedByName && (
+                    <span className="scouting-flag flag-signed" title={`Signed by ${r.signedByName} — the race is over`}>
+                      → {r.signedByName}
+                    </span>
+                  )}
                   {r.player && !r.player.hasEquipment && (
                     <span className="scouting-flag" title="No gear — not counted toward your line">
                       ungeared
@@ -187,6 +234,9 @@ export function ScoutingScreen({ state }: { state: GameState }) {
 function buildRows(state: GameState): Row[] {
   const reportCount = (subjectId: string) =>
     state.scoutReports.filter((r) => r.subjectId === subjectId).length;
+  const watchedIds = new Set(
+    state.scoutMissions.flatMap((m) => m.watchedPlayerIds),
+  );
 
   const rosterRows: Row[] = state.roster.map((p) => {
     const ovr = computeOverall(p);
@@ -232,7 +282,12 @@ function buildRows(state: GameState): Row[] {
           potSort: potMid ?? 0,
           potLabel: potMid != null ? starString(starTier(potMid)) : "—",
           reports: reportCount(p.id),
-          prospect: { ...p, orgName: hockeyOrgDisplayName(org) },
+          watched: watchedIds.has(p.id),
+          stale: prospectReadStale(state, org.id, p.id),
+          signedByName: p.signedByClubId
+            ? CLUBS[p.signedByClubId]?.name ?? "a rival"
+            : undefined,
+          prospect: { ...p, orgName: hockeyOrgDisplayName(org), orgId: org.id },
         };
       }),
   );
@@ -265,16 +320,21 @@ function compareRows(a: Row, b: Row, key: SortKey): number {
 
 // ---------------------------------------------------------------------------
 // Player detail — the EHM player file: header, attributes (true bars for your
-// roster, fog ranges for prospects), ceiling read, and the scouting history.
+// roster, the scout's reads for prospects), ceiling read, the watch/sign
+// actions, and the scouting history.
 // ---------------------------------------------------------------------------
 
 function PlayerDetail({
+  state,
   row,
   reports,
+  dispatch,
   onBack,
 }: {
+  state: GameState;
   row: Row;
   reports: ScoutReport[];
+  dispatch: Dispatch<GameAction>;
   onBack: () => void;
 }) {
   const p = row.player;
@@ -286,6 +346,7 @@ function PlayerDetail({
   const potMid = row.prospect?.potentialEstimate
     ? estimateMid(row.prospect.potentialEstimate)
     : null;
+  const lastSeen = latestReportMonth(state, row.id);
 
   return (
     <div className="panel scouting-panel sc-detail">
@@ -326,6 +387,10 @@ function PlayerDetail({
         </div>
       </div>
 
+      {row.prospect && (
+        <ProspectActions state={state} row={row} dispatch={dispatch} />
+      )}
+
       <div className="indy-col-title">Attributes</div>
       {p ? (
         <div className="sc-attr-grid">
@@ -342,24 +407,32 @@ function PlayerDetail({
       ) : readAttrs ? (
         // The scout's static reads (EHM): believed values, not ranges — and
         // not necessarily the truth. Gold fill marks them as scouted numbers.
-        <div className="sc-attr-grid">
-          {Object.entries(readAttrs).map(([key, est]) =>
-            est ? (
-              <div className="sc-attr-row" key={key}>
-                <span className="attr-label">
-                  {ATTR_LABELS[key as keyof typeof ATTR_LABELS]}
-                </span>
-                <span className="attr-bar">
-                  <span
-                    className="attr-fill scouted"
-                    style={{ width: `${Math.min(100, estimateMid(est))}%` }}
-                  />
-                </span>
-                <span className="attr-value">{estimateMid(est)}</span>
-              </div>
-            ) : null,
+        <>
+          {row.stale && lastSeen !== null && (
+            <div className="sc-stale-note">
+              Last report {turnDateLabel(lastSeen)} — no scout on station since.
+              Treat these numbers as the file, not the player.
+            </div>
           )}
-        </div>
+          <div className="sc-attr-grid">
+            {Object.entries(readAttrs).map(([key, est]) =>
+              est ? (
+                <div className="sc-attr-row" key={key}>
+                  <span className="attr-label">
+                    {ATTR_LABELS[key as keyof typeof ATTR_LABELS]}
+                  </span>
+                  <span className="attr-bar">
+                    <span
+                      className="attr-fill scouted"
+                      style={{ width: `${Math.min(100, estimateMid(est))}%` }}
+                    />
+                  </span>
+                  <span className="attr-value">{estimateMid(est)}</span>
+                </div>
+              ) : null,
+            )}
+          </div>
+        </>
       ) : (
         <div className="faint">
           “{row.prospect?.teaser}” — the org’s word is all you have. Assign a
@@ -415,6 +488,90 @@ function PlayerDetail({
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Watch + Sign — the two verbs a prospect file offers (docs/15 §5–§6). Watch
+// needs an active mission at their org; Sign needs a filed report and opens
+// the contested race.
+function ProspectActions({
+  state,
+  row,
+  dispatch,
+}: {
+  state: GameState;
+  row: Row;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const prospect = row.prospect!;
+  const mission: ScoutMission | undefined = state.scoutMissions.find(
+    (m) => m.orgId === prospect.orgId,
+  );
+  const gate = signGate(state, row.id);
+  const odds = signingOdds(state, row.id);
+  const first = row.name.split(" ")[0];
+
+  if (row.signedByName) {
+    return (
+      <div className="sc-actions">
+        <div className="sc-signed-note">
+          Signed by {row.signedByName} — the race is over. File stays for the
+          post-mortem.
+        </div>
+      </div>
+    );
+  }
+
+  const watched = !!mission && mission.watchedPlayerIds.includes(row.id);
+  const slots = mission ? watchSlotsForUnit(state, mission.unitId) : 0;
+  const slotsFull = !!mission && !watched && mission.watchedPlayerIds.length >= slots;
+
+  return (
+    <div className="sc-actions">
+      {mission ? (
+        <button
+          className={`btn${watched ? "" : " btn-primary"}`}
+          disabled={slotsFull}
+          title={
+            slotsFull
+              ? `All ${slots} watch slots in use — stop watching someone first.`
+              : watched
+                ? "Your scout moves on; the read stops sharpening."
+                : "Repeat viewings sharpen the read with every report."
+          }
+          onClick={() =>
+            dispatch({ type: "WATCH_PLAYER", unitId: mission.unitId, prospectId: row.id })
+          }
+        >
+          {watched
+            ? `Stop watching ${first}`
+            : `Watch closely (${mission.watchedPlayerIds.length}/${slots})`}
+        </button>
+      ) : (
+        <span className="faint sc-action-hint">
+          No scout on station at {prospect.orgName} — assign one to watch{" "}
+          {first}.
+        </span>
+      )}
+      <button
+        className="btn btn-gold"
+        disabled={gate !== "ok"}
+        title={
+          gate !== "ok"
+            ? signGateHint(gate)
+            : odds.rivalName
+              ? `${odds.rivalName} is in the race — you look ${odds.label}.`
+              : "Nobody else is at the table."
+        }
+        onClick={() => dispatch({ type: "SIGN_PROSPECT", prospectId: row.id })}
+      >
+        Sign {first} ({SIGN_COST_FUNDS} Funds
+        {odds.rivalName ? ` · ${odds.label}` : ""})
+      </button>
+      {gate !== "ok" && (
+        <span className="faint sc-action-hint">{signGateHint(gate)}</span>
       )}
     </div>
   );

@@ -12,6 +12,7 @@ import {
 } from "./independentsSystem";
 import { progressResearch } from "./researchSystem";
 import { runRivalTurns } from "./rivalAI";
+import { rivalSigningPressure } from "./signingSystem";
 import { progressScoutMissions, refreshScoutMoves } from "./scoutSystem";
 import { applyScoutPromotions } from "./scoutStaff";
 import { triggerMonthlyEvent } from "./eventSystem";
@@ -32,8 +33,8 @@ export function endMonth(state: GameState): GameState {
 
   const logs: EventLogEntry[] = [];
   let seq = 0;
-  const push = (type: LogType, title: string, message: string) => {
-    logs.push(makeLog(draft.month, seq++, type, title, message));
+  const push = (type: LogType, title: string, message: string, from?: string) => {
+    logs.push(makeLog(draft.month, seq++, type, title, message, from));
   };
 
   // 1. Income (plus equipment shed stock — inventory, not a currency).
@@ -64,6 +65,7 @@ export function endMonth(state: GameState): GameState {
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)
   accrueRinkPresence(draft, push); // rinks near an indie court them monthly (D35)
+  rivalSigningPressure(draft, push); // hard-courting rivals may sign prospects away
   checkIndependentContact(draft, push); // a unit parked beside an org meets them
   progressRivalEras(draft, push); // rivals advance eras on their own clock
   applyScoutPromotions(draft, push); // banked fieldwork XP becomes promotions

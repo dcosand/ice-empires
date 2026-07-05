@@ -506,3 +506,46 @@ ceiling read). Both appear only after an assignment has filed a report — the
 org's word (teaser prose) is all you get before that. `ratings.scoutReadAttrs/
 scoutReadOverall/estimateMid` are the display helpers; report prose speaks in
 point projections with verbal hedging, not numeric ranges.
+
+## D48 — Watch slots: attention is finite; staleness is derived (SHIPPED 2026-07-05)
+docs/15 §5's "you can't watch everyone," made mechanical. An assignment's FIRST
+report batch sweeps the org's whole roster (the club report — everyone gets a
+baseline read + stars). After that, only players on the scout's WATCH LIST get
+repeat viewings: `ScoutMission.watchedPlayerIds`, toggled per player via
+`WATCH_PLAYER` (Scouting player file + org ledger), capped by tier —
+Volunteer 2 / Traveled 3 / Ace 4 (`WATCH_SLOTS`, data/scouts.ts). Sharpening
+is per PLAYER, not per mission: effective judging = base + 3 × prior reports
+this scout filed on that subject (capped 14). An on-station scout with an
+empty watch list files nothing and nudges the player instead. **Staleness
+(D39) is derived, never stored** (like territory/income): a read is stale when
+no mission covers the org and the newest report is > `REPORT_STALE_MONTHS` (6)
+old — flagged in the board and the player file ("last report …"), never
+erased; the file stays as written.
+
+## D49 — The contested signing race: SIGN_PROSPECT + rival poaching (SHIPPED 2026-07-05)
+docs/15 §6's acquisition beat. `SIGN_PROSPECT` requires a networked org AND at
+least one filed report ("you don't sign what you haven't watched") plus 8
+Funds and roster room. Resolution is a seeded roll: your bid = influence at
+the org + 6/report (cap 5) + map-proximity bonus, vs each contacted rival's
+influence there; both sides add a 15-point seeded roll. **Win**: pay the
+funds, the prospect converts to a `Player` with the SAME id (the scouting
+history follows them onto the roster), reveal cinematic (`source:
+"signing"`), origin "signed from {org}". **Lose**: no funds spent — the
+prospect marks `signedByClubId` and stays visible in the pipeline (greyed,
+"→ Rival") because losing should sting. The UI previews the race
+(`signingOdds`: uncontested/favored/contested/long shot) so a loss is never a
+blind slap. **The window closes on its own**: `rivalSigningPressure` (monthly,
+turn loop) lets a rival with ≥30 influence at a player-contacted org sign its
+best prospect away (seeded chance scaling with influence, cap 20%/mo) — the
+docs/15 §4 "Coveted" urgency, and the first teeth of the Anchor-race AI.
+
+## D50 — The Log is an Inbox (SHIPPED 2026-07-05, implements D41)
+`EventLogEntry` gains `from` (sender) + `read`; every `push`/`prependLog` site
+may name a sender (scout reports arrive from the scout by name, poaches from
+the rival club, tier-ups from the org) and the Inbox derives a desk name from
+the entry type otherwise (Club Treasurer, Scouting Desk, Rival Wire…). New
+`Inbox` screen (replaces the EventLog panel): unread dot + gold tint, click
+marks read, All/Unread/Scouting/Rivals/Club/Money filters, Mark-all-read;
+the dock button is now "Inbox" (inbox.png) with a live unread badge.
+`MARK_INBOX_READ` is the one action (ids or everything). No separate news
+system — an evolution of the log, per D41.

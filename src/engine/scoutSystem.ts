@@ -1,6 +1,7 @@
 import type {
   EncounterEffect,
   GameState,
+  OrgProspect,
   PersonNationality,
   ResourceKey,
   ScoutCharacter,
@@ -30,7 +31,7 @@ import {
   rollScoutCharacter,
   scoutCharacterFor,
 } from "./scoutStaff";
-import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK } from "../data/scouts";
+import { SCOUT_XP_ENCOUNTER, SCOUT_XP_NETWORK, WATCH_SLOTS } from "../data/scouts";
 import { estimateAttr, estimateAttrs } from "./talentFog";
 import {
   type NationalitySource,
@@ -590,6 +591,7 @@ export function identifyOrgProspects(draft: GameState, org: WorldHockeyOrg): voi
     p.revealed = true;
     p.knownVia = "org-word";
     p.name = identity.name;
+    p.gender = identity.gender;
     p.age = 15 + Math.floor(ageRoll.value * 5);
 
     const style = rollStyle(draft.rngSeed, p.position);
@@ -683,7 +685,14 @@ export function beginScoutMission(
     ...state,
     scoutMissions: [
       ...state.scoutMissions,
-      { unitId, orgId, startMonth: state.month, monthsActive: 0, filings: 0 },
+      {
+        unitId,
+        orgId,
+        startMonth: state.month,
+        monthsActive: 0,
+        filings: 0,
+        watchedPlayerIds: [],
+      },
     ],
     world: syncLegacyScout({ ...world }, scouts, world.selectedScoutId),
   };
@@ -722,10 +731,52 @@ export function recallScout(state: GameState, unitId: string): GameState {
   );
 }
 
+// How many players this scout can watch at once — the tier-set attention cap
+// (docs/15 §5, "you can't watch everyone").
+export function watchSlotsForUnit(state: GameState, unitId: string): number {
+  const scout = scoutCharacterFor(state, unitId);
+  return WATCH_SLOTS[scout?.tier ?? "volunteer"];
+}
+
+// Toggle a prospect on/off an assigned scout's watch list. Adding is capped
+// at the scout's slots; removing is always allowed. Signed-away prospects
+// can't be watched — that race is over.
+export function toggleWatchProspect(
+  state: GameState,
+  unitId: string,
+  prospectId: string,
+): GameState {
+  const mission = state.scoutMissions.find((m) => m.unitId === unitId);
+  if (!mission) return state;
+  const org = state.world?.hockeyOrgs.find((o) => o.id === mission.orgId);
+  const prospect = org?.prospects.find((p) => p.id === prospectId);
+  if (!org || !prospect || !prospect.revealed) return state;
+  const watching = mission.watchedPlayerIds.includes(prospectId);
+  if (!watching) {
+    if (prospect.signedByClubId) return state;
+    if (mission.watchedPlayerIds.length >= watchSlotsForUnit(state, unitId)) {
+      return state;
+    }
+  }
+  return {
+    ...state,
+    scoutMissions: state.scoutMissions.map((m) =>
+      m.unitId === unitId
+        ? {
+            ...m,
+            watchedPlayerIds: watching
+              ? m.watchedPlayerIds.filter((id) => id !== prospectId)
+              : [...m.watchedPlayerIds, prospectId],
+          }
+        : m,
+    ),
+  };
+}
+
 // Monthly mission tick: every MISSION_REPORT_MONTHS on station, the scout
-// files a report batch on the org's players. Each successive filing watches
-// better (an effective judging bump), so repeat viewings SHARPEN the reads —
-// the docs/15 §5 confidence curve.
+// files a report batch. The FIRST batch sweeps the whole roster (the club
+// report); after that attention narrows to the watch list — repeat viewings
+// sharpen only the players the scout is actually pointed at (docs/15 §5).
 export function progressScoutMissions(draft: GameState, push: PushLog): void {
   const world = draft.world;
   if (!world) return;
@@ -735,44 +786,109 @@ export function progressScoutMissions(draft: GameState, push: PushLog): void {
     const org = world.hockeyOrgs.find((o) => o.id === mission.orgId);
     const unit = allScouts(world).find((u) => u.id === mission.unitId);
     if (!org || !unit) continue;
-    mission.filings += 1;
     const scout = scoutCharacterFor(draft, mission.unitId);
-    fileMissionReports(draft, org, scout, mission.filings);
+    const scoutName = scout?.name ?? unit.name ?? "Your scout";
+
+    // A signed-away player leaves the watch list; nobody scouts a done deal.
+    mission.watchedPlayerIds = mission.watchedPlayerIds.filter((id) =>
+      org.prospects.some((p) => p.id === id && !p.signedByClubId),
+    );
+
+    const subjects =
+      mission.filings === 0
+        ? org.prospects.filter((p) => !p.signedByClubId)
+        : org.prospects.filter(
+            (p) => !p.signedByClubId && mission.watchedPlayerIds.includes(p.id),
+          );
+    if (subjects.length === 0) {
+      // On station with nobody to watch: nudge instead of filing air.
+      push(
+        "discovery",
+        `${org.name}: nothing new to file`,
+        `${scoutName} is on station at ${org.name} but isn't watching anyone. Pick players to watch (${watchSlotsForUnit(draft, mission.unitId)} slots) and the reads will sharpen.`,
+        scoutName,
+      );
+      continue;
+    }
+    mission.filings += 1;
+    fileMissionReports(draft, org, scout, mission.unitId, subjects);
     awardScoutXpDraft(draft, mission.unitId, SCOUT_XP_NETWORK);
     push(
       "discovery",
       `Scout report: ${org.name}`,
-      `${scout?.name ?? unit.name ?? "Your scout"} files on ${org.prospects.length} players at ${org.name}${
-        mission.filings > 1 ? " — the reads keep sharpening" : ""
-      }. See the Scouting board for the full file.`,
+      mission.filings === 1
+        ? `${scoutName} files a first sweep on all ${subjects.length} players at ${org.name}. Pick up to ${watchSlotsForUnit(draft, mission.unitId)} to watch closely — repeat viewings sharpen the reads.`
+        : `${scoutName} files on ${subjects.length} watched player${subjects.length === 1 ? "" : "s"} at ${org.name} — the reads keep sharpening. See the Scouting board for the full file.`,
+      scoutName,
     );
   }
 }
 
-// One report batch: the scout's CURRENT belief on every identified player at
-// the org. Estimates are stored on the prospect (replacing older, blurrier
-// ones) and each player gets a ScoutReport in their history. Effective
-// judging climbs with repeat filings — never to certainty.
+// One report batch: the scout's CURRENT belief on each subject. Estimates are
+// stored on the prospect (replacing older, blurrier ones) and each subject
+// gets a ScoutReport in their history. Effective judging climbs with the
+// number of reports THIS scout has already filed on THAT player — repeat
+// viewings sharpen per player, never to certainty.
 function fileMissionReports(
   draft: GameState,
   org: WorldHockeyOrg,
   scout: ScoutCharacter | null,
-  filings: number,
+  unitId: string,
+  subjects: OrgProspect[],
 ): void {
-  const sharpen = (judging: number) => Math.min(14, judging + (filings - 1) * 3);
-  const judgingAbility = sharpen(scout?.judgingAbility ?? 3);
-  const judgingPotential = sharpen(scout?.judgingPotential ?? 3);
-  for (const p of org.prospects) {
+  for (const p of subjects) {
     if (!p.attrs || !p.potential) continue;
+    const priorViewings = draft.scoutReports.filter(
+      (r) => r.subjectId === p.id && r.scoutId === unitId,
+    ).length;
+    const sharpen = (judging: number) =>
+      Math.min(14, judging + priorViewings * 3);
     p.knownVia = "scout-network";
-    const est = estimateAttrs(draft.rngSeed, p.attrs, judgingAbility);
+    const est = estimateAttrs(draft.rngSeed, p.attrs, sharpen(scout?.judgingAbility ?? 3));
     draft.rngSeed = est.seed;
     p.attrEstimates = est.estimates;
-    const potEst = estimateAttr(draft.rngSeed, p.potential, judgingPotential);
+    const potEst = estimateAttr(
+      draft.rngSeed,
+      p.potential,
+      sharpen(scout?.judgingPotential ?? 3),
+    );
     draft.rngSeed = potEst.seed;
     p.potentialEstimate = potEst.estimate;
 
     const report = prospectReport(p, scout, org, draft.month);
     if (report) draft.scoutReports = [report, ...draft.scoutReports];
   }
+}
+
+// ---------------------------------------------------------------------------
+// Report staleness (D39): a read holds only while a scout is on station.
+// Derived, never stored — like territory and income.
+// ---------------------------------------------------------------------------
+
+// A read older than this with nobody watching is stale (flagged, not erased —
+// the file stays as written, but the player shouldn't trust it blindly).
+export const REPORT_STALE_MONTHS = 6;
+
+export function latestReportMonth(
+  state: GameState,
+  subjectId: string,
+): number | null {
+  let latest: number | null = null;
+  for (const r of state.scoutReports) {
+    if (r.subjectId !== subjectId) continue;
+    if (latest === null || r.month > latest) latest = r.month;
+  }
+  return latest;
+}
+
+// Is this prospect's read stale? True when reports exist, no mission covers
+// their org, and the newest report has aged past the threshold.
+export function prospectReadStale(
+  state: GameState,
+  orgId: string,
+  prospectId: string,
+): boolean {
+  if (state.scoutMissions.some((m) => m.orgId === orgId)) return false;
+  const latest = latestReportMonth(state, prospectId);
+  return latest !== null && state.month - latest > REPORT_STALE_MONTHS;
 }

@@ -154,19 +154,32 @@ is deferred to Act III** (D33); do not build it here.
       `training-camp` era requirement (§7) will read it.
 
 ### 4. Scouts, networks & evaluation (D38, D39)
-- [x] **Club Scout unit** (D38, 2026-07-04) — the dead `basic-scout` placeholder
-      became the `club-scout` map unit (club-formation era, `scouting-reports`
-      tech, 14 funds, scout-tier picker applies). Only Club Scouts network:
-      `networkTargetOrg` requires `unitDefId === "club-scout"`; `establishNetwork`
-      is INSTANT (no 2-month park); `autoEstablishNetworks` fires after every
-      move + a monthly sweep catches standing scouts. Pond scouts lost the
-      verb (v1 superseded). STILL AHEAD: rival networks / the AI side of the
-      Anchor race (rivals have no network state yet).
-- [ ] **Scout assignment + reports** — assign a scout to an indie/major club;
-      ongoing reports with detail/confidence that grow over time and go stale.
-- [ ] **First-contact roster read** — low-confidence full roster shown on the
-      major-club cinematic (tile + leader-overlay click) and the indie
-      tile/ledger. Rivals/indies already carry seeded `prospects` (D21).
+- [x] **Club Scout unit** (D38, 2026-07-04; revised by D46 2026-07-05) — the
+      dead `basic-scout` placeholder became the `club-scout` map unit
+      (club-formation era, `scouting-reports` tech, 14 funds, scout-tier picker
+      applies). Only Club Scouts network (`networkTargetOrg` requires
+      `unitDefId === "club-scout"`); establish is INSTANT and — per D46 — an
+      EXPLICIT unit-card order with a celebration cinematic (auto-establish
+      removed). Pond scouts lost the verb (v1 superseded).
+- [x] **Scout assignment + reports** (D46/D48, 2026-07-05) — `ScoutMission` +
+      `BEGIN_SCOUT_MISSION`/`RECALL_SCOUT`/`WATCH_PLAYER`: assigned scout pins
+      on station, first batch sweeps the whole roster, then finite WATCH SLOTS
+      (Volunteer 2 / Traveled 3 / Ace 4) gate repeat viewings; per-player
+      sharpening (+3 effective judging per prior report, capped); reads go
+      STALE (derived, `REPORT_STALE_MONTHS`) when no scout is on station.
+- [x] **First-contact roster read (indies)** (D46, 2026-07-05) — first contact
+      identifies an independent's FULL roster (8–10 named players, org's-word
+      teasers; numbers wait for assignments). STILL AHEAD: the rival
+      major-club roster read (rival rosters aren't generated yet), and rival
+      networks / the AI side of the Anchor race — `rivalSigningPressure`
+      (D49) is its first teeth, but rivals still don't network or watch.
+- [x] **SIGN_PROSPECT contested race** (D49, 2026-07-05) — networked org + a
+      filed report + 8 Funds opens the race: seeded roll of your influence/
+      reports/proximity vs rival influence; win converts the prospect to a
+      roster Player (same id, history follows, signing cinematic); lose costs
+      nothing but the player ("→ Rival" stays visible in the pipeline).
+      Monthly `rivalSigningPressure` closes windows on its own. STILL AHEAD:
+      the development pyramid (Act IV) — signings land on the big club for now.
 
 ### 5. Player & team ratings system (docs/15 — build order A SHIPPED 2026-07-05)
 - [x] **Attribute model & ratings (docs/15 §8A, D42/D43)** — 1–100 scale;
@@ -178,11 +191,11 @@ is deferred to Act III** (D33); do not build it here.
       sketch), `engine/playerGen.ts` (shared generation: tryouts, wanderers,
       prospects). `talentFog` rescaled to 1–100 (volunteer ±20 → ace ±5).
       Validated headless (96 assertions).
-- [ ] **Ratings still ahead (docs/15 §8B–C)** — mission model (`ScoutMission`,
-      watch slots, depth→range-narrowing, staleness), `SIGN_PROSPECT` contested
-      race, self-fog (current-fast/potential-slow), development & aging + the
+- [ ] **Ratings still ahead (docs/15 §8C)** — §8B is now SHIPPED (missions,
+      watch slots, staleness, `SIGN_PROSPECT` — D46/D48/D49). Remaining:
+      self-fog (current-fast/potential-slow), development & aging + the
       pyramid + Development Coach (Act IV), tryouts reframed (homegrown +
-      castoffs).
+      castoffs), per-scout report-depth beyond the +3 sharpening curve.
 
 ### 6. Screens & information
 - [x] **Scouting screen v2 (2026-07-05, docs/15 §7 + D44)** — EHM-style board:
@@ -194,8 +207,10 @@ is deferred to Act III** (D33); do not build it here.
       `state.scoutReports` filed on every prospect reveal
       (`engine/scoutReport.ts` — deterministic prose from the scout's own
       ranges). Still ahead: by-scout view, rival/major coverage, report depth.
-- [ ] **Log → Inbox** (D41) — promote `EventLog` to an inbox: events + news
-      (team/scout/rival-GM/indie) with sender/source and read/unread triage.
+- [x] **Log → Inbox** (D41/D50, 2026-07-05) — `EventLogEntry` carries
+      `from`/`read`; new `Inbox` screen with unread triage, sender lines
+      (scout by name, rival wire, desk names by type), filters, mark-all-read;
+      dock shows a live unread badge (inbox.png). `MARK_INBOX_READ` action.
 - [ ] **Player-file access points (playtest 2026-07-05)** — the EHM player
       file lives only behind the Scouting board (dock → click a row). Open the
       same detail view from: ClubHQ → Team rows, the player-reveal cinematic

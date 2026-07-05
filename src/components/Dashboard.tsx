@@ -22,7 +22,8 @@ import { RivalMeetingScreen } from "./RivalMeetingScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
 import { ScoutingScreen } from "./ScoutingScreen";
-import { EventLog } from "./EventLog";
+import { Inbox } from "./Inbox";
+import { unreadCount } from "../engine/log";
 import { EraProgressPanel } from "./EraProgressPanel";
 import {
   canEndMonth as canEndMonthSel,
@@ -192,9 +193,11 @@ export function Dashboard({
             />
           )}
           {overlay === "people" && <CardsPanel state={state} />}
-          {overlay === "scouting" && <ScoutingScreen state={state} />}
+          {overlay === "scouting" && (
+            <ScoutingScreen state={state} dispatch={dispatch} />
+          )}
           {overlay === "era" && <EraProgressPanel state={state} />}
-          {overlay === "log" && <EventLog state={state} />}
+          {overlay === "log" && <Inbox state={state} dispatch={dispatch} />}
         </TaskOverlay>
       )}
 
@@ -487,9 +490,10 @@ function InfoDock({
         onClick={() => open("era")}
       />
       <DockButton
-        img="/assets/images/log.png"
+        img="/assets/images/inbox.png"
         fallbackIcon="archive-research"
-        label="Log"
+        label="Inbox"
+        count={unreadCount(state) || undefined}
         onClick={() => open("log")}
       />
     </div>
@@ -502,7 +506,7 @@ const DOCK_TIPS: Record<string, string> = {
   People: "People — staff and opportunities you've collected",
   Scouting: "Scouting — every player and prospect your club knows about",
   Era: "Era progress — your checklist to the next era",
-  Log: "Event log — everything that has happened",
+  Inbox: "Inbox — reports, news, and everything that has happened",
 };
 
 function DockButton({
@@ -712,7 +716,7 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
     people: "People",
     scouting: "Scouting",
     era: "Era Progress",
-    log: "Event Log",
+    log: "Inbox",
   };
   return titles[view];
 }

@@ -4,6 +4,7 @@ import type {
   GameAction,
   GameState,
   OrgProspect,
+  ScoutMission,
   WorldHockeyOrg,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
@@ -29,6 +30,13 @@ import {
   starString,
   starTier,
 } from "../engine/ratings";
+import { watchSlotsForUnit } from "../engine/scoutSystem";
+import {
+  SIGN_COST_FUNDS,
+  signGate,
+  signGateHint,
+  signingOdds,
+} from "../engine/signingSystem";
 
 // Compact scouted readout for a player in the pipeline (EHM presentation):
 // before any report it's just the org's word; once a scout has filed, it's
@@ -47,6 +55,65 @@ function prospectAttrLine(p: OrgProspect): string {
     );
   }
   return parts.join(" · ");
+}
+
+// Per-row watch/sign controls (docs/15 §5–§6): watch toggles a slot on the
+// on-station scout's list; sign enters the contested race once a report is
+// on file. Compact — the Scouting board's player file is the full version.
+function ProspectRowActions({
+  state,
+  prospectId,
+  mission,
+  dispatch,
+}: {
+  state: GameState;
+  prospectId: string;
+  mission: ScoutMission;
+  dispatch: Dispatch<GameAction>;
+}) {
+  const watched = mission.watchedPlayerIds.includes(prospectId);
+  const slots = watchSlotsForUnit(state, mission.unitId);
+  const slotsFull = !watched && mission.watchedPlayerIds.length >= slots;
+  const gate = signGate(state, prospectId);
+  const odds = signingOdds(state, prospectId);
+  return (
+    <span className="pp-action-btns">
+      <button
+        className={`btn btn-mini${watched ? " on" : ""}`}
+        disabled={slotsFull}
+        title={
+          slotsFull
+            ? `All ${slots} watch slots in use.`
+            : watched
+              ? "Stop watching — the read stops sharpening."
+              : "Watch closely — repeat viewings sharpen the read."
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          dispatch({ type: "WATCH_PLAYER", unitId: mission.unitId, prospectId });
+        }}
+      >
+        {watched ? "Watching" : "Watch"}
+      </button>
+      <button
+        className="btn btn-mini btn-gold"
+        disabled={gate !== "ok"}
+        title={
+          gate !== "ok"
+            ? signGateHint(gate)
+            : odds.rivalName
+              ? `${SIGN_COST_FUNDS} Funds — ${odds.rivalName} is in the race; you look ${odds.label}.`
+              : `${SIGN_COST_FUNDS} Funds — nobody else is at the table.`
+        }
+        onClick={(e) => {
+          e.stopPropagation();
+          dispatch({ type: "SIGN_PROSPECT", prospectId });
+        }}
+      >
+        Sign
+      </button>
+    </span>
+  );
 }
 
 // The Independents ledger — list view (one row per org, built to scale to a
@@ -229,6 +296,8 @@ function IndependentDetail({
   onBack: () => void;
 }) {
   const gate = introGate(state, org.id);
+  // The active observation assignment at this org, if a scout is on station.
+  const mission = state.scoutMissions.find((m) => m.orgId === org.id) ?? null;
   const nextThreshold =
     INFLUENCE_THRESHOLDS.find((t) => org.influencePoints < t) ?? null;
   const maxThreshold = INFLUENCE_THRESHOLDS[INFLUENCE_THRESHOLDS.length - 1];
@@ -328,11 +397,21 @@ function IndependentDetail({
                   <th className="pp-pos">Pos</th>
                   <th>Prospect</th>
                   <th>Word on them</th>
+                  {mission && <th className="pp-actions">Actions</th>}
                 </tr>
               </thead>
               <tbody>
                 {org.prospects.map((p) => (
-                  <tr key={p.id} className={p.revealed ? "" : "fogged"}>
+                  <tr
+                    key={p.id}
+                    className={
+                      p.signedByClubId
+                        ? "signed-away"
+                        : p.revealed
+                          ? ""
+                          : "fogged"
+                    }
+                  >
                     <td className="pp-pos">
                       <span className={`pos-badge pos-${p.position}`}>
                         {p.position}
@@ -344,6 +423,14 @@ function IndependentDetail({
                           {p.name}
                           {p.age ? <span className="pp-age"> · {p.age}</span> : null}
                           <span className="pp-age"> · {nationalityLabel(p.nationality)}</span>
+                          {p.signedByClubId && (
+                            <span className="scouting-flag flag-signed">
+                              → {CLUBS[p.signedByClubId]?.name ?? "a rival"}
+                            </span>
+                          )}
+                          {mission?.watchedPlayerIds.includes(p.id) && (
+                            <span className="scouting-flag flag-watched">watched</span>
+                          )}
                         </>
                       ) : (
                         "???"
@@ -354,17 +441,31 @@ function IndependentDetail({
                         ? prospectAttrLine(p)
                         : `“${p.teaser}”`}
                     </td>
+                    {mission && (
+                      <td className="pp-actions">
+                        {!p.signedByClubId && p.revealed && (
+                          <ProspectRowActions
+                            state={state}
+                            prospectId={p.id}
+                            mission={mission}
+                            dispatch={dispatch}
+                          />
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
           <div className="faint indy-foot-note">
-            {org.networkedByPlayer
-              ? "Your scouting network keeps this pipeline open — assign a scout to them and the reads sharpen with every report."
-              : org.playerContacted
-                ? "You know who plays here — the org's word is all you have on them. Send a Club Scout to establish a scouting network."
-                : "Meet them on the map first."}
+            {mission
+              ? `Your scout is on station (${mission.watchedPlayerIds.length}/${watchSlotsForUnit(state, mission.unitId)} watch slots in use) — watched players sharpen with every report; a filed report opens the door to signing.`
+              : org.networkedByPlayer
+                ? "Your scouting network keeps this pipeline open — assign a scout to them and the reads sharpen with every report."
+                : org.playerContacted
+                  ? "You know who plays here — the org's word is all you have on them. Send a Club Scout to establish a scouting network."
+                  : "Meet them on the map first."}
           </div>
 
           <div className="indy-col-title">The race for their favor</div>

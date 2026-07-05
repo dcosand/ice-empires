@@ -394,7 +394,7 @@ export type TryoutCandidate = Omit<Player, "hasEquipment" | "joinedMonth">;
 // whenever a wanderer joins via a goodie hut — the "big moment" of a signing.
 export type PlayerReveal = {
   player: Player;
-  source: "tryout" | "encounter";
+  source: "tryout" | "encounter" | "signing";
   // The club's very first player — earns the fullest fanfare copy.
   firstEver: boolean;
 };
@@ -469,12 +469,17 @@ export type LogType =
   | "rival"
   | "flavor";
 
+// One inbox item (D41: the Log is an Inbox). `from` is the sender line —
+// a scout's name, an org, a rival GM; absent means the UI derives a desk
+// name from `type`. `read` flips on triage; absent = unread.
 export type EventLogEntry = {
   id: string;
   month: number;
   title: string;
   message: string;
   type: LogType;
+  from?: string;
+  read?: boolean;
 };
 
 export type FlavorEventDef = {
@@ -568,6 +573,9 @@ export type ScoutMission = {
   monthsActive: number;
   // How many report batches this mission has filed (drives read sharpness).
   filings: number;
+  // Attention is finite (docs/15 §5): after the first full-roster sweep, only
+  // WATCHED players get repeat viewings. Capped by the scout's tier slots.
+  watchedPlayerIds: string[];
 };
 
 // A movable unit on the world (the Founding Group before founding; Scouts and
@@ -637,7 +645,11 @@ export type OrgProspect = {
   teaser: string;
   name?: string;
   age?: number;
+  gender?: PlayerGender;
   knownVia?: KnownVia;
+  // Set when a rival club wins the race for them — the prospect stays visible
+  // in the pipeline (it should sting) but can no longer be watched or signed.
+  signedByClubId?: string;
   // True values — engine-only; never render these directly.
   attrs?: PlayerAttrs;
   potential?: number; // true ceiling OVR, 1–100
@@ -860,6 +872,12 @@ export type GameAction =
   // ---- scouting assignments (docs/15 §5) ----
   | { type: "BEGIN_SCOUT_MISSION"; unitId: string; orgId: string }
   | { type: "RECALL_SCOUT"; unitId: string }
+  // Toggle a prospect on/off the assigned scout's watch list (finite slots).
+  | { type: "WATCH_PLAYER"; unitId: string; prospectId: string }
+  // Enter the contested signing race for a scouted prospect (docs/15 §6).
+  | { type: "SIGN_PROSPECT"; prospectId: string }
+  // Inbox triage (D41): mark specific items read, or everything when omitted.
+  | { type: "MARK_INBOX_READ"; ids?: string[] }
   | { type: "END_MONTH" }
   | { type: "RESTART" }
   // ---- dev tools (not part of normal play) ----

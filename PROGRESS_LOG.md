@@ -1,5 +1,32 @@
 # Ice Empires — Progress Log
 
+## 2026-07-05 (night) — Watch slots, the signing race, and the Inbox (D48–D50)
+The scouting arc's remaining §8B beats plus D41, in one pass. Headless sim now
+124 assertions, all passing; typecheck + build clean.
+- **Watch slots (D48)**: the first mission filing sweeps the whole org roster;
+  after that only WATCHED players sharpen — `WATCH_PLAYER` toggles, capped by
+  tier (Volunteer 2 / Traveled 3 / Ace 4). Sharpening is per player (+3
+  effective judging per prior report by that scout, capped 14). An idle
+  on-station scout nudges instead of filing air. Watch/Stop-watching buttons
+  live in the Scouting player file and the org ledger's pipeline table.
+- **Staleness (D39, derived)**: no mission at the org + newest report older
+  than 6 turns → "stale" flag on board rows + a last-report note in the file.
+  Nothing is erased — the file stays as written, trust is the player's call.
+- **The signing race (D49)**: `SIGN_PROSPECT` — networked org + ≥1 filed
+  report + 8 Funds. Seeded contest (influence + reports + proximity vs rival
+  influence, both + a 15-pt roll) with a visible odds preview
+  (uncontested/favored/contested/long shot). Win → prospect converts to a
+  roster Player with the SAME id (scouting history follows them), signing
+  cinematic. Lose → no funds spent; "→ Rival" stays in the pipeline. Monthly
+  `rivalSigningPressure` lets hard-courting rivals (≥30 influence) sign
+  prospects away on their own — the window genuinely closes.
+- **Inbox (D50/D41)**: `EventLogEntry` gains `from`/`read`; new Inbox screen
+  (sender lines — scouts by name, Rival Wire, desk names by type; unread
+  dots; All/Unread/Scouting/Rivals/Club/Money filters; mark-all-read); dock
+  button is now Inbox (inbox.png) with a live unread badge.
+- Prospects now carry `gender` at identify (signing needs it); the signing
+  reveal reuses `PlayerRevealScene` with a `"signing"` source beat.
+
 ## 2026-07-05 (later) — The scouting loop gets its verbs (D45–D47)
 Playtest-driven session: the network beat was "too passive," reads were too
 range-y, and scouts were indistinguishable. Headless sim now 103 assertions.
