@@ -7,7 +7,6 @@ import type {
   PendingEncounter,
 } from "../types/game";
 import { Onboarding } from "./Onboarding";
-import { ERAS } from "../data/eras";
 import { CLUBS, clubAsset } from "../data/clubs";
 import {
   ALL_FACILITY_DEFS_BY_ID,
@@ -36,7 +35,7 @@ import {
 } from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
 import { techPayoff } from "../engine/researchSystem";
-import { turnDateLabel } from "../engine/calendar";
+import { turnDateLabel, turnDateLong } from "../engine/calendar";
 import { ItemArt } from "./ItemArt";
 import {
   canHoldTryouts,
@@ -71,6 +70,8 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const [overlay, setOverlay] = useState<OverlayView>(null);
+  const [inboxFocusId, setInboxFocusId] = useState<string | null>(null);
+  const [leaderClubId, setLeaderClubId] = useState<string | null>(null);
   // Deep link from an independent meeting straight to that org's detail page.
   const [ledgerFocusOrgId, setLedgerFocusOrgId] = useState<string | null>(null);
   // Production now lives inside the Club HQ screen: the "build" task deep-links
@@ -155,11 +156,22 @@ export function Dashboard({
             setLedgerFocusOrgId(orgId);
             setOverlay("independents");
           }}
+          headerTools={
+            <div className="map-header-actions">
+              <RivalsStrip state={state} onOpenLeader={setLeaderClubId} />
+              <MapDateBadge month={state.month} />
+              <InfoDock
+                state={state}
+                open={openView}
+                onOpenInbox={() => {
+                  setInboxFocusId(null);
+                  openView("log");
+                }}
+              />
+            </div>
+          }
         />
         <CommandRail state={state} dispatch={dispatch} open={openView} />
-        <InfoDock state={state} open={openView} />
-        <NotificationRail state={state} onOpenLog={() => openView("log")} />
-        <RivalsStrip state={state} />
         {eraToast && (
           <button className="era-toast" onClick={() => openView("era")}>
             <span className="era-toast-check" aria-hidden>✓</span>
@@ -182,6 +194,7 @@ export function Dashboard({
           onClose={() => {
             setOverlay(null);
             setLedgerFocusOrgId(null);
+            setInboxFocusId(null);
           }}
         >
           {overlay === "research" && <ResearchPanel state={state} dispatch={dispatch} />}
@@ -197,7 +210,13 @@ export function Dashboard({
             <ScoutingScreen state={state} dispatch={dispatch} />
           )}
           {overlay === "era" && <EraProgressPanel state={state} />}
-          {overlay === "log" && <Inbox state={state} dispatch={dispatch} />}
+          {overlay === "log" && (
+            <Inbox
+              state={state}
+              dispatch={dispatch}
+              initialEntryId={inboxFocusId}
+            />
+          )}
         </TaskOverlay>
       )}
 
@@ -232,6 +251,17 @@ export function Dashboard({
           clubId={state.pendingMeeting.id}
           month={state.month}
           dispatch={dispatch}
+        />
+      )}
+
+      {leaderClubId && !state.pendingMeeting && (
+        <RivalMeetingScreen
+          clubId={leaderClubId}
+          month={state.month}
+          dispatch={dispatch}
+          mode="dossier"
+          rival={state.world?.rivals.find((r) => r.clubId === leaderClubId) ?? null}
+          onClose={() => setLeaderClubId(null)}
         />
       )}
 
@@ -442,12 +472,23 @@ function TaskButton({
   );
 }
 
+function MapDateBadge({ month }: { month: number }) {
+  return (
+    <div className="map-date-badge" title={`Turn ${month}`}>
+      <span>{turnDateLong(month)}</span>
+      <strong>Turn {month}</strong>
+    </div>
+  );
+}
+
 function InfoDock({
   state,
   open,
+  onOpenInbox,
 }: {
   state: GameState;
   open: (view: OverlayView) => void;
+  onOpenInbox: () => void;
 }) {
   const contactedOrgs =
     state.world?.hockeyOrgs.filter((o) => o.playerContacted).length ?? 0;
@@ -458,43 +499,46 @@ function InfoDock({
     ) ?? 0) + state.roster.length;
   const eraProgress = getEraProgress(state);
   const eraDone = eraProgress.filter((r) => r.met).length;
+  const unread = unreadCount(state);
+  const dockLabel = (label: string, count: number, total?: number) =>
+    total === undefined ? `${label} ${count}` : `${label} ${count}/${total}`;
   return (
     <div className="info-dock" role="toolbar" aria-label="Club screens">
       <DockButton
         img="/assets/images/independents.png"
         fallbackIcon="village"
         label="Indies"
-        count={contactedOrgs}
+        ariaLabel={dockLabel("Independents", contactedOrgs)}
         onClick={() => open("independents")}
       />
       <DockButton
         img="/assets/images/people.png"
         fallbackIcon="checklist"
         label="People"
-        count={state.cards.length}
+        ariaLabel={dockLabel("People", state.cards.length)}
         onClick={() => open("people")}
       />
       <DockButton
         img="/assets/images/scouting.png"
         fallbackIcon="spyglass"
         label="Scouting"
-        count={knownProspects}
+        ariaLabel={dockLabel("Scouting", knownProspects)}
         onClick={() => open("scouting")}
       />
       <DockButton
         img="/assets/images/era.png"
         fallbackIcon="flag-objective"
         label="Era"
-        count={eraDone}
-        countOf={eraProgress.length}
+        ariaLabel={dockLabel("Era progress", eraDone, eraProgress.length)}
         onClick={() => open("era")}
       />
       <DockButton
         img="/assets/images/inbox.png"
         fallbackIcon="archive-research"
         label="Inbox"
-        count={unreadCount(state) || undefined}
-        onClick={() => open("log")}
+        ariaLabel={unread > 0 ? `Inbox ${unread} unread` : "Inbox"}
+        alertCount={unread}
+        onClick={onOpenInbox}
       />
     </div>
   );
@@ -514,8 +558,8 @@ function DockButton({
   img,
   fallbackIcon,
   label,
-  count,
-  countOf,
+  ariaLabel,
+  alertCount,
   onClick,
 }: {
   // A game-icons SVG name (auto-inverted for the dark UI)…
@@ -525,8 +569,8 @@ function DockButton({
   img?: string;
   fallbackIcon?: string;
   label: string;
-  count?: number;
-  countOf?: number;
+  ariaLabel?: string;
+  alertCount?: number;
   onClick: () => void;
 }) {
   const svgSrc = (name: string) => `/assets/vendor/game-icons/svg/${name}.svg`;
@@ -534,6 +578,7 @@ function DockButton({
     <button
       className="dock-btn has-tip"
       data-tip={DOCK_TIPS[label] ?? label}
+      aria-label={ariaLabel ?? label}
       onClick={onClick}
     >
       {img ? (
@@ -557,10 +602,9 @@ function DockButton({
         <img src={svgSrc(icon ?? "hockey")} alt="" aria-hidden />
       )}
       <span className="dock-btn-label">{label}</span>
-      {count !== undefined && (
-        <span className="dock-btn-count">
-          {count}
-          {countOf !== undefined ? `/${countOf}` : ""}
+      {alertCount !== undefined && alertCount > 0 && (
+        <span className="dock-alert-count" aria-hidden>
+          {alertCount > 99 ? "99+" : alertCount}
         </span>
       )}
     </button>
@@ -569,12 +613,15 @@ function DockButton({
 
 // Every major club you've met, Civ-style: leader portraits across the top of
 // the map. Click one for a quick dossier (era, attitude, identity).
-function RivalsStrip({ state }: { state: GameState }) {
-  const [openClubId, setOpenClubId] = useState<string | null>(null);
+function RivalsStrip({
+  state,
+  onOpenLeader,
+}: {
+  state: GameState;
+  onOpenLeader: (clubId: string) => void;
+}) {
   const met = state.world?.rivals.filter((r) => r.contacted) ?? [];
   if (met.length === 0) return null;
-  const open = met.find((r) => r.clubId === openClubId) ?? null;
-  const openClub = open ? CLUBS[open.clubId] : null;
   return (
     <div className="rivals-strip">
       <div className="rivals-strip-row">
@@ -584,12 +631,9 @@ function RivalsStrip({ state }: { state: GameState }) {
           return (
             <button
               key={r.clubId}
-              className={`rival-face${openClubId === r.clubId ? " on" : ""}`}
+              className="rival-face"
               style={{ borderColor: club.accent }}
-              title={club.name}
-              onClick={() =>
-                setOpenClubId((cur) => (cur === r.clubId ? null : r.clubId))
-              }
+              onClick={() => onOpenLeader(r.clubId)}
             >
               <img
                 src={clubAsset(club, "leader")}
@@ -602,82 +646,6 @@ function RivalsStrip({ state }: { state: GameState }) {
           );
         })}
       </div>
-      {open && openClub && (
-        <div className="rival-popover" style={{ borderTopColor: openClub.accent }}>
-          <div className="rival-popover-head">
-            <img
-              className="rival-popover-crest"
-              src={clubAsset(openClub, "logo")}
-              alt=""
-              onError={(e) => {
-                e.currentTarget.style.display = "none";
-              }}
-            />
-            <div>
-              <div className="rival-popover-name">{openClub.name}</div>
-              <div className="rival-popover-meta">
-                {openClub.leaderArchetype} · {ERAS[open.eraId]?.name ?? open.eraId}
-              </div>
-            </div>
-          </div>
-          <div className="rival-popover-line">{openClub.identityText}</div>
-          <div className="rival-popover-attitude">
-            {open.attitude === "friendly"
-              ? "You parted as future friends."
-              : open.attitude === "wary"
-                ? "You took their measure coldly — they remember."
-                : "No formal stance yet."}
-            {" "}Scrimmages, trades, and sabotage arrive in later eras.
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-// Civ-VI-style notification rail: one icon chip per event from the current
-// turn, newest on top, hover for the story, click to open the full log.
-// Major beats (era, meetings, completions) still get full-screen treatments —
-// this rail is the quiet running tally.
-const NOTIF_ICONS: Record<string, string> = {
-  resource: "coins",
-  build: "barn",
-  research: "archive-research",
-  discovery: "spyglass",
-  card: "checklist",
-  era: "trophy-cup",
-  rival: "flag-objective",
-  flavor: "hockey",
-};
-
-function NotificationRail({
-  state,
-  onOpenLog,
-}: {
-  state: GameState;
-  onOpenLog: () => void;
-}) {
-  const thisTurn = state.eventLog
-    .filter((e) => e.month === state.month)
-    .slice(0, 8);
-  if (thisTurn.length === 0) return null;
-  return (
-    <div className="notif-rail" aria-label="This turn's events">
-      {thisTurn.map((e) => (
-        <button
-          key={e.id}
-          className={`notif-chip notif-${e.type} has-tip tip-left`}
-          data-tip={`${e.title} — ${e.message}`}
-          aria-label={e.title}
-          onClick={onOpenLog}
-        >
-          <img
-            src={`/assets/vendor/game-icons/svg/${NOTIF_ICONS[e.type] ?? "hockey"}.svg`}
-            alt=""
-            aria-hidden
-          />
-        </button>
-      ))}
     </div>
   );
 }

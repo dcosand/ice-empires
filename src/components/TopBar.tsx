@@ -1,11 +1,9 @@
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, ResourceKey } from "../types/game";
-import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
 import { RESEARCH_BY_ID } from "../data/research";
-import { RESOURCE_LABELS } from "../engine/resources";
 import { getMonthlyIncome } from "../engine/selectors";
-import { turnDateLabel } from "../engine/calendar";
 
 // Two currencies + the reputation standing stat, folded into the header as
 // icon + number indicators. Equipment is inventory, shown in Team contexts.
@@ -44,10 +42,7 @@ function ResourceIcon({ resource }: { resource: ResourceKey }) {
       );
     case "hockeyKnowledge": // hockey stick + puck
       return (
-        <svg {...common}>
-          <path d="M16.8 3.8 9 14.6c-.6.8-.3 1.7.7 1.9l4.8.9" />
-          <ellipse cx="17.2" cy="18.4" rx="2.1" ry="1.1" fill="currentColor" stroke="none" />
-        </svg>
+        <img src="/assets/images/research.png" alt="" aria-hidden />
       );
     case "reputation": // star (standing)
     default:
@@ -80,9 +75,7 @@ export function TopBar({
   dispatch: Dispatch<GameAction>;
   onOpenHQ?: () => void;
 }) {
-  const era = ERAS[state.eraId];
   const club = state.club;
-  const monthLabel = turnDateLabel(state.month);
 
   const income = getMonthlyIncome(state);
   const researchDef = state.activeResearch
@@ -95,6 +88,21 @@ export function TopBar({
           Math.ceil(state.activeResearch.knowledgeRemaining / income.hockeyKnowledge),
         )
       : null;
+  const prevFundsRef = useRef(state.resources.funds);
+  const [fundsGained, setFundsGained] = useState(false);
+
+  useEffect(() => {
+    const previous = prevFundsRef.current;
+    prevFundsRef.current = state.resources.funds;
+    if (state.resources.funds <= previous) return;
+    setFundsGained(false);
+    const frame = requestAnimationFrame(() => setFundsGained(true));
+    const timer = window.setTimeout(() => setFundsGained(false), 2200);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.clearTimeout(timer);
+    };
+  }, [state.resources.funds, state.month]);
 
   const themeStyle = {
     "--club-primary": club?.palette.primary ?? "#0f1d2c",
@@ -141,7 +149,7 @@ export function TopBar({
       <div className="topbar-resources">
         {RESOURCE_ORDER.map((key) => (
           <div
-            className="res-chip"
+            className={`res-chip${key === "funds" && fundsGained ? " resource-gain" : ""}`}
             key={key}
             title={RESOURCE_TIP[key]}
             style={{ "--res-color": RESOURCE_COLOR[key] } as CSSProperties}
@@ -155,7 +163,6 @@ export function TopBar({
                 {income[key] > 0 ? `+${income[key]}` : income[key]}
               </span>
             )}
-            <span className="res-name">{RESOURCE_LABELS[key]}</span>
           </div>
         ))}
         <div
@@ -172,7 +179,6 @@ export function TopBar({
             />
           </span>
           <span className="res-value">{state.equipment}</span>
-          <span className="res-name">Equipment</span>
         </div>
       </div>
       <div className="meta">
@@ -181,6 +187,15 @@ export function TopBar({
             className="topbar-research"
             title={`${researchDef.name} is the active research project`}
           >
+            <img
+              className="topbar-research-icon"
+              src="/assets/images/research.png"
+              alt=""
+              aria-hidden
+              onError={(e) => {
+                e.currentTarget.style.display = "none";
+              }}
+            />
             <span className="topbar-research-label">Research</span>
             <strong>{researchDef.name}</strong>
             <span>
@@ -190,11 +205,14 @@ export function TopBar({
             </span>
           </div>
         )}
-        <span className="pill" title={`Turn ${state.month}`}>
-          <strong>{monthLabel}</strong>
-          <span>Turn {state.month}</span>
-        </span>
-        <span className="pill pill-era">{era?.name}</span>
+        <img
+          className="topbar-game-logo"
+          src="/assets/images/ice%20empires%20logo.png"
+          alt="Ice Empires"
+          onError={(e) => {
+            e.currentTarget.style.display = "none";
+          }}
+        />
       </div>
     </div>
   );

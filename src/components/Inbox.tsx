@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Dispatch } from "react";
 import type { EventLogEntry, GameAction, GameState, LogType } from "../types/game";
 import { turnDateLabel } from "../engine/calendar";
@@ -33,11 +33,16 @@ const FILTERS: { id: LogType | "all" | "unread"; label: string }[] = [
 export function Inbox({
   state,
   dispatch,
+  initialEntryId = null,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
+  initialEntryId?: string | null;
 }) {
   const [filter, setFilter] = useState<LogType | "all" | "unread">("all");
+  const [selectedId, setSelectedId] = useState<string | null>(
+    initialEntryId ?? state.eventLog[0]?.id ?? null,
+  );
   const unread = unreadCount(state);
 
   const visible = state.eventLog.filter((e) =>
@@ -47,6 +52,28 @@ export function Inbox({
         ? !e.read
         : e.type === filter,
   );
+  const selected =
+    state.eventLog.find((e) => e.id === selectedId) ??
+    visible[0] ??
+    state.eventLog[0] ??
+    null;
+
+  useEffect(() => {
+    if (!initialEntryId) return;
+    setFilter("all");
+    setSelectedId(initialEntryId);
+  }, [initialEntryId]);
+
+  useEffect(() => {
+    if (selectedId && visible.some((e) => e.id === selectedId)) return;
+    setSelectedId(visible[0]?.id ?? null);
+  }, [filter, visible.map((e) => e.id).join("|"), selectedId]);
+
+  useEffect(() => {
+    if (selected && !selected.read) {
+      dispatch({ type: "MARK_INBOX_READ", ids: [selected.id] });
+    }
+  }, [dispatch, selected?.id, selected?.read]);
 
   return (
     <div className="panel inbox-panel">
@@ -72,40 +99,48 @@ export function Inbox({
         </button>
       </div>
 
-      {visible.length === 0 ? (
-        <div className="faint">
-          {filter === "unread"
-            ? "All caught up — nothing unread."
-            : "Nothing here yet."}
-        </div>
-      ) : (
-        <div className="inbox-list">
-          {visible.map((e) => (
-            <InboxItem
-              key={e.id}
-              entry={e}
-              onRead={() =>
-                !e.read && dispatch({ type: "MARK_INBOX_READ", ids: [e.id] })
-              }
-            />
-          ))}
-        </div>
-      )}
+      <div className="inbox-workspace">
+        {visible.length === 0 ? (
+          <div className="inbox-list empty">
+            <div className="faint">
+              {filter === "unread"
+                ? "All caught up — nothing unread."
+                : "Nothing here yet."}
+            </div>
+          </div>
+        ) : (
+          <div className="inbox-list" role="listbox" aria-label="Inbox messages">
+            {visible.map((e) => (
+              <InboxItem
+                key={e.id}
+                entry={e}
+                selected={selected?.id === e.id}
+                onSelect={() => setSelectedId(e.id)}
+              />
+            ))}
+          </div>
+        )}
+        <MessagePane entry={selected} />
+      </div>
     </div>
   );
 }
 
 function InboxItem({
   entry,
-  onRead,
+  selected,
+  onSelect,
 }: {
   entry: EventLogEntry;
-  onRead: () => void;
+  selected: boolean;
+  onSelect: () => void;
 }) {
   return (
     <button
-      className={`inbox-item type-${entry.type}${entry.read ? "" : " unread"}`}
-      onClick={onRead}
+      className={`inbox-item type-${entry.type}${entry.read ? "" : " unread"}${selected ? " selected" : ""}`}
+      onClick={onSelect}
+      role="option"
+      aria-selected={selected}
     >
       <span className="inbox-dot" aria-hidden />
       <span className="inbox-body">
@@ -118,4 +153,46 @@ function InboxItem({
       </span>
     </button>
   );
+}
+
+function MessagePane({ entry }: { entry: EventLogEntry | null }) {
+  if (!entry) {
+    return (
+      <section className="inbox-detail-pane empty">
+        <div className="faint">Select a message to read it.</div>
+      </section>
+    );
+  }
+  return (
+    <article className={`inbox-detail-pane type-${entry.type}`}>
+      <div className="inbox-detail-meta">
+        <span>{entry.from ?? DESK_NAMES[entry.type]}</span>
+        <span>{turnDateLabel(entry.month)}</span>
+      </div>
+      <h3>{entry.title}</h3>
+      <div className="inbox-detail-type">{typeLabel(entry.type)}</div>
+      <p>{entry.message}</p>
+    </article>
+  );
+}
+
+function typeLabel(type: LogType): string {
+  switch (type) {
+    case "resource":
+      return "Finance update";
+    case "build":
+      return "Operations update";
+    case "research":
+      return "Research update";
+    case "discovery":
+      return "Scouting update";
+    case "card":
+      return "Personnel update";
+    case "era":
+      return "Era progress";
+    case "rival":
+      return "Rival news";
+    case "flavor":
+      return "Club news";
+  }
 }

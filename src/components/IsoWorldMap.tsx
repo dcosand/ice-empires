@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import type { Dispatch } from "react";
+import type { Dispatch, ReactNode } from "react";
 import {
   Application,
   Assets,
@@ -2123,11 +2123,13 @@ export function IsoWorldMap({
   dispatch,
   onOpenHQ,
   onOpenIndependent,
+  headerTools,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onOpenHQ?: () => void;
   onOpenIndependent?: (orgId: string) => void;
+  headerTools?: ReactNode;
 }) {
   const activeClub = getActiveClub(state);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -2705,13 +2707,7 @@ export function IsoWorldMap({
   return (
     <div className="panel iso-panel">
       <div className="iso-map-header">
-        <div>
-          <h3 style={{ margin: 0 }}>Hockey World</h3>
-          <div className="panel-sub" style={{ margin: 0 }}>
-            Drag to pan · scroll to zoom · click a tile. Select a unit, then use
-            the arrow keys (or numpad) to move it across the world.
-          </div>
-        </div>
+        {headerTools}
       </div>
       <div className="iso-stage">
         <div ref={hostRef} className="iso-canvas" />

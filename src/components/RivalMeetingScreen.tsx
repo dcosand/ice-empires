@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { CSSProperties, Dispatch, SyntheticEvent } from "react";
-import type { GameAction } from "../types/game";
+import type { GameAction, RivalClub } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
 import { turnDateLabel } from "../engine/calendar";
 import { setContactMusicActive } from "./BackgroundMusic";
@@ -16,10 +16,16 @@ export function RivalMeetingScreen({
   clubId,
   month,
   dispatch,
+  mode = "first-contact",
+  rival,
+  onClose,
 }: {
   clubId: string;
   month: number;
   dispatch: Dispatch<GameAction>;
+  mode?: "first-contact" | "dossier";
+  rival?: Pick<RivalClub, "attitude" | "eraId"> | null;
+  onClose?: () => void;
 }) {
   const club = CLUBS[clubId];
   // Reveal the response choices only after the entrance beat has played.
@@ -31,9 +37,10 @@ export function RivalMeetingScreen({
   }, []);
   useEffect(() => {
     if (!club) return undefined;
+    if (mode !== "first-contact") return undefined;
     setContactMusicActive(true);
     return () => setContactMusicActive(false);
-  }, [club?.id]);
+  }, [club?.id, mode]);
 
   if (!club) return null;
 
@@ -52,7 +59,11 @@ export function RivalMeetingScreen({
       style={stageStyle}
       role="dialog"
       aria-modal="true"
-      aria-label={`First contact with ${club.name}`}
+      aria-label={
+        mode === "first-contact"
+          ? `First contact with ${club.name}`
+          : `${club.name} leader screen`
+      }
     >
       {!bgFailed && (
         <img
@@ -74,7 +85,10 @@ export function RivalMeetingScreen({
           onError={hideOnError}
         />
         <div className="meeting-panel">
-          <div className="meeting-eyebrow">First Contact · {turnDateLabel(month)}</div>
+          <div className="meeting-eyebrow">
+            {mode === "first-contact" ? "First Contact" : "Rival Leader"} ·{" "}
+            {turnDateLabel(month)}
+          </div>
           <div className="meeting-crest-row">
             <img
               className="meeting-crest"
@@ -87,30 +101,77 @@ export function RivalMeetingScreen({
               <div className="meeting-archetype">{club.leaderArchetype}</div>
             </div>
           </div>
-          <p className="meeting-line">
-            Out on the open ice, your party meets skaters flying the colors of{" "}
-            {club.name}. {club.identityText}
-          </p>
-          <div className={`meeting-choices${choicesReady ? " ready" : ""}`}>
-            <button
-              className="btn btn-primary meeting-choice"
-              onClick={() => respond("friendly")}
-            >
-              Extend an open hand
-              <span className="meeting-choice-sub">
-                Trade rumors, part as future friends
-              </span>
-            </button>
-            <button
-              className="btn meeting-choice"
-              onClick={() => respond("wary")}
-            >
-              Take their measure coldly
-              <span className="meeting-choice-sub">
-                Give nothing away — rivals remember
-              </span>
-            </button>
-          </div>
+          {mode === "first-contact" ? (
+            <>
+              <p className="meeting-line">
+                Out on the open ice, your party meets skaters flying the colors of{" "}
+                {club.name}. {club.identityText}
+              </p>
+              <div className={`meeting-choices${choicesReady ? " ready" : ""}`}>
+                <button
+                  className="btn btn-primary meeting-choice"
+                  onClick={() => respond("friendly")}
+                >
+                  Extend an open hand
+                  <span className="meeting-choice-sub">
+                    Trade rumors, part as future friends
+                  </span>
+                </button>
+                <button
+                  className="btn meeting-choice"
+                  onClick={() => respond("wary")}
+                >
+                  Take their measure coldly
+                  <span className="meeting-choice-sub">
+                    Give nothing away — rivals remember
+                  </span>
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="meeting-line">
+                {club.identityText}
+              </p>
+              <div className="rival-dossier-meta">
+                <span>
+                  Stance:{" "}
+                  <strong>
+                    {rival?.attitude === "friendly"
+                      ? "Friendly opening"
+                      : rival?.attitude === "wary"
+                        ? "Wary opening"
+                        : "Unsettled"}
+                  </strong>
+                </span>
+                <span>
+                  Era: <strong>{rival?.eraId ?? "unknown"}</strong>
+                </span>
+              </div>
+              <div className="meeting-choices ready">
+                <button className="btn meeting-choice" disabled>
+                  Make a trade
+                  <span className="meeting-choice-sub">Placeholder — player and asset trading arrives later.</span>
+                </button>
+                <button className="btn meeting-choice" disabled>
+                  Share intel
+                  <span className="meeting-choice-sub">Placeholder — scouting report exchange is not active yet.</span>
+                </button>
+                <button className="btn meeting-choice" disabled>
+                  Trade tech
+                  <span className="meeting-choice-sub">Placeholder — research diplomacy is planned for a later era.</span>
+                </button>
+                <button className="btn meeting-choice" disabled>
+                  Arrange exhibition
+                  <span className="meeting-choice-sub">Placeholder — friendly games will unlock with competition.</span>
+                </button>
+                <button className="btn btn-primary meeting-choice" onClick={onClose}>
+                  Back to map
+                  <span className="meeting-choice-sub">Return to the hockey world.</span>
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>
