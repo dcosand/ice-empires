@@ -36,13 +36,15 @@ getting the design right, not typing the code.
 ## Suggested order (top of backlog)
 
 1. Wire Club Formation era exit requirements — blocks Act III entirely.
-2. Victory conditions & endgame — foundational, everything else assumes an
+2. Smaller default map — cheap experiment, likely the fastest feel
+   improvement to early game pacing of anything on this list.
+3. Victory conditions & endgame — foundational, everything else assumes an
    answer eventually.
-3. Rival AI parity (research/tryouts/scouting) — the AI is visibly behind
+4. Rival AI parity (research/tryouts/scouting) — the AI is visibly behind
    the player's capability curve.
-4. Player development & aging — biggest missing system relative to how much
+5. Player development & aging — biggest missing system relative to how much
    of the roster/scouting arc already assumes it exists.
-5. Season calendar & standings — unblocks the rest of Act III.
+6. Season calendar & standings — unblocks the rest of Act III.
 
 ---
 
@@ -67,6 +69,25 @@ real architecture conversation: one shared "playbook" abstraction per era, or
 bespoke per-system AI hooks like today?
 **Model: Opus** for the playbook-architecture brainstorm; **Sonnet** per
 system once the shape is picked.
+
+---
+
+## Pacing & world scale
+
+### Smaller default map
+Owner playtest note (2026-07-06): `WORLD_WIDTH`/`WORLD_HEIGHT` (120×75,
+`engine/world.ts:20-21`) makes early game exploration slow — it takes too
+long to stumble onto independents or rival scouts, which is where most of
+the fun (first contact, tryouts, territory) actually starts. The generation
+RULES are fine as-is (major-club count and independent density already
+scale off `width * height` via `TILES_PER_MAJOR_CLUB`, so shrinking the
+constants should shrink travel time between features while keeping the same
+density) — this is a "just try smaller numbers and playtest" experiment, not
+a redesign. Worth checking `settlementSeparation`/`chooseStart` still behave
+sensibly at a smaller size (minimum spacing between HQs shouldn't collapse
+to zero) before calling it done.
+**Model: Sonnet** — parameter tuning + playtest, not new design. Try a couple
+of sizes (e.g. 70×45, 50×32) and see which feels right before committing.
 
 ---
 
@@ -221,10 +242,17 @@ above — probably the same brainstorm.
 **Model: Opus.**
 
 ### Rival alliances / diplomacy depth
-Only `rival.attitude` (friendly/wary, D20) exists today. Q18 asks whether
-alliances (scouting treaty, trade route, shared tournament, prospect
-loan/affiliate) are worth building.
-**Model: Opus** for the design; **Sonnet** to implement.
+Only `rival.attitude` (friendly/wary, D20) exists today, and it currently has
+no mechanical teeth — Q18 asks whether alliances (scouting treaty, trade
+route, shared tournament, prospect loan/affiliate) are worth building. Owner
+framing (2026-07-06): attitude should matter through **what deals a rival is
+willing to offer or accept** — friendly clubs open better/more trades,
+wary ones close off or sour terms. `RivalMeetingScreen.tsx` already has dead
+placeholder buttons for this ("Let's make a deal" → Make a trade / Share
+intel / Trade tech, lines ~161–206) with no logic behind them yet — this is
+the natural home for the mechanic once it's designed.
+**Model: Opus** for the design (what a trade actually is, how attitude gates
+it); **Sonnet** to implement against the shipped placeholder UI.
 
 ### Rival GM tone/voice pass
 Q16 — no comedy-register decision has been made; current copy is dry and
