@@ -38,13 +38,16 @@ getting the design right, not typing the code.
 1. Wire Club Formation era exit requirements — blocks Act III entirely.
 2. Smaller default map — cheap experiment, likely the fastest feel
    improvement to early game pacing of anything on this list.
-3. Victory conditions & endgame — foundational, everything else assumes an
+3. Name your rinks — cheap, pure upside, no design risk.
+4. Make the rink → tryouts connection legible — likely a quick UI fix that
+   resolves real player confusion about what forward rinks are for.
+5. Victory conditions & endgame — foundational, everything else assumes an
    answer eventually.
-4. Rival AI parity (research/tryouts/scouting) — the AI is visibly behind
+6. Rival AI parity (research/tryouts/scouting) — the AI is visibly behind
    the player's capability curve.
-5. Player development & aging — biggest missing system relative to how much
+7. Player development & aging — biggest missing system relative to how much
    of the roster/scouting arc already assumes it exists.
-6. Season calendar & standings — unblocks the rest of Act III.
+8. Season calendar & standings — unblocks the rest of Act III.
 
 ---
 
@@ -69,6 +72,51 @@ real architecture conversation: one shared "playbook" abstraction per era, or
 bespoke per-system AI hooks like today?
 **Model: Opus** for the playbook-architecture brainstorm; **Sonnet** per
 system once the shape is picked.
+
+---
+
+## Rinks & local improvements
+
+### Name your rinks
+Owner idea (2026-07-06): let the player name a rink when they build it, so
+the map starts to carry personalized landmarks instead of generic markers.
+`WorldRink` (`src/types/game.ts:599`) has no `name` field today. Low
+ambiguity — add the field, a naming prompt on build completion (or an
+optional rename later), and surface it in the tile inspector/rink marker
+tooltip.
+**Model: Sonnet.**
+
+### What does "Level 1" rink imply about Level 2+?
+Owner question (2026-07-06): rinks are explicitly called "Level 1 Outdoor
+Rink" (`world.ts` comment, `WorldRink.level`), which reads as if higher
+levels are coming, but only level 0 (cleared pond) and level 1 (built rink)
+exist in code. There's a real design ghost here: the OLD game bible
+(docs/01 §Buildings, docs/12 lines ~476-498) had a Small Arena → Mega Arena
+facility ladder, but that was designed for the pre-D18 world where rinks
+were an HQ facility. D18 moved rinks onto the map as builder-built objects
+and that upgrade ladder was never carried forward — it's genuinely
+undecided whether map rinks should get Level 2+ upgrades (bigger ice,
+indoor arenas, capacity/vision/income bumps) or whether "Level 1" should
+just get renamed to drop the implication.
+**Model: Opus** for the design (decide if/how the old Arena ladder maps onto
+D18's map-rink model); **Sonnet** to implement once scoped.
+
+### Make the rink → tryouts connection legible
+Owner question (2026-07-06): it's unclear what a rink outside the club's
+home-economy radius (`HOME_RINK_RADIUS`, D34) actually buys you toward
+tryouts. The honest answer today: only ONE thing is a hard gate — you need
+at least one club rink (level ≥1, inside the home radius) to hold tryouts
+at all (`tryoutSystem.ts:84`, `getClubRinks`). A forward rink's effect is
+entirely INDIRECT: it projects territory (D34's separate projection radius),
+which feeds `territoryTryoutBonus` (+1 candidate/7 owned tiles, +1 attribute
+floor/10, D35) — but nothing in the UI draws that line from "I built a rink
+over there" to "my tryout pool got bigger." This is more a legibility/UX
+problem than a missing mechanic, but worth a real look at whether the
+indirect chain is even the right design (vs. a forward rink having a more
+direct tryout effect of its own).
+**Model: Sonnet** if the fix is UI legibility (tooltips/breakdown showing
+where the tryout bonus comes from); **Opus** if the brainstorm concludes the
+underlying mechanic itself should change.
 
 ---
 
