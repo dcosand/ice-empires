@@ -1,8 +1,15 @@
-import type { GameState } from "../types/game";
+import type { GameState, PlayerPosition } from "../types/game";
 import { RESEARCH } from "../data/research";
 import { createWorld } from "./world";
-import { nearestRivalClubId } from "./rivalAI";
-import { holdTryouts, TRYOUT_COST_FUNDS } from "./tryoutSystem";
+import { ensureRivalRosters, generateRivalRoster, nearestRivalClubId } from "./rivalAI";
+import { playExhibition } from "./matchEngine";
+import { rollPersonIdentity } from "./playerGen";
+import {
+  createWandererPlayer,
+  holdTryouts,
+  ROSTER_CAP,
+  TRYOUT_COST_FUNDS,
+} from "./tryoutSystem";
 
 // Dev tools — reachable only from the in-app dev panel, never from normal play.
 // They mutate state directly (bypassing costs / prerequisites) so a developer
@@ -25,6 +32,8 @@ export function devResetTurn1(state: GameState): GameState {
     completedResearch: [],
     activeProduction: null,
     activeResearch: null,
+    matchHistory: [],
+    pendingMatchResult: null,
   };
 }
 
@@ -71,12 +80,19 @@ export function devMeetRival(state: GameState): GameState {
     nearestRivalClubId(state, { uncontactedOnly: true }) ??
     nearestRivalClubId(state);
   if (!world || !clubId) return state;
+  // Contacted rivals carry a roster (D51) — dev contact included.
+  const rival = world.rivals.find((r) => r.clubId === clubId)!;
+  const rolled =
+    rival.roster.length > 0
+      ? { roster: rival.roster, seed: state.rngSeed }
+      : generateRivalRoster(state.rngSeed, rival, state.month);
   return {
     ...state,
+    rngSeed: rolled.seed,
     world: {
       ...world,
       rivals: world.rivals.map((r) =>
-        r.clubId === clubId ? { ...r, contacted: true } : r,
+        r.clubId === clubId ? { ...r, contacted: true, roster: rolled.roster } : r,
       ),
     },
     pendingMeeting: { kind: "rival", id: clubId },
@@ -152,6 +168,56 @@ export function devGrantPondTech(state: GameState): GameState {
 
 export function devAddEquipment(state: GameState): GameState {
   return { ...state, equipment: state.equipment + 5 };
+}
+
+// Force an exhibition game (D51): contact the nearest rival if none is met,
+// gear the bench, pad the roster to a legal line with seeded stand-ins, and
+// run the REAL playExhibition path (bypassing the once-a-month gate, never
+// the sim) — same doctrine as Force Tryouts.
+export function devForceExhibition(state: GameState): GameState {
+  if (!state.club || !state.world || state.pendingMatchResult) return state;
+  const draft: GameState = structuredClone(state);
+  const world = draft.world!;
+
+  // A contacted rival to play — prefer one already met, else meet the nearest
+  // (quietly: no leader scene, this is a test shortcut).
+  const rival =
+    world.rivals.find((r) => r.contacted) ??
+    world.rivals.find((r) => r.clubId === nearestRivalClubId(draft));
+  if (!rival) return state;
+  rival.contacted = true;
+  ensureRivalRosters(draft);
+
+  // A legal line: gear everyone on the bench, then pad with stand-ins.
+  for (const p of draft.roster) p.hasEquipment = true;
+  const needsGoalie = () =>
+    !draft.roster.some((p) => p.hasEquipment && p.position === "G");
+  const padPositions: PlayerPosition[] = ["C", "W", "D"];
+  let padCount = 0;
+  while (
+    (draft.roster.length < 6 || needsGoalie()) &&
+    draft.roster.length < ROSTER_CAP
+  ) {
+    const position = needsGoalie() ? "G" : padPositions[padCount % padPositions.length];
+    padCount += 1;
+    const identity = rollPersonIdentity(
+      draft.rngSeed,
+      draft.club,
+      "tryoutCandidateFemale",
+      new Set(draft.roster.map((p) => p.name)),
+    );
+    draft.rngSeed = identity.seed;
+    draft.equipment += 1; // stand-ins arrive geared
+    createWandererPlayer(
+      draft,
+      position,
+      identity.name,
+      identity.gender,
+      identity.nationality,
+    );
+  }
+
+  return playExhibition(draft, rival.clubId, { force: true });
 }
 
 // Open a tryout bypassing the tech/rink/cost gates (candidates still seeded).

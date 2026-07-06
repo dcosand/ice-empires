@@ -28,6 +28,39 @@ export const NATIONS: Record<NationId, NationDefinition> = {
   other: { id: "other", displayName: "Other", namePoolId: "other" },
 };
 
+// Emoji flags — no icon assets, no deps. French Canada gets the fleur-de-lis
+// (its own name pool and identity, D45); "other" flies the neutral flag.
+const NATION_FLAGS: Record<NationId, string> = {
+  usa: "🇺🇸",
+  canada: "🇨🇦",
+  canada_french: "⚜️",
+  finland: "🇫🇮",
+  sweden: "🇸🇪",
+  czechia: "🇨🇿",
+  slovakia: "🇸🇰",
+  russia: "🇷🇺",
+  germany: "🇩🇪",
+  switzerland: "🇨🇭",
+  latvia: "🇱🇻",
+  other: "🏳️",
+};
+
+// The flag(s) for a person: primary, plus the secondary for dual nationals.
+// Pair with nationalityLabel in a title tooltip — the flag is the display,
+// the words are the explanation.
+export function nationalityFlag(
+  nationality: PersonNationality | NationId | null | undefined,
+): string {
+  if (!nationality) return NATION_FLAGS.other;
+  const primary =
+    typeof nationality === "string" ? nationality : nationality.primary;
+  const secondary =
+    typeof nationality === "string" ? undefined : nationality.secondary;
+  const flag = NATION_FLAGS[primary] ?? NATION_FLAGS.other;
+  if (!secondary) return flag;
+  return `${flag}${NATION_FLAGS[secondary] ?? NATION_FLAGS.other}`;
+}
+
 export function nationalityLabel(
   nationality: PersonNationality | NationId | null | undefined,
 ): string {

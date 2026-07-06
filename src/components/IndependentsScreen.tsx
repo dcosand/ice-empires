@@ -8,7 +8,7 @@ import type {
   WorldHockeyOrg,
 } from "../types/game";
 import { CLUBS, clubAsset } from "../data/clubs";
-import { nationalityLabel } from "../data/nationalities";
+import { nationalityFlag, nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
 import { turnDateLabel } from "../engine/calendar";
 import { indieAsset } from "../data/independents";
@@ -422,7 +422,12 @@ function IndependentDetail({
                         <>
                           {p.name}
                           {p.age ? <span className="pp-age"> · {p.age}</span> : null}
-                          <span className="pp-age"> · {nationalityLabel(p.nationality)}</span>
+                          <span
+                            className="pp-age nation-flag"
+                            title={nationalityLabel(p.nationality)}
+                          >
+                            {" "}· {nationalityFlag(p.nationality)}
+                          </span>
                           {p.signedByClubId && (
                             <span className="scouting-flag flag-signed">
                               → {CLUBS[p.signedByClubId]?.name ?? "a rival"}

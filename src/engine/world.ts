@@ -464,6 +464,7 @@ function placeRivals(
       nationalityWeights: club.nationalityWeights,
       hqTile: { x: chosen.x, y: chosen.y },
       productionPoints: 0,
+      roster: [],
       contacted: false,
       eraId: "pond-hockey",
       units: [createRivalUnit(`rival-${club.id}-scout-1`, chosen.x, chosen.y)],

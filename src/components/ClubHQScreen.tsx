@@ -14,7 +14,7 @@ import {
 } from "../data/clubUniques";
 import { ERAS } from "../data/eras";
 import { clubAsset } from "../data/clubs";
-import { nationalityLabel } from "../data/nationalities";
+import { nationalityFlag, nationalityLabel } from "../data/nationalities";
 import { RESOURCE_LABELS } from "../engine/resources";
 import {
   getMonthlyIncome,
@@ -494,7 +494,11 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
             {player.name} <span className="line-ovr">{overall}</span>
           </div>
           <div className="line-meta">
-            Age {player.age} · {nationalityLabel(player.nationality)} · {player.style} · Joined {turnDateLabel(player.joinedMonth)}
+            Age {player.age} ·{" "}
+            <span className="nation-flag" title={nationalityLabel(player.nationality)}>
+              {nationalityFlag(player.nationality)}
+            </span>{" "}
+            · {player.style} · Joined {turnDateLabel(player.joinedMonth)}
           </div>
         </div>
         <span

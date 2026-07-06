@@ -549,3 +549,30 @@ marks read, All/Unread/Scouting/Rivals/Club/Money filters, Mark-all-read;
 the dock button is now "Inbox" (inbox.png) with a live unread badge.
 `MARK_INBOX_READ` is the one action (ids or everything). No separate news
 system — an evolution of the log, per D41.
+
+## D51 — Match Engine v0: exhibitions, rival rosters, seeded shot-chance sim (SHIPPED 2026-07-05)
+The first playable hockey, pulled forward from Act III now that ratings
+(D42–D44) unblocked it — scoped to a self-contained EXHIBITION so it needs no
+competition calendar and no era wiring. Full design: docs/17_MATCH_ENGINE.md.
+1. **Both teams compose identically**: `ratings.teamRatings(roster)` for the
+   player AND the rival — strength stays derived, never stored. Compete/
+   Composure/Discipline/Durability deliberately unused until Act III has
+   close games and penalties worth swinging.
+2. **Rivals get rosters** (the true prerequisite): `RivalClub.roster:
+   Player[]`, empty at worldgen, generated at FIRST CONTACT through the shared
+   `playerGen` (never a fork) — 2C/3W/3D/1G, pre-geared, attribute band keyed
+   to the rival's era (pond 20+25 → dynasty 58+30). Engine-side truth: never
+   rendered directly (the future rival roster read goes through talentFog).
+3. **The sim is a seeded period-by-period shot-chance model, not a dice roll**
+   (`engine/matchEngine.ts`, pure, seed in/out, D3): per period each side
+   generates chances (transition vs defense), converts them (attack vs
+   goaltending, physicality nudge), and attributes goals to skaters weighted
+   by Shooting/Passing. Ties stand — it's a friendly. Star of the game:
+   stolen games go to the goalie, otherwise top points.
+4. **Delivery**: `PLAY_EXHIBITION` (from the rival dossier's now-live
+   "Arrange exhibition" button) gates on contacted rival + `hasFullLine` +
+   once per month (derived from `state.matchHistory`, no stored flag; free in
+   v0). Result stages `state.pendingMatchResult` → result overlay (score,
+   period line, shots, goal reel, star) + an Inbox letter from the "Game
+   Notes" desk (D50). `matchHistory` keeps every game for future standings.
+Dev Panel gains Force Exhibition (bypasses gates, never the engine).

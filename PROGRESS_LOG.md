@@ -1,5 +1,45 @@
 # Ice Empires — Progress Log
 
+## 2026-07-05 (late night) — Match Engine v0: hockey is actually played (D51)
+The Act III headliner pulled forward now that ratings unblocked it — scoped to
+a self-contained EXHIBITION (no calendar, no era wiring). Design-first:
+docs/17_MATCH_ENGINE.md + D51 before code. Headless match sim: 47 assertions,
+all passing (determinism, box-score integrity, mean 4.3 total goals over 400
+seeded games, ties ~22%, a competitive-era club beats pond locals 298/300);
+typecheck + build clean.
+- **Rival rosters (the true prerequisite)**: `RivalClub.roster: Player[]`,
+  empty at worldgen, generated at FIRST CONTACT via the shared `playerGen`
+  (2C/3W/3D/1G, pre-geared, band keyed to the rival's era: pond 20+25 →
+  dynasty 58+30). All three contact paths generate (human bumps rival, rival
+  bumps human, dev meet); `ensureRivalRosters` is the idempotent sweep.
+- **`engine/matchEngine.ts`**: `simulateMatch` — pure, seeded (D3), period-by-
+  period shot-chance model: chances from transition-vs-defense, conversion
+  from attack-vs-goaltending (+physicality nudge), goals attributed to skaters
+  weighted by Shooting/Passing. Both sides compose through `teamRatings`.
+  Ties stand (it's a friendly). Star of the game: stolen games go to the
+  goalie, else top points.
+- **Initiation**: `PLAY_EXHIBITION` from the rival dossier's now-live
+  "Arrange exhibition" button; gates = contacted rival + `hasFullLine` + one
+  game per month (derived from `state.matchHistory` — no stored flag). Free
+  in v0.
+- **Presentation**: `state.pendingMatchResult` → box-score overlay
+  (`MatchResultScreen` in TaskOverlay chrome: crests, period line, shots,
+  goal reel, star) + an Inbox letter from the "Game Notes" desk (D50).
+- **Dev Panel**: Force exhibition — contacts the nearest rival, gears/pads
+  the roster to a legal line, bypasses the monthly gate, runs the real path.
+- NOT built (still Act III): calendar/standings, OT/shootout, penalties,
+  results rumors, development/aging. All of it will call `simulateMatch`.
+- **Follow-up (same night, owner-directed)**: the rival dossier gains
+  **"See their roster"** — a names/position/age list of the rival's players
+  ("your scout saw them skate"; NO numbers — deeper reads wait for scout
+  assignments per the fog doctrine), and the three deal placeholders (trade /
+  intel / tech) regrouped as sub-options behind **"Let's make a deal"**.
+  **Nationality now renders as an emoji flag** (`nationalityFlag`,
+  `data/nationalities.ts`; French Canada = ⚜️, dual nationals show both) with
+  the words in the tooltip — swapped on HockeyCard, ClubHQ Team rows, the
+  Scouting board + player file, the indie pipeline, and the dossier roster;
+  scout staff cards keep the text label.
+
 ## 2026-07-05 (night) — Watch slots, the signing race, and the Inbox (D48–D50)
 The scouting arc's remaining §8B beats plus D41, in one pass. Headless sim now
 124 assertions, all passing; typecheck + build clean.

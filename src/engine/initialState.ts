@@ -35,6 +35,8 @@ export function createInitialState(): GameState {
     activeResearch: null,
     cards: [],
     eventLog: [],
+    matchHistory: [],
+    pendingMatchResult: null,
     rngSeed: 0,
     pendingEncounter: null,
     pendingMeeting: null,

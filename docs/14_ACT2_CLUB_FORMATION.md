@@ -277,9 +277,11 @@ categories; add sender/source and news-type entries.
 ## 10. Deferred to Act III (explicitly out of Act II)
 
 - **Match Engine v0** — blocked on §8 (player/team ratings). This is the whole
-  reason competition left Act II.
+  reason competition left Act II. **SHIPPED 2026-07-05 (D51,
+  docs/17_MATCH_ENGINE.md)**: ratings landed (D42–D44) and unblocked it — a
+  self-contained exhibition sim, still without the Act III calendar/era wiring.
 - **Opponent results rumors** — need a sim to seed real results; until then, no
-  fabricated scores.
+  fabricated scores. (Unblocked by D51; not yet built.)
 - **Water traversal / embark** — still a Club-Formation-era *capability* on
   paper (Halifax's Harbor Ferry), but not required for Act II exit; schedule
   after territory/scouting land, or pull forward only if an island start proves

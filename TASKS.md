@@ -169,10 +169,13 @@ is deferred to Act III** (D33); do not build it here.
       STALE (derived, `REPORT_STALE_MONTHS`) when no scout is on station.
 - [x] **First-contact roster read (indies)** (D46, 2026-07-05) — first contact
       identifies an independent's FULL roster (8–10 named players, org's-word
-      teasers; numbers wait for assignments). STILL AHEAD: the rival
-      major-club roster read (rival rosters aren't generated yet), and rival
-      networks / the AI side of the Anchor race — `rivalSigningPressure`
-      (D49) is its first teeth, but rivals still don't network or watch.
+      teasers; numbers wait for assignments). PARTIAL (2026-07-05, D51
+      follow-up): rival rosters now EXIST (generated at first contact) and
+      the dossier's "See their roster" shows a names/position/age list — the
+      FOGGED ATTRIBUTE read (talentFog ranges, scout assignments at rival
+      orgs) is still ahead, as are rival networks / the AI side of the
+      Anchor race — `rivalSigningPressure` (D49) is its first teeth, but
+      rivals still don't network or watch.
 - [x] **SIGN_PROSPECT contested race** (D49, 2026-07-05) — networked org + a
       filed report + 8 Funds opens the race: seeded roll of your influence/
       reports/proximity vs rival influence; win converts the prospect to a
@@ -233,8 +236,18 @@ is deferred to Act III** (D33); do not build it here.
       union + `selectors.isRequirementMet` cases.
 
 ### Deferred to Act III (do NOT build in Act II)
-- [ ] Match Engine v0 (blocked on ratings, D33/D40).
-- [ ] Opponent results rumors (needs the sim).
+- [x] **Match Engine v0 (D51, 2026-07-05)** — pulled forward once ratings
+      (D42–D44) unblocked it, as a self-contained EXHIBITION (no calendar, no
+      era wiring). docs/17_MATCH_ENGINE.md. Rival rosters generate at first
+      contact (`RivalClub.roster`, shared playerGen, era-banded, 2C/3W/3D/1G);
+      `engine/matchEngine.ts` is a pure seeded period-by-period shot-chance
+      sim reading `teamRatings` for BOTH sides; `PLAY_EXHIBITION` from the
+      rival dossier (contacted + full line + once a month, derived); result
+      overlay + "Game Notes" Inbox letter; Dev Panel Force Exhibition.
+      Validated headless (47 assertions). STILL AHEAD (Act III proper):
+      calendar/standings, OT/shootout, penalties off Discipline, fatigue off
+      Durability, style matchups, home ice, era wiring.
+- [ ] Opponent results rumors (needs the sim — now UNBLOCKED by D51).
 - [ ] Water traversal / `embark` (Halifax Harbor Ferry) — nice-to-have, not an
       exit gate.
 

@@ -21,6 +21,7 @@ import {
   triggerPondEncounter,
 } from "./scoutSystem";
 import { signProspect } from "./signingSystem";
+import { playExhibition } from "./matchEngine";
 import { markInboxRead } from "./log";
 import { ensureScoutCharacters } from "./scoutStaff";
 import { clearSnow, harvestBranches, startRinkBuild } from "./builderSystem";
@@ -33,6 +34,7 @@ import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
 import {
   devAddEquipment,
+  devForceExhibition,
   devForceTryouts,
   devGrantPondTech,
   devMeetIndependent,
@@ -226,6 +228,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
     case "SIGN_PROSPECT":
       return signProspect(state, action.prospectId);
 
+    case "PLAY_EXHIBITION":
+      return playExhibition(state, action.rivalClubId);
+
+    case "ACKNOWLEDGE_MATCH_RESULT":
+      return { ...state, pendingMatchResult: null };
+
     case "MARK_INBOX_READ":
       return markInboxRead(state, action.ids);
 
@@ -297,6 +305,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_FORCE_TRYOUTS":
       return devForceTryouts(state);
+
+    case "DEV_FORCE_EXHIBITION":
+      return devForceExhibition(state);
 
     default:
       return state;

@@ -1,9 +1,25 @@
-import type { GameState, RivalClub, RivalUnit } from "../types/game";
+import type {
+  GameState,
+  Player,
+  PlayerPosition,
+  RivalClub,
+  RivalUnit,
+} from "../types/game";
 import { CLUBS } from "../data/clubs";
+import { CANDIDATE_NOTES, GOALIE_NOTES } from "../data/playerNames";
+import { playerImageFor } from "../data/playerImages";
 import { createRivalUnit, isAdjacent, tileAt } from "./world";
 import { allScouts } from "./scoutSystem";
 import { prependLog } from "./log";
 import { nextRandom } from "./rng";
+import {
+  type AttrBand,
+  rollAttrs,
+  rollPersonIdentity,
+  rollPotential,
+  rollStyle,
+  rollTraits,
+} from "./playerGen";
 import type { PushLog } from "./turnContext";
 
 // Lightweight AI opponents — the FOUNDATION for rival clubs / multiplayer, not a
@@ -20,6 +36,93 @@ const MAX_RIVAL_SCOUTS = 4; // leave roster room for the builder
 const MAX_RIVAL_RINKS = 3; // rinks a rival will raise near its HQ
 const RIVAL_RINK_SEARCH_RADIUS = 9; // how far from home a crew will look for ice
 const RIVAL_RINK_BUILD_MONTHS = 3; // clear + build, one month slower than the human
+
+// ---------------------------------------------------------------------------
+// Rival rosters (D51, docs/17 §2): generated at FIRST CONTACT through the
+// shared playerGen — never a forked generator. A fixed 2C/3W/3D/1G template
+// guarantees every contacted rival can ice a legal line; the attribute band
+// keys to the rival's era at contact time. Players arrive pre-geared (an AI
+// club equips its own team) so ratings.teamRatings reads them like the
+// player's roster. Engine-side truth — never render these attrs directly.
+// ---------------------------------------------------------------------------
+
+const RIVAL_ROSTER_TEMPLATE: PlayerPosition[] = [
+  "C", "C", "W", "W", "W", "D", "D", "D", "G",
+];
+
+const RIVAL_ROSTER_BANDS: Record<string, AttrBand> = {
+  "pond-hockey": { min: 20, span: 25 },
+  "club-formation": { min: 28, span: 27 },
+  "competitive-hockey": { min: 38, span: 27 },
+  "hockey-operations": { min: 48, span: 27 },
+  dynasty: { min: 58, span: 30 },
+};
+
+export function generateRivalRoster(
+  seed: number,
+  rival: RivalClub,
+  month: number,
+): { roster: Player[]; seed: number } {
+  let s = seed;
+  const thread = <T>(rolled: T & { seed: number }): T => {
+    s = rolled.seed;
+    return rolled;
+  };
+  const band = RIVAL_ROSTER_BANDS[rival.eraId] ?? RIVAL_ROSTER_BANDS["pond-hockey"];
+  const club = CLUBS[rival.clubId];
+  const usedNames = new Set<string>();
+  const roster: Player[] = [];
+  for (let i = 0; i < RIVAL_ROSTER_TEMPLATE.length; i++) {
+    const position = RIVAL_ROSTER_TEMPLATE[i];
+    const { style } = thread(rollStyle(s, position));
+    const { attrs } = thread(rollAttrs(s, position, style, band));
+    const { potential } = thread(rollPotential(s, position, attrs));
+    const { traits } = thread(rollTraits(s));
+    const identity = thread(
+      rollPersonIdentity(s, rival, "scoutedPlayerFemale", usedNames),
+    );
+    const id = `rival-${rival.clubId}-p${i}`;
+    const ageRoll = nextRandom(s);
+    s = ageRoll.seed;
+    const noteRoll = nextRandom(s);
+    s = noteRoll.seed;
+    const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
+    roster.push({
+      id,
+      name: identity.name,
+      nationality: identity.nationality,
+      gender: identity.gender,
+      position,
+      age: 16 + Math.floor(ageRoll.value * 12),
+      attrs,
+      potential,
+      style,
+      traits,
+      imageUrl: playerImageFor({
+        gender: identity.gender,
+        kind: "player",
+        position,
+        seed: id,
+      }),
+      hasEquipment: true,
+      joinedMonth: month,
+      origin: `${club?.name ?? "rival"} roster`,
+      note: notes[Math.floor(noteRoll.value * notes.length)],
+    });
+  }
+  return { roster, seed: s };
+}
+
+// Fill the roster of any contacted rival that still lacks one — idempotent,
+// draft-mutating (endMonth style). Covers contact paths and dev shortcuts.
+export function ensureRivalRosters(draft: GameState): void {
+  for (const rival of draft.world?.rivals ?? []) {
+    if (!rival.contacted || rival.roster.length > 0) continue;
+    const rolled = generateRivalRoster(draft.rngSeed, rival, draft.month);
+    draft.rngSeed = rolled.seed;
+    rival.roster = rolled.roster;
+  }
+}
 
 // Run every rival's monthly turn: economy (spawn scouts) + movement (wander),
 // then check whether a wandering rival walked into one of the human's scouts.
@@ -286,6 +389,7 @@ function checkRivalContactAtScouts(draft: GameState, push: PushLog): void {
     if (rival.contacted) continue;
     if (rivalIsInContact(rival, scouts)) {
       rival.contacted = true;
+      ensureRivalRosters(draft); // a met club has a team to meet (D51)
       draft.pendingMeeting = { kind: "rival", id: rival.clubId };
       const club = CLUBS[rival.clubId];
       push(
@@ -313,12 +417,18 @@ export function triggerRivalContact(state: GameState, x: number, y: number): Gam
   if (idx < 0) return state;
 
   const rival = world.rivals[idx];
+  // First contact reveals a club with a team on it (D51).
+  const rolled =
+    rival.roster.length > 0
+      ? { roster: rival.roster, seed: state.rngSeed }
+      : generateRivalRoster(state.rngSeed, rival, state.month);
   const rivals = world.rivals.map((r, i) =>
-    i === idx ? { ...r, contacted: true } : r,
+    i === idx ? { ...r, contacted: true, roster: rolled.roster } : r,
   );
   const club = CLUBS[rival.clubId];
   const next: GameState = {
     ...state,
+    rngSeed: rolled.seed,
     world: { ...world, rivals },
     pendingMeeting: { kind: "rival", id: rival.clubId },
   };

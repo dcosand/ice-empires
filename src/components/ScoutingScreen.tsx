@@ -10,7 +10,7 @@ import type {
   ScoutReport,
 } from "../types/game";
 import { CLUBS } from "../data/clubs";
-import { nationalityLabel } from "../data/nationalities";
+import { nationalityFlag, nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
 import {
   attrEntries,
@@ -48,7 +48,8 @@ type Row = {
   name: string;
   position: PlayerPosition;
   age: number | null;
-  nationality: string;
+  nationality: string; // flag emoji (display)
+  nationalityTitle: string; // words, for the tooltip
   style: string;
   source: string;
   // Sort keys: roster OVR is true; a prospect's is the estimate midpoint.
@@ -194,7 +195,9 @@ export function ScoutingScreen({
                 </td>
                 <td className="pp-name">
                   {r.name}
-                  <span className="scouting-flag">{r.nationality}</span>
+                  <span className="nation-flag" title={r.nationalityTitle}>
+                    {r.nationality}
+                  </span>
                   {r.watched && (
                     <span className="scouting-flag flag-watched" title="On a scout's watch list — repeat viewings sharpen the read">
                       watched
@@ -246,7 +249,8 @@ function buildRows(state: GameState): Row[] {
       name: p.name,
       position: p.position,
       age: p.age,
-      nationality: nationalityLabel(p.nationality),
+      nationality: nationalityFlag(p.nationality),
+      nationalityTitle: nationalityLabel(p.nationality),
       style: p.style,
       source: p.origin,
       ovrSort: ovr,
@@ -274,7 +278,8 @@ function buildRows(state: GameState): Row[] {
           name: p.name ?? "???",
           position: p.position,
           age: p.age ?? null,
-          nationality: nationalityLabel(p.nationality),
+          nationality: nationalityFlag(p.nationality),
+          nationalityTitle: nationalityLabel(p.nationality),
           style: p.style ?? "",
           source: hockeyOrgDisplayName(org),
           ovrSort: readOvr ?? 0,
@@ -361,7 +366,10 @@ function PlayerDetail({
           <div className="sc-detail-meta">
             {POSITION_LABELS[row.position]}
             {row.age ? ` · Age ${row.age}` : ""}
-            {` · ${row.nationality}`}
+            {" · "}
+            <span className="nation-flag" title={row.nationalityTitle}>
+              {row.nationality}
+            </span>
             {row.style ? ` · ${row.style}` : ""} · {row.source}
           </div>
         </div>

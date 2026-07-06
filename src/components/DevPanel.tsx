@@ -95,6 +95,14 @@ export function DevPanel({
         >
           🏘 Meet nearest independent
         </button>
+        <button
+          style={inGame && !state.pendingMatchResult ? actionBtnStyle : disabledBtnStyle}
+          disabled={!inGame || !!state.pendingMatchResult}
+          onClick={() => dispatch({ type: "DEV_FORCE_EXHIBITION" })}
+          title="Contact the nearest rival if needed, pad the roster to a legal line, and play an exhibition"
+        >
+          🏒 Force exhibition ({state.matchHistory.length} played)
+        </button>
         <div style={hintStyle}>
           Enable “Reveal all tiles” to see rival HQs and their scouts on the map.
         </div>

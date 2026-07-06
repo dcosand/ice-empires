@@ -6780,3 +6780,237 @@ tr.signed-away .scouting-flag.flag-signed { opacity: 1; }
     max-height: 300px;
   }
 }
+
+/* ---------------------------------------------------------------------------
+   Match result (D51) — the exhibition box score inside the TaskOverlay.
+--------------------------------------------------------------------------- */
+
+.match-result {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  align-items: stretch;
+}
+
+.match-eyebrow {
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-dim, #8aa0b4);
+  text-align: center;
+}
+
+.match-scoreline {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 18px;
+}
+
+.match-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.match-team-crest {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+.match-team-name {
+  font-family: Cinzel, serif;
+  font-weight: 700;
+  font-size: 15px;
+  text-align: center;
+}
+
+.match-score {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: Cinzel, serif;
+  font-size: 52px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.match-score-dash {
+  font-size: 34px;
+  opacity: 0.55;
+}
+
+.match-verdict {
+  text-align: center;
+  font-style: italic;
+  color: var(--ink-dim, #8aa0b4);
+}
+
+.match-periods {
+  border-collapse: collapse;
+  margin: 0 auto;
+  font-size: 13px;
+}
+
+.match-periods th,
+.match-periods td {
+  padding: 4px 12px;
+  text-align: center;
+  border-bottom: 1px solid rgba(120, 160, 200, 0.18);
+}
+
+.match-periods th {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink-dim, #8aa0b4);
+}
+
+.match-periods-team {
+  text-align: left !important;
+  font-weight: 600;
+}
+
+.match-periods-total {
+  font-weight: 800;
+}
+
+.match-section-title {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ink-dim, #8aa0b4);
+  margin-bottom: 6px;
+}
+
+.match-goals {
+  border-top: 1px solid rgba(120, 160, 200, 0.18);
+  padding-top: 10px;
+}
+
+.match-goal-row {
+  display: grid;
+  grid-template-columns: 64px 150px 1fr;
+  gap: 10px;
+  padding: 3px 0;
+  font-size: 13px;
+  align-items: baseline;
+}
+
+.match-goal-time {
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-dim, #8aa0b4);
+}
+
+.match-goal-team {
+  font-weight: 700;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.match-goal-assist {
+  color: var(--ink-dim, #8aa0b4);
+}
+
+.match-star {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  justify-content: center;
+  border-top: 1px solid rgba(120, 160, 200, 0.18);
+  padding-top: 12px;
+}
+
+.match-star-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--gold, #d4af37);
+}
+
+.match-star-line {
+  color: var(--ink-dim, #8aa0b4);
+  font-size: 13px;
+}
+
+/* Rival dossier roster read (D51 follow-up): names your scout has seen —
+   no numbers; deeper reads wait for scout assignments. */
+.meeting-roster {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 20px;
+}
+
+.meeting-roster-head {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--meet-accent, var(--accent));
+  margin-bottom: 8px;
+}
+
+.meeting-roster-row {
+  display: grid;
+  grid-template-columns: 30px 1fr auto 52px;
+  gap: 10px;
+  align-items: baseline;
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.meeting-roster-row:nth-child(even) {
+  background: rgba(120, 160, 200, 0.07);
+}
+
+.meeting-roster-pos {
+  font-weight: 800;
+  font-size: 12px;
+  color: var(--meet-accent, var(--accent));
+}
+
+.meeting-roster-name {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meeting-roster-nation {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.meeting-roster-age {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--text-dim);
+  text-align: right;
+}
+
+.meeting-roster-note {
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-dim);
+  margin: 10px 0 12px;
+}
+
+/* Nationality flags (emoji) — the flag is the display, the tooltip carries
+   the words. Slightly enlarged so regional-indicator glyphs stay legible. */
+.nation-flag {
+  font-size: 1.05em;
+  font-style: normal;
+  letter-spacing: 0;
+  cursor: default;
+}
+
+/* On the scouting board the flag follows the name directly — give it air. */
+.pp-name > .nation-flag {
+  margin-left: 6px;
+}

@@ -740,12 +740,49 @@ export type RivalClub = {
   hqTile: { x: number; y: number };
   productionPoints: number; // lightweight economy accumulator toward next unit
   units: RivalUnit[];
+  // The rival's players (D51): empty until first contact, then generated
+  // era-appropriate through the shared playerGen. Engine-side truth — never
+  // render their attributes directly (future roster reads go through the fog).
+  roster: Player[];
   contacted: boolean; // has the human made first contact with this rival?
   // How the player greeted them at first contact — seeds Act-3 diplomacy.
   attitude?: "friendly" | "wary";
   // Rivals progress through eras on their own seeded schedule; transitions of
   // contacted rivals are broadcast in the log for competitive pressure.
   eraId: string;
+};
+
+// ---------------------------------------------------------------------------
+// Matches (D51, docs/17): exhibition results from the seeded shot-chance sim.
+// ---------------------------------------------------------------------------
+
+export type MatchGoal = {
+  period: number; // 1..3
+  minute: number; // 0..19 within the period
+  clubId: string; // the scoring club
+  scorerId: string;
+  scorer: string;
+  assist?: string;
+};
+
+// One team's line in the box score. `periodGoals` has one entry per period.
+export type MatchTeamLine = {
+  clubId: string;
+  name: string;
+  score: number;
+  shots: number;
+  periodGoals: number[];
+};
+
+export type MatchResult = {
+  id: string;
+  month: number;
+  kind: "exhibition";
+  home: MatchTeamLine; // the player's club
+  away: MatchTeamLine; // the rival
+  goals: MatchGoal[];
+  // Star of the game: a stolen game reads as goaltending, otherwise top points.
+  star: { playerId: string; name: string; clubId: string; line: string } | null;
 };
 
 // A first-contact "leader scene" awaiting the player's response. Mirrors
@@ -812,6 +849,11 @@ export type GameState = {
   activeResearch: ActiveResearch | null;
   cards: CardDef[];
   eventLog: EventLogEntry[];
+  // Every game the club has played, newest first (D51). Also the derived
+  // once-a-month exhibition gate; Act III standings/records will read it.
+  matchHistory: MatchResult[];
+  // A just-finished match awaiting its result overlay.
+  pendingMatchResult: MatchResult | null;
   rngSeed: number;
   // A goodie-hut outcome awaiting the player's acknowledgement (pop-up open).
   pendingEncounter: PendingEncounter | null;
@@ -876,6 +918,11 @@ export type GameAction =
   | { type: "WATCH_PLAYER"; unitId: string; prospectId: string }
   // Enter the contested signing race for a scouted prospect (docs/15 §6).
   | { type: "SIGN_PROSPECT"; prospectId: string }
+  // ---- matches (D51) ----
+  // Challenge a contacted rival to an exhibition game (seeded sim).
+  | { type: "PLAY_EXHIBITION"; rivalClubId: string }
+  // Dismiss the match result overlay.
+  | { type: "ACKNOWLEDGE_MATCH_RESULT" }
   // Inbox triage (D41): mark specific items read, or everything when omitted.
   | { type: "MARK_INBOX_READ"; ids?: string[] }
   | { type: "END_MONTH" }
@@ -891,4 +938,5 @@ export type GameAction =
   | { type: "DEV_SPAWN_BUILDER" }
   | { type: "DEV_GRANT_POND_TECH" }
   | { type: "DEV_FORCE_TRYOUTS" }
-  | { type: "DEV_ADD_EQUIPMENT" };
+  | { type: "DEV_ADD_EQUIPMENT" }
+  | { type: "DEV_FORCE_EXHIBITION" };

@@ -47,6 +47,8 @@ import { TryoutScreen } from "./TryoutScreen";
 import { PlayerRevealScene } from "./PlayerRevealScene";
 import { playSfx } from "../engine/sfx";
 import { IndependentMeetingScreen } from "./IndependentMeetingScreen";
+import { MatchResultScreen } from "./MatchResultScreen";
+import { exhibitionGate, exhibitionGateHint } from "../engine/matchEngine";
 import { NetworkEstablishedScene } from "./NetworkEstablishedScene";
 import { IndependentsScreen } from "./IndependentsScreen";
 import { primeTryoutMusic } from "./BackgroundMusic";
@@ -266,7 +268,24 @@ export function Dashboard({
           mode="dossier"
           rival={state.world?.rivals.find((r) => r.clubId === leaderClubId) ?? null}
           onClose={() => setLeaderClubId(null)}
+          exhibition={{
+            canPlay: exhibitionGate(state, leaderClubId) === "ok",
+            hint: exhibitionGateHint(exhibitionGate(state, leaderClubId)),
+            onPlay: () => {
+              setLeaderClubId(null);
+              dispatch({ type: "PLAY_EXHIBITION", rivalClubId: leaderClubId });
+            },
+          }}
         />
+      )}
+
+      {state.pendingMatchResult && (
+        <TaskOverlay
+          title="Exhibition — Final"
+          onClose={() => dispatch({ type: "ACKNOWLEDGE_MATCH_RESULT" })}
+        >
+          <MatchResultScreen result={state.pendingMatchResult} />
+        </TaskOverlay>
       )}
 
       {state.pendingMeeting?.kind === "independent" && (
