@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { randomPracticeSceneTrack } from "../data/sceneAudio";
+import { randomPracticeSceneTrack, TRYOUT_SCENE_TRACK } from "../data/sceneAudio";
 import type { Phase } from "../types/game";
 
 // Tracks live in /public/assets/audio (served as static files).
@@ -14,12 +14,14 @@ const ONBOARDING_TRACKS: Track[] = [
   { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
   { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
 ];
+// Era 03's track was removed; later eras reuse the Era 02 theme until a new one
+// lands, so every era still has music (fallback below also covers unknown ids).
 const ERA_TRACKS: Record<string, Track> = {
   "pond-hockey": { name: "Era 01", url: "/assets/audio/music/era01-music.wav" },
   "club-formation": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
-  "competitive-hockey": { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
-  "hockey-operations": { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
-  dynasty: { name: "Era 03", url: "/assets/audio/music/era03-music.mp3" },
+  "competitive-hockey": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
+  "hockey-operations": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
+  dynasty: { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
 };
 
 const GAME_VOLUME = 0.35;
@@ -28,9 +30,10 @@ const CONTACT_VOLUME = 0.46;
 const TRYOUT_VOLUME = 0.42;
 const TRYOUT_START_VOLUME = 0;
 const FADE_MS = 950;
-const MUSIC_CROSSFADE_MS = 2400;
-const RETURN_FADE_MS = 1800;
-const TRYOUT_CROSSFADE_MS = 2200;
+// One duration for every music<->music crossfade (era change, tryout in/out,
+// contact in/out) so transitions feel consistent instead of each having its own
+// timing.
+const MUSIC_CROSSFADE_MS = 2000;
 const TRYOUT_AUDIO_START_EVENT = "ice-empires:start-tryout-audio";
 const MUSIC_SCENE_EVENT = "ice-empires:music-scene";
 const CONTACT_AUDIO_EVENT = "ice-empires:contact-audio";
@@ -56,9 +59,10 @@ function baseMusicScene(phase: Phase): MusicScene {
 function tracksFor(scene: MusicScene, eraId: string): Track[] {
   if (scene === "title") return TITLE_TRACKS;
   if (scene === "onboarding") return ONBOARDING_TRACKS;
-  const current = ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"];
-  const rest = Object.values(ERA_TRACKS).filter((track) => track.url !== current.url);
-  return [current, ...rest.filter((track, i) => rest.findIndex((t) => t.url === track.url) === i)];
+  // Gameplay loops the CURRENT era's single track; changing era crossfades to
+  // the new one (see the track-change effect). It never cycles through other
+  // eras' themes mid-play.
+  return [ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"]];
 }
 
 function fadeAudio(
@@ -107,7 +111,7 @@ export function BackgroundMusic({
   const [playing, setPlaying] = useState(false);
   const [sceneOverride, setSceneOverride] = useState<MusicScene | null>(null);
   const [contactActive, setContactActive] = useState(false);
-  const [tryoutTrack, setTryoutTrack] = useState(() => randomPracticeSceneTrack());
+  const tryoutTrack = TRYOUT_SCENE_TRACK;
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
@@ -192,7 +196,7 @@ export function BackgroundMusic({
     cancelFades();
 
     if (!musicIntentRef.current) {
-      fadeOutTryout(RETURN_FADE_MS * 0.75);
+      fadeOutTryout(MUSIC_CROSSFADE_MS);
       return;
     }
 
@@ -201,8 +205,8 @@ export function BackgroundMusic({
 
     start
       .then(() => {
-        fadeCleanupsRef.current.push(fadeAudio(game, GAME_VOLUME, RETURN_FADE_MS));
-        fadeOutTryout(RETURN_FADE_MS * 0.85);
+        fadeCleanupsRef.current.push(fadeAudio(game, GAME_VOLUME, MUSIC_CROSSFADE_MS));
+        fadeOutTryout(MUSIC_CROSSFADE_MS);
       })
       .catch(() => {
         // If the game track cannot resume immediately, keep the tryout bed up
@@ -217,10 +221,9 @@ export function BackgroundMusic({
     if (!game || !tryout) return;
 
     cancelFades();
-    if ((restart && tryout.paused) || !tryout.src) {
-      const nextTrack = randomPracticeSceneTrack();
-      setTryoutTrack(nextTrack);
-      tryout.src = nextTrack.url;
+    // Src is set declaratively on the <audio> (fixed tryout bed); just rewind.
+    if (!tryout.src) {
+      tryout.src = tryoutTrack.url;
       tryout.load();
     }
     if (restart) tryout.currentTime = 0;
@@ -230,9 +233,9 @@ export function BackgroundMusic({
     start
       .then(() => {
         fadeCleanupsRef.current.push(
-          fadeAudio(tryout, TRYOUT_VOLUME, TRYOUT_CROSSFADE_MS),
+          fadeAudio(tryout, TRYOUT_VOLUME, MUSIC_CROSSFADE_MS),
         );
-        fadeOutGame(TRYOUT_CROSSFADE_MS);
+        fadeOutGame(MUSIC_CROSSFADE_MS);
       })
       .catch(() => {
         // If browser policy blocks the event track, keep the normal track
@@ -387,9 +390,9 @@ export function BackgroundMusic({
       start
         .then(() => {
           if (contactRunRef.current !== run) return;
-          fadeGameTo(CONTACT_GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.7);
+          fadeGameTo(CONTACT_GAME_VOLUME, MUSIC_CROSSFADE_MS);
           contactFadeCleanupsRef.current.push(
-            fadeAudio(contact, CONTACT_VOLUME, MUSIC_CROSSFADE_MS * 0.7),
+            fadeAudio(contact, CONTACT_VOLUME, MUSIC_CROSSFADE_MS),
           );
         })
         .catch(() => undefined);
@@ -398,7 +401,7 @@ export function BackgroundMusic({
 
     if (!contact.paused) {
       contactFadeCleanupsRef.current.push(
-        fadeAudio(contact, 0, MUSIC_CROSSFADE_MS * 0.7, () => {
+        fadeAudio(contact, 0, MUSIC_CROSSFADE_MS, () => {
           if (contactRunRef.current !== run) return;
           contact.pause();
           contact.currentTime = 0;
@@ -411,7 +414,7 @@ export function BackgroundMusic({
     if (musicIntentRef.current && !tryoutActive) {
       const game = gameAudio();
       if (game?.paused) game.play().catch(() => undefined);
-      fadeGameTo(GAME_VOLUME, MUSIC_CROSSFADE_MS * 0.8);
+      fadeGameTo(GAME_VOLUME, MUSIC_CROSSFADE_MS);
     }
 
     return cancelContactFades;

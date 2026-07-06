@@ -62,7 +62,12 @@ const VOLUME: Partial<Record<SfxName, number>> = {
 };
 
 const pools = new Map<string, HTMLAudioElement[]>();
-const lastPlayedAt = new Map<SfxName, number>();
+// Keyed by resolved file, not by SfxName: the capture-phase global click
+// listener and a component's explicit playSfx often fire two DIFFERENT names
+// that resolve to the SAME file (e.g. a nav dot → "select" + "cardFlip", both
+// click.m4a). Deduping on the file collapses that double-fire.
+const lastPlayedAt = new Map<string, number>();
+const DEDUP_MS = 60;
 
 function grab(src: string, volume: number): HTMLAudioElement {
   const pool = pools.get(src) ?? [];
@@ -80,12 +85,12 @@ function grab(src: string, volume: number): HTMLAudioElement {
 }
 
 export function playSfx(name: SfxName): void {
-  const now = performance.now();
-  if (now - (lastPlayedAt.get(name) ?? -Infinity) < 40) return;
-  lastPlayedAt.set(name, now);
   const files = FILES[name];
   if (!files?.length) return;
   const src = files[Math.floor(Math.random() * files.length)];
+  const now = performance.now();
+  if (now - (lastPlayedAt.get(src) ?? -Infinity) < DEDUP_MS) return;
+  lastPlayedAt.set(src, now);
   try {
     void grab(src, VOLUME[name] ?? 0.4).play().catch(() => undefined);
   } catch {

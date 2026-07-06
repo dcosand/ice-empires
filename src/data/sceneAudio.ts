@@ -11,6 +11,13 @@ export const PRACTICE_SCENE_TRACKS: SceneAudioTrack[] = [
   { name: "Practice 05", url: "/assets/audio/scenes/practice-05.mp3" },
 ];
 
+// Dedicated bed for the tryout / new-signing flow (distinct from practice
+// ambience so tryouts always get their own theme).
+export const TRYOUT_SCENE_TRACK: SceneAudioTrack = {
+  name: "Tryouts / New Signing",
+  url: "/assets/audio/scenes/tryout-signing.wav",
+};
+
 export function randomPracticeSceneTrack(): SceneAudioTrack {
   return (
     PRACTICE_SCENE_TRACKS[Math.floor(Math.random() * PRACTICE_SCENE_TRACKS.length)] ??
