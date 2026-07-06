@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { randomPracticeSceneTrack } from "../data/sceneAudio";
 import type { Phase } from "../types/game";
 
 // Tracks live in /public/assets/audio (served as static files).
@@ -30,20 +31,12 @@ const FADE_MS = 950;
 const MUSIC_CROSSFADE_MS = 2400;
 const RETURN_FADE_MS = 1800;
 const TRYOUT_CROSSFADE_MS = 2200;
-const TRYOUT_TRACK = {
-  name: "Tryouts",
-  url: "/assets/audio/scenes/tryouts%20or%20new%20signing.m4a",
-};
-const CONTACT_TRACK = {
-  name: "First Contact",
-  url: "/assets/audio/scenes/hockey-sounds.mp3",
-};
-const TRYOUT_AUDIO_PRIME_EVENT = "ice-empires:prime-tryout-audio";
+const TRYOUT_AUDIO_START_EVENT = "ice-empires:start-tryout-audio";
 const MUSIC_SCENE_EVENT = "ice-empires:music-scene";
 const CONTACT_AUDIO_EVENT = "ice-empires:contact-audio";
 
 export function primeTryoutMusic() {
-  window.dispatchEvent(new Event(TRYOUT_AUDIO_PRIME_EVENT));
+  window.dispatchEvent(new Event(TRYOUT_AUDIO_START_EVENT));
 }
 
 export function setBackgroundMusicScene(scene: MusicScene | null) {
@@ -114,6 +107,7 @@ export function BackgroundMusic({
   const [playing, setPlaying] = useState(false);
   const [sceneOverride, setSceneOverride] = useState<MusicScene | null>(null);
   const [contactActive, setContactActive] = useState(false);
+  const [tryoutTrack, setTryoutTrack] = useState(() => randomPracticeSceneTrack());
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
@@ -217,21 +211,18 @@ export function BackgroundMusic({
       });
   };
 
-  const primeTryoutAudioElement = () => {
-    const tryout = tryoutRef.current;
-    if (!tryout || !tryout.paused) return;
-    tryout.currentTime = 0;
-    tryout.volume = TRYOUT_START_VOLUME;
-    tryout.load();
-    tryout.play().catch(() => {});
-  };
-
   const startTryoutMusic = (restart = false) => {
     const game = gameAudio();
     const tryout = tryoutRef.current;
     if (!game || !tryout) return;
 
     cancelFades();
+    if ((restart && tryout.paused) || !tryout.src) {
+      const nextTrack = randomPracticeSceneTrack();
+      setTryoutTrack(nextTrack);
+      tryout.src = nextTrack.url;
+      tryout.load();
+    }
     if (restart) tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
 
@@ -284,17 +275,18 @@ export function BackgroundMusic({
   }, []);
 
   useEffect(() => {
-    window.addEventListener(TRYOUT_AUDIO_PRIME_EVENT, primeTryoutAudioElement);
+    const onTryoutAudioStart = () => startTryoutMusic(true);
     const onScene = (event: Event) => {
       setSceneOverride((event as CustomEvent<MusicScene | null>).detail ?? null);
     };
     const onContact = (event: Event) => {
       setContactActive(!!(event as CustomEvent<boolean>).detail);
     };
+    window.addEventListener(TRYOUT_AUDIO_START_EVENT, onTryoutAudioStart);
     window.addEventListener(MUSIC_SCENE_EVENT, onScene);
     window.addEventListener(CONTACT_AUDIO_EVENT, onContact);
     return () => {
-      window.removeEventListener(TRYOUT_AUDIO_PRIME_EVENT, primeTryoutAudioElement);
+      window.removeEventListener(TRYOUT_AUDIO_START_EVENT, onTryoutAudioStart);
       window.removeEventListener(MUSIC_SCENE_EVENT, onScene);
       window.removeEventListener(CONTACT_AUDIO_EVENT, onContact);
     };
@@ -386,6 +378,9 @@ export function BackgroundMusic({
     cancelContactFades();
 
     if (contactActive) {
+      const contactTrack = randomPracticeSceneTrack();
+      contact.src = contactTrack.url;
+      contact.load();
       contact.currentTime = 0;
       contact.volume = 0;
       const start = contact.paused ? contact.play() : Promise.resolve();
@@ -460,7 +455,7 @@ export function BackgroundMusic({
   const go = (delta: number) =>
     setIndex((i) => (i + delta + tracks.length) % tracks.length);
 
-  const track = tryoutActive ? TRYOUT_TRACK : gameTrack;
+  const track = tryoutActive ? tryoutTrack : gameTrack;
 
   return (
     <div className="miniplayer">
@@ -513,13 +508,12 @@ export function BackgroundMusic({
       />
       <audio
         ref={contactRef}
-        src={CONTACT_TRACK.url}
         preload="auto"
         loop
       />
       <audio
         ref={tryoutRef}
-        src={TRYOUT_TRACK.url}
+        src={tryoutTrack.url}
         preload="auto"
         loop
         onPlay={() => {

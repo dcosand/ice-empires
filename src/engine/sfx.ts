@@ -1,10 +1,11 @@
+import { PRACTICE_SCENE_TRACKS } from "../data/sceneAudio";
+
 // Tiny SFX manager over the game audio in /assets/audio.
 // No dependencies: a pool of HTMLAudio elements per sound, fire-and-forget.
 // Browsers block audio before the first user gesture; play() failures are
 // swallowed so early autoplay restrictions never break the game.
 
 const SFX = "/assets/audio/sfx";
-const SCENES = "/assets/audio/scenes";
 
 export type SfxName =
   | "click" // generic button press
@@ -17,7 +18,7 @@ export type SfxName =
   | "check" // era requirement ticked off
   | "recruit" // a player joins
   | "cardFlip" // flipping a candidate/player card in the tryout pack
-  | "crowd" // PLACEHOLDER: swap for a real crowd-murmur bed (reveal cinematic)
+  | "crowd" // practice-rink ambience for reveal cinematics
   | "walk"
   | "iceWalk"
   | "snowWalk"
@@ -36,7 +37,7 @@ const FILES: Record<SfxName, string[]> = {
   check: [`${SFX}/success-click.mp3`],
   recruit: [`${SFX}/success-click.mp3`],
   cardFlip: [`${SFX}/click.m4a`],
-  crowd: [`${SCENES}/hockey-sounds.mp3`],
+  crowd: PRACTICE_SCENE_TRACKS.map((track) => track.url),
   walk: [`${SFX}/walking-01.wav`, `${SFX}/walking-02.wav`],
   iceWalk: [`${SFX}/ice-walking-01.wav`, `${SFX}/ice-walking-02.wav`],
   snowWalk: [`${SFX}/snow-walking-01.wav`, `${SFX}/snow-walking-02.wav`],
@@ -150,6 +151,7 @@ export function installGlobalClickSfx(): void {
     (e) => {
       const el = e.target as HTMLElement | null;
       const button = el?.closest("button");
+      if (button?.dataset.sfx === "manual") return;
       const sound = button ? classifyButtonClick(button) : null;
       if (sound) playSfx(sound);
     },

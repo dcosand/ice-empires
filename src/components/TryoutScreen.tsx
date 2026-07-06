@@ -157,6 +157,7 @@ export function TryoutScreen({
                             </button>
                             <button
                               className="btn btn-gold"
+                              data-sfx="manual"
                               disabled={rosterFull}
                               onClick={() => {
                                 playSfx("recruit");

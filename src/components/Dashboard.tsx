@@ -163,6 +163,10 @@ export function Dashboard({
               <InfoDock
                 state={state}
                 open={openView}
+                onOpenTeam={() => {
+                  setHqInitialTab("team");
+                  setOverlay("club");
+                }}
                 onOpenInbox={() => {
                   setInboxFocusId(null);
                   openView("log");
@@ -484,10 +488,12 @@ function MapDateBadge({ month }: { month: number }) {
 function InfoDock({
   state,
   open,
+  onOpenTeam,
   onOpenInbox,
 }: {
   state: GameState;
   open: (view: OverlayView) => void;
+  onOpenTeam: () => void;
   onOpenInbox: () => void;
 }) {
   const contactedOrgs =
@@ -504,6 +510,13 @@ function InfoDock({
     total === undefined ? `${label} ${count}` : `${label} ${count}/${total}`;
   return (
     <div className="info-dock" role="toolbar" aria-label="Club screens">
+      <DockButton
+        img="/assets/images/team.png"
+        fallbackIcon="hockey"
+        label="Team"
+        ariaLabel={`Team roster ${state.roster.length} players`}
+        onClick={onOpenTeam}
+      />
       <DockButton
         img="/assets/images/independents.png"
         fallbackIcon="village"
@@ -546,6 +559,7 @@ function InfoDock({
 
 const DOCK_TIPS: Record<string, string> = {
   HQ: "Club HQ — overview, team, production, facilities",
+  Team: "Team — roster, first line, bench, and tryouts",
   Indies: "Independents ledger — relationships, influence, prospect pipelines",
   People: "People — staff and opportunities you've collected",
   Scouting: "Scouting — every player and prospect your club knows about",
