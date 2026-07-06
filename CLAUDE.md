@@ -163,3 +163,8 @@ src/types/game.ts every shared type. Content -> data, rules -> engine, UI -> com
   Act-2 designs (match engine, borders, scout emissary, water traversal)
 - `DECISIONS.md` — numbered product/tech decisions (append, don't rewrite)
 - `PROGRESS_LOG.md` / `TASKS.md` — session history & open work
+- `docs/18_BRAINSTORM_BACKLOG.md` — owner-maintained inventory of design/build
+  items not yet done, each tagged with a model-tier build recommendation;
+  check here before assuming a system doesn't exist yet
+- `docs/09_OPEN_QUESTIONS.md` — resolved/open design-question ledger,
+  cross-referenced against DECISIONS.md
