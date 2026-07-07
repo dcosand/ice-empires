@@ -1,425 +1,261 @@
 # Ice Empires — Open Questions
 
-**Date:** 2026-06-27  
-**Version:** 0.2  
-**Purpose:** Preserve unresolved design questions for future one-question-at-a-time interviews.
+**Date:** 2026-07-06
+**Version:** 0.3 — resolved against four days of shipped work
+**Purpose:** This started as a v0.2 (2026-06-27) list for one-question-at-a-time
+design interviews, written before most of the game existed. It went stale:
+most of it has since been answered by `DECISIONS.md` (D1–D51) and the actual
+code. This pass resolves every question it can against what's shipped, marks
+what the game answered differently than the original guess, and keeps only
+the genuinely undecided ones as live open questions. The one-question-at-a-
+time interview format is retired — design now happens playtest-first, recorded
+in `DECISIONS.md` after the fact.
+
+**Still genuinely open, highest priority first:** player development/aging
+(Q12/Q34), affiliates (Q35/Q36), league formation & victory conditions
+(Q15/Q19/Q20), rival alliances (Q18), rival GM voice/tone (Q16).
 
 ---
 
 ## 1. Core loop
 
-### Q1. What is the main monthly decision?
+**Q1. What is the main monthly decision?**
+RESOLVED — E, balanced. Every month touches economy (build/research),
+recruiting (tryouts/scout assignments), and territory; no single axis
+dominates by design (D16, D24, D35).
 
-A. Building the club  
-B. Discovering regions  
-C. Recruiting people  
-D. Researching hockey knowledge  
-E. Balancing all four
+**Q2. How important is unit movement in the first real prototype?**
+RESOLVED — A, essential from the beginning. Scouts and builders have been
+on the map since Month 1 of the founding turn (D12, D14, D19), not deferred.
 
-Current leaning: balanced, with discovery and club-building strongest early.
+**Q3. What is the first mini-game?**
+RESOLVED, differently than guessed — no month-1 mini-game shipped. The
+closest thing, "First Scrimmage," arrived as the Match Engine v0 exhibition
+(D51) at the end of Club Formation, not in Month 1. Tryouts (D24) are the
+actual earliest repeatable set-piece.
 
-### Q2. How important is unit movement in the first real prototype?
+**Q4. How literal should the map be?**
+RESOLVED — closest to D, a hand-authored tile grid with real terrain
+(pond/desert/forest/mountain) and no procedural generation or real-world
+geography (D12). Mythic-hockey flavor, not earth-like continents.
 
-A. Essential from beginning  
-B. Important after First 12 Months flow prototype  
-C. Nice visual layer, region-card discovery enough early  
-D. Save movement for later engine prototype
+**Q5. Should real region/league names be used?**
+RESOLVED — real hockey-city names (Moscow, Tampere, Bratislava, Baie-Comeau,
+etc. — `HOCKEY_ORG_NAMES` in `engine/world.ts`) are used for independents; no
+real league/brand names (no NHL/OHL/QMJHL) appear anywhere.
 
-Current recommendation: First 12 Months before true movement.
-
-### Q3. What is the first mini-game?
-
-A. Local Tournament  
-B. Prospect Showcase  
-C. First Scrimmage  
-D. First Draft  
-E. League Formation Vote
-
-Current recommendation: Local Tournament or Prospect Showcase. Avoid Draft too early.
+**Q6. How many regions in a standard game?**
+SUPERSEDED — the region layer this question was about was deleted wholesale
+(D28). Independents are the "places that matter" now; count follows art
+coverage (~32 named orgs as of 2026-07-03), not a designed board size.
 
 ---
 
 ## 2. Map
 
-### Q4. How literal should the map be?
+**Q7. Should Hockey Knowledge be stored currency or science-per-turn?**
+RESOLVED — B, science-per-turn (D1). Unchanged since v0.1.
 
-A. Earth-like continents but randomized  
-B. Pure mythic board-game world  
-C. Region network map  
-D. Hex map with terrain but no geography
+**Q8. Should Talent be numeric?**
+RESOLVED, reversed from the original lean — yes, numeric, and central from
+Act I on: 1–100 scale, 10 skater + 6 goalie attributes (D42), generated for
+every tryout candidate, wanderer, and prospect (`playerGen.ts`).
 
-Current leaning: earth-like randomized landmasses with mythic hockey regions.
-
-### Q5. Should real region/league names be used?
-
-Examples: Ontario, Minnesota, Sweden, Finland, NCAA, USHL, WHL/OHL/QMJHL.
-
-Current leaning: prototype can use descriptive real-region language; final product should fictionalize or avoid official branding where needed.
-
-### Q6. How many regions in a standard game?
-
-A. Small board: 30–50  
-B. Medium: 80–150  
-C. Large Civ-like world: 200+  
-D. Scenario dependent
-
-Early prototype: 8–12 region cards.
+**Q9. Should Reputation be spendable or threshold-based?**
+RESOLVED — B, threshold/unlock. Reputation is never spent; actions require
+rep thresholds (D16).
 
 ---
 
 ## 3. Resources
 
-### Q7. Should Hockey Knowledge be stored currency or science-per-turn?
+**Q10. When do players become central?**
+RESOLVED, reversed from the original lean — immediately. Roster players are
+first-class from the Pond Hockey era's first tryout (D24), not deferred to
+Club Formation or later.
 
-A. Stored and spent  
-B. Science-per-turn progress toward selected tech
+**Q11. What should scouting hide?**
+RESOLVED (partially) — true potential and true attribute values are hidden
+behind fog-of-talent estimate ranges (D32/D39), later shown as static
+scout-belief reads + Ability/Potential stars (D47). Durability and Discipline
+exist as hidden traits (D42). NOT modeled: injury risk, personality, bust
+probability, development curve — see Q12.
 
-Civ-like answer: B. Prototype can use either if documented.
-
-### Q8. Should Talent be numeric?
-
-Current recommendation: not in First 12 Months. Use profiles/reports/cohorts/events first.
-
-### Q9. Should Reputation be spendable or threshold-based?
-
-A. Spend it  
-B. Threshold/unlock  
-C. Both
-
-Early prototype: threshold/unlock.
+**Q12. How should development work?**
+STILL OPEN — no development or aging system exists yet. `docs/15
+_PLAYER_AND_TEAM_RATINGS.md` §8C (Act IV) calls for development + aging +
+an affiliate pyramid + a Development Coach; none of it is built. Highest-value
+remaining design/build gap alongside Q34.
 
 ---
 
 ## 4. Players/prospects
 
-### Q10. When do players become central?
+**Q13. How should games resolve?**
+RESOLVED — C, auto-sim with visible modifiers. Match Engine v0's seeded,
+period-by-period shot-chance model reads both teams' derived `teamRatings`
+(D51).
 
-A. Immediately  
-B. After Outdoor Rink  
-C. After Youth Development  
-D. Club Formation Era  
-E. Draft Era
+**Q14. What are games for?**
+PARTIALLY OPEN — today a game is an exhibition: a result screen + an Inbox
+letter (D51), nothing else. No reputation/budget/standings stakes yet;
+that's Act III calendar/standings work, not started.
 
-Current recommendation: introduce player profiles/reports early; roster management later.
-
-### Q11. What should scouting hide?
-
-Possible hidden fields:
-
-- True potential
-- Work ethic
-- Injury risk
-- Personality
-- Fit
-- Development curve
-- Bust probability
-
-### Q12. How should development work?
-
-A. Simple monthly progress  
-B. Event-driven  
-C. Facility/coach modifiers  
-D. Full sim engine  
-E. Hybrid
-
-Current recommendation: event-driven + simple modifiers early.
+**Q15. When does a league form?**
+STILL OPEN — no league-formation concept exists in any doc or code path yet.
 
 ---
 
 ## 5. Competition
 
-### Q13. How should games resolve?
+**Q16. How funny should rival GMs be?**
+STILL OPEN — no tone pass has been done on rival-facing copy. Current
+dossier/meeting text is dry and functional, not written for a comedic
+register either way.
 
-A. Simple formula  
-B. Card battle  
-C. Auto-sim with visible modifiers  
-D. Tactical mini-game  
-E. Full match engine
+**Q17. How much sabotage?**
+RESOLVED — B, soft sabotage. Rivals court independents for influence (D26),
+contest and poach signed prospects (`rivalSigningPressure`, D49), and turn
+wary over territory encroachment (D35). No hard sabotage or Shadow GM mode.
 
-Current recommendation: simple auto-sim with visible modifiers.
-
-### Q14. What are games for?
-
-Possible purposes:
-
-- Reputation
-- Budget
-- Development
-- Rivalries
-- Dynasty scoring
-- League access
-- Morale
-
-### Q15. When does a league form?
-
-A. Automatically in Regional League Era  
-B. Player creates/joins through diplomacy  
-C. Rival GMs propose it  
-D. Event-driven
-
-Current idea: era unlock + diplomacy/event choice.
+**Q18. Can rival GMs become allies?**
+STILL OPEN — `rival.attitude` (friendly/wary, D20) is the only relationship
+axis shipped. No treaty, alliance, or shared-benefit mechanics exist.
 
 ---
 
 ## 6. Diplomacy
 
-### Q16. How funny should rival GMs be?
+**Q19. Which victory type is central?**
+STILL OPEN — no victory condition of any kind exists. Eras (D17) are the
+only progress spine, and they're endless (see Q20).
 
-1. Serious sports drama  
-2. Mostly serious with wit  
-3. Civ-like theatrical  
-4. Comedic satire  
-5. Full absurdist hockey soap opera
-
-Current leaning: 2–3.
-
-### Q17. How much sabotage?
-
-A. No sabotage  
-B. Soft sabotage: rumors, influence, sniping  
-C. Hard sabotage: poaching, legal disputes, league politics  
-D. Shadow GM mode
-
-Current leaning: soft sabotage early, Shadow GM optional later.
-
-### Q18. Can rival GMs become allies?
-
-Likely yes.
-
-Possible benefits: scouting treaty, trade route, shared tournament, map info, prospect loan/affiliate, league voting bloc.
+**Q20. Hard ending or endless?**
+RESOLVED — C, endless. Month 12 doesn't hard-stop (D5); no era hard-stops
+either. There is currently no concept of "winning" the game.
 
 ---
 
 ## 7. Victory
 
-### Q19. Which victory type is central?
+**Q21. Web or game engine long term?**
+RESOLVED — web, locked: React 18 + PixiJS 8 + TypeScript + Vite (see
+`CLAUDE.md`). No engine-swap plan.
 
-A. Dynasty  
-B. Scouting  
-C. Empire  
-D. Innovation  
-E. Prestige  
-F. Shadow GM
+**Q22. Use map library/engine?**
+RESOLVED, differently than guessed — a PixiJS canvas isometric map
+(`IsoWorldMap.tsx`), not the originally-guessed React/SVG approach.
 
-Current leaning: Dynasty as default, others as strategic alternatives.
-
-### Q20. Hard ending or endless?
-
-A. First victory wins  
-B. Highest score after X eras/turns  
-C. Endless mode available  
-D. Scenario-based
-
-Current recommendation: victory ending + optional continue later.
+**Q23. Multiplayer mode?**
+RESOLVED (for now) — A, single-player only (D11). No multiplayer work has
+started; explicitly deferred, not decided against forever.
 
 ---
 
 ## 8. Technical
 
-### Q21. Web or game engine long term?
+**Q24. How realistic should art be?**
+RESOLVED — B, premium illustrated strategy. Per-club art (`clubAsset`),
+HockeyCard portraits, and independent card/background art (32 orgs) all
+follow this direction.
 
-Current recommendation: web first, evaluate Godot/Unity later.
+**Q25. Should Arizona Monsoon get real logo exploration now?**
+RESOLVED/moot — every club now ships real art via `assetKey` (D9), not a
+placeholder. The original caution ("don't over-invest before the loop
+works") is satisfied — the loop works.
 
-### Q22. Use map library/engine?
-
-First 12 Months: no.  
-Map prototype: React/SVG or Canvas first.  
-Engine later only if needed.
-
-### Q23. Multiplayer mode?
-
-A. Single-player only  
-B. Local hotseat  
-C. Async multiplayer  
-D. Live multiplayer  
-E. All eventually
-
-Current recommendation: single-player first, hotseat/async later.
+**Q26. What should the map look like?**
+RESOLVED — isometric terrain with Polytopia-reveal + Civ VI line-of-sight
+fog (D27), club-colored territory borders (D35), rink/hockey-org markers,
+minimap wash. Matches the "frozen-world, not too dark" goal.
 
 ---
 
 ## 9. Visuals
 
-### Q24. How realistic should art be?
+**Q27. How many hockey regions should be active in a standard game?**
+SUPERSEDED — same answer as Q6. Independents replaced regions; count
+follows art coverage, not a target size.
 
-A. Abstract board game  
-B. Premium illustrated strategy  
-C. Semi-realistic sports sim  
-D. Cartoon/stylized
+**Q28. What does a hockey region produce?**
+RESOLVED — independents produce influence/relationship-tier progress,
+revealed prospects (via scouting networks), and are the contested site of
+the Anchor Club race against rivals (D21, D35, D38).
 
-Current leaning: premium illustrated strategy.
-
-### Q25. Should Arizona Monsoon get real logo exploration now?
-
-Current recommendation: light placeholder only. Do not over-invest before game loop works.
-
-### Q26. What should map look like?
-
-Need future visual exploration:
-
-- Civ-like terrain
-- Hockey overlays
-- Fog
-- Frozen-world atmosphere
-- Not too dark/space-like
+**Q29. How city-state-like should hockey regions be?**
+RESOLVED — B/C, an active-ish ecosystem: contact → influence ladder →
+revealed prospects → contested signings, not a passive yield tile (D21).
 
 ---
 
-## 10. Next interview question
+## 10. (retired) Next interview question
 
-> For First 12 Months, when you click End Month, what result would make you smile most: a facility completing, a region being discovered, a prospect appearing, or a funny rival GM hint?
-
-
----
-
-## 11. v0.2 additions — Hockey regions
-
-### Q27. How many hockey regions should be active in a standard game?
-
-A. 20–40  
-B. 50–80  
-C. 100+  
-D. Scenario dependent
-
-Current leaning: scenario dependent; First 12 Months can use 8–12 reports.
-
-### Q28. What does a hockey region produce?
-
-Possible outputs:
-
-- Player profiles
-- Staff profiles
-- Reputation
-- Hockey Knowledge
-- Budget/sponsor events
-- Recruitment pipeline
-- Development partnership
-- Minor affiliate access
-- League/tournament invitations
-
-### Q29. How city-state-like should hockey regions be?
-
-A. Mostly passive yield regions  
-B. Active neutral ecosystems with quests/events  
-C. Almost mini-clubs without GMs  
-D. Different by region type
-
-Current leaning: B, but simple early.
+The v0.2 doc ended with a single "what would make you smile" prompt for the
+next interview session. That format is retired — see the priority list at
+the top of this doc for where design attention should go next.
 
 ---
 
-## 12. v0.2 additions — Recruitment and scouting
+## 11. Recruitment and scouting
 
-### Q30. How should Scouting Coverage increase?
+**Q30. How should Scouting Coverage increase?**
+RESOLVED, narrower than guessed — mainly A: the Club Scout's explicit unit
+actions (network + assignment, D38/D46) are the whole lever. Coverage is
+tech-gated (`scouting-reports`), not built from passive facility income.
 
-A. Scout unit action  
-B. Monthly passive from outposts  
-C. Research/facilities  
-D. Events  
-E. All of the above
+**Q31. How should Recruitment Influence behave?**
+RESOLVED, different math than guessed — not a Civ VI religious-pressure
+spread. It's a seeded bid contest: your influence + filed reports +
+map-proximity bonus vs. each contesting rival's influence, plus a random
+roll each side (D49) — closer to option D, weighted odds, than the original
+lean toward B.
 
-Current leaning: all, with unit actions most visible.
-
-### Q31. How should Recruitment Influence behave?
-
-A. Like Civ VI religious pressure  
-B. Like loyalty/culture pressure  
-C. Like trade route value  
-D. Simple percentage odds
-
-Current leaning: Civ VI religious pressure as the mental model.
-
-### Q32. Can rivals contest your recruitment pipeline?
-
-Likely yes.
-
-Possible forms:
-
-- Rival scout appears in region
-- Rival influence lowers commitment odds
-- Rival GM snipes prospect
-- Tournament/rival result shifts region preference
-- Scouting treaty or rivalry changes region access
+**Q32. Can rivals contest your recruitment pipeline?**
+RESOLVED — yes. Rivals court independents for influence (D26), can outbid
+and poach already-signed prospects (`rivalSigningPressure`, D49), and get
+prickly over territory encroachment (D35).
 
 ---
 
-## 13. v0.2 additions — Player aging and development
+## 12. Player aging and development
 
-### Q33. When should named teenagers appear?
+**Q33. When should named teenagers appear?**
+RESOLVED, reversed from the original lean — immediately. Every tryout
+candidate, wanderer, and independent prospect is a named individual with an
+age from the Pond Hockey era on; no gating to a later era.
 
-A. Never  
-B. Draft/Rights Era only  
-C. Scouting Network Era as 16–18-year-olds  
-D. Club Formation as rare special events
-
-Current recommendation: youth cohorts early; individual 16–18-year-old prospects later.
-
-### Q34. How much aging realism is enough?
-
-A. Simple age number only  
-B. Age bands and development windows  
-C. Full aging curves  
-D. Full EHM-style simulation
-
-Current recommendation: B for a long time.
+**Q34. How much aging realism is enough?**
+STILL OPEN — `Player.age` exists as a field but nothing increments it
+anywhere in the codebase. No aging curve, no development windows. Paired
+with Q12 as the biggest remaining systems gap.
 
 ---
 
-## 14. v0.2 additions — Affiliates/minors
+## 13. Affiliates/minors
 
-### Q35. When does the first minor affiliate unlock?
+**Q35. When does the first minor affiliate unlock?**
+STILL OPEN — no minor-affiliate system exists. "Affiliate" today is just the
+top relationship tier of an independent (D21, 50+ influence), not a
+development pipeline.
 
-A. Regional League Era  
-B. Scouting Network Era  
-C. Draft/Rights Era  
-D. Professionalization Era
-
-Current recommendation: informal partnerships earlier; formal minor affiliate around Scouting Network or Draft/Rights.
-
-### Q36. What do affiliates do?
-
-Possible benefits:
-
-- Development slots
-- Prospect assignment
-- Injury replacement/call-ups
-- Regional influence
-- Team attribute growth
-- Scouting Coverage
-- Recruitment Influence
+**Q36. What do affiliates do?**
+STILL OPEN — undesigned beyond the relationship tier. No development slots,
+call-ups, or attribute-growth mechanics built yet.
 
 ---
 
-## 15. v0.2 additions — Team attributes
+## 14. Team attributes
 
-### Q37. Which team attributes appear first?
+**Q37. Which team attributes appear first?**
+RESOLVED, differently than guessed — the shipped model is individual
+attributes (10 skater / 6 goalie, D42), not team-wide grades. Team-level
+aggregates DO exist (`ratings.teamRatings`: attack/defense/transition/
+physicality/goaltending) but are engine-internal for the match sim, not
+surfaced to the player as club stats. Chemistry and Morale are explicitly
+excluded going forward (D42: "never add Form/Morale/Contract depth").
 
-Likely early:
-
-- Skating
-- Puck Skill
-- Goaltending
-- Chemistry
-- Morale
-
-Later:
-
-- Scoring
-- Defense
-- Physicality
-- Tactics
-- Power Play
-- Penalty Kill
-- Transition
-- Possession
-- Discipline
-- Depth
-
-### Q38. Should Team Attributes be visible numbers?
-
-A. Exact numbers  
-B. Letter grades  
-C. Ranges until scouted/tested  
-D. Mostly hidden under reports
-
-Current leaning: readable grades/ranges early, exact internal values later if needed.
+**Q38. Should Team Attributes be visible numbers?**
+RESOLVED for individuals, open for teams — individual attributes render as
+true bars (your roster) or fogged/static scout reads (prospects and rivals,
+D47). Team-level numbers aren't surfaced as a separate stat block anywhere
+yet — no decision needed unless team-level display becomes a feature.
