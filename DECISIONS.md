@@ -576,3 +576,53 @@ competition calendar and no era wiring. Full design: docs/17_MATCH_ENGINE.md.
    period line, shots, goal reel, star) + an Inbox letter from the "Game
    Notes" desk (D50). `matchHistory` keeps every game for future standings.
 Dev Panel gains Force Exhibition (bypasses gates, never the engine).
+
+## D52
+**Club Formation era exit set wired (Act II capstone).** 2026-07-06. Owner
+signed off on all four proposed gates from docs/14 §1, ending the "never
+advances" placeholder (`club-formation: []`). The era advances when a club has:
+`scouting-network` (≥1 independent with `networkedByPlayer`), `territory-projected`
+(HQ + ≥3 player rinks at level ≥1, any distance — `getPlayerRinks(world,1).length
+>= TERRITORY_RINKS_REQUIRED`, = 3), `club-identity` (the tech researched), and
+`training-camp` (`trainingCampsHeld >= 1`, a full seasonal camp cycle, not a
+one-off tryout). Wired across the `EraRequirementId` union (`types/game.ts`),
+`ERA_REQUIREMENTS` (`data/eras.ts`), and `selectors.isRequirementMet`. Winning /
+playing a match is deliberately NOT a gate here — that's the Act III entry
+criterion (docs/14 §1). The rink threshold (3) is tunable via
+`TERRITORY_RINKS_REQUIRED` in `selectors.ts`.
+
+## D53
+**Wandering neutral units shipped (Civ-barbarian analog).** 2026-07-06. Owner
+greenlit docs/18 "Wandering neutral units." Visible neutral roamers
+(`world.wanderers`, `engine/wandererSystem.ts`) spawn/roam/despawn near HQ (seeded,
+D3). A scout that lands on one opens `WandererScene` with a *tell* (scout-judged,
+accuracy scales with Judging Ability — a bad read points the wrong way).
+Approach → recruit gamble (JOIN_CHANCE 0.35; of joiners LEGEND 0.043 / GOOD 0.34,
+tiers keyed to `tryoutSystem` WANDERER_TIER_BANDS) or a scrap that boxes the scout
+1–2 turns (`WorldUnit.penaltyBoxTurns`, held at 0 moves by `refreshScoutMoves`).
+Losing a scrap pays a consolation (+2 Hockey Knowledge + scout XP). Nomad sprite +
+minimap dot in `IsoWorldMap`; `DEV_SPAWN_WANDERER` dev button. **Parked follow-on
+(owner ask):** losing a scrap should also grant progress toward a fighting/toughness
+tech — deferred until that tech exists.
+
+## D54
+**Rivals get wanderer parity now; full unit/economy parity deferred.** 2026-07-06.
+Owner: "rival AI clubs should have the same effects/risks/benefits from nomads" and
+"the same units the human can build." Resolution:
+- **Wanderer parity: DONE.** Rival scouts engage wanderers automatically on the
+  identical odds via a SHARED generator (`tryoutSystem.buildWandererPlayer`) + the
+  same wandererSystem constants — no forked RNG. Recruits grow the rival roster
+  (rare good/legend); hostiles box the rival unit (`RivalUnit.penaltyBoxTurns`).
+  Logs only for contacted rivals (no map spoilers). `rivalAI.moveRivalUnits` gates
+  boxed units and calls `resolveRivalWandererAt` per step.
+- **Unit parity: rivals already field both map-unit KINDS** (scout + builder — the
+  only two on the map). The gap is (a) club-unique builder perks and (b) passive
+  "effect" units (Evangelist/Coach/Recruiter/Envoy).
+- **Deferred, deliberately.** Club-unique perks are a thin/uneven layer today —
+  only Arizona `asphalt-crew`, Calgary `barn-raisers`, Detroit `foundry-crew` have
+  wired map effects; the rest are stubs (`data/clubUniques.ts` header says so). Full
+  economy parity (rivals running the player's production/tech/development pipeline
+  instead of the current abstract band-at-contact roster) is a real project that
+  only becomes meaningful once club uniques + player development/XP are actually
+  built out, and it's where difficulty/balance gets decided — so it wants a
+  deliberate pass w/ a difficulty dial, not a bolt-on. Revisit then.

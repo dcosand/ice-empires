@@ -1,5 +1,58 @@
 # Ice Empires — Tasks
 
+## 🌙 SESSION HANDOFF — 2026-07-06 (night). READ THIS FIRST.
+
+Mid-session commit at bedtime. This commit bundles a big chunk of work; here's
+exactly where things stand.
+
+### ✅ DONE & VERIFIED this session (typecheck + build clean)
+- **UI layout (Phase 1):** in-game tasks moved to bottom-right command dock, unit
+  card to its left (Civ VI style); "Choose Research" simplified screen is now the
+  DEFAULT (unlock icons + clock+integer turns), full tech tree behind a toggle.
+- **Act II finish (Phase 2, D52):** Club Formation era exit set wired
+  (scouting-network / territory-projected / club-identity / training-camp);
+  player-file access points; see D52.
+- **Compact map + terrain (Phase 3):** smaller default map (72×45), fewer lakes,
+  fewer mountains, more jitter — a true uniform scale-down (8 majors kept). See
+  `world.ts` constants.
+- **Wandering neutral units (Phase 4, D53):** full feature — roam/spawn, scout-tell
+  encounter (`WandererScene`), recruit/scrap, penalty box, nomad sprite + minimap
+  dot, `DEV_SPAWN_WANDERER` dev button ("🧍 Spawn wanderers by scout").
+- **Rival wanderer parity (D54):** rivals engage wanderers on identical odds
+  (shared `buildWandererPlayer`); recruits grow rival roster, hostiles box the
+  rival unit. Validated: 4,000-encounter sim (recruit 0.342 / legend 0.039 / all
+  hostiles boxed).
+
+### ❗ OPEN BUG — tryout music still doesn't fade in (owner-confirmed, UNRESOLVED)
+The tryout/signing music does not fade in when tryouts start. This has survived
+several fix attempts and is the #1 thing to pick up. What's been tried:
+- Split prime vs. crossfade (fixed a double-fire); re-added `tryout.load()` in
+  `primeTryoutAudioElement` (`BackgroundMusic.tsx`) — the delta vs. the last known
+  working build `b195815`. **Owner reports it STILL doesn't fade in.**
+- Re-encoded the source: `tryout-signing.wav` was 30MB WAVE_FORMAT_EXTENSIBLE
+  (0xFFFE, decodes unreliably) → added `tryout-signing.m4a`; `data/sceneAudio.ts`
+  `TRYOUT_SCENE_TRACK.url` now points to the `.m4a`.
+- **NOTE:** both `tryout-signing.wav` (modified) and `tryout-signing.m4a` (new) are
+  in this commit; the live path is the `.m4a`.
+- **Next step:** instrument the tryout audio path — log `play()` promise
+  resolution/rejection, `volume` over the fade RAF loop, and `readyState` at
+  `startTryoutMusic` time. Suspect: autoplay-policy gesture scoping (the fade
+  starts before a user gesture unlocks the element) OR the crossfade RAF never
+  ramping because the element is still buffering. Compare live behavior against the
+  working scene-music crossfade path in the same file.
+
+### ▶️ WHAT'S NEXT (owner priorities, in order)
+1. **Fix the tryout-music fade-in bug** (above) — owner flagged it explicitly.
+2. **Rival full economy parity** — DEFERRED by design (D54). Only pick up as a
+   deliberate project (rivals run the player's production/tech/development pipeline
+   + a difficulty dial), and only once club uniques + player development/XP are
+   actually built out. NOT a quick bolt-on. Club-unique perks for rivals judged
+   low-value now (only Arizona/Calgary/Detroit builders are wired; rest are stubs).
+3. **Parked follow-ons:** fighting/toughness tech (scrap-loss should grant progress
+   toward it — the consolation currently pays +2 HK + XP only); named local rinks
+   (per-club default names, can't collide with indie names); fundraising/youth
+   academy (docs/18 PARKED).
+
 ## Next up (from the 2026-07-02 playtest)
 - [x] **Indie art coverage (2026-07-03)** — the worldgen name pool
       (`HOCKEY_ORG_NAMES` in `engine/world.ts`) is now kept in LOCKSTEP with the
@@ -214,15 +267,28 @@ is deferred to Act III** (D33); do not build it here.
       `from`/`read`; new `Inbox` screen with unread triage, sender lines
       (scout by name, rival wire, desk names by type), filters, mark-all-read;
       dock shows a live unread badge (inbox.png). `MARK_INBOX_READ` action.
-- [ ] **Player-file access points (playtest 2026-07-05)** — the EHM player
-      file lives only behind the Scouting board (dock → click a row). Open the
-      same detail view from: ClubHQ → Team rows, the player-reveal cinematic
-      ("view full profile"), and tryout candidate cards DURING the tryout
-      (candidates aren't roster/prospects, so the file needs a candidate mode).
-- [ ] **Tryout music cross-fade regression (playtest 2026-07-05)** — the
-      tryout scene audio no longer cross-fades in/out as it did on 2026-07-04;
-      check `BackgroundMusic.tsx` scene-transition handling (audio-session
-      follow-up).
+- [x] **Player-file access points (2026-07-06)** — the EHM player file
+      (`PlayerDetail`) now opens as a shared `PlayerFileOverlay` (exported from
+      `ScoutingScreen.tsx`, z-index 120 so it floats over every modal) from:
+      ClubHQ → Team rows (clickable `LineSlot`), the player-reveal cinematic
+      ("View full profile"), and tryout candidate cards ("View full file",
+      candidate mode via `rowForPlayerLike` — `TryoutCandidate` is a Player
+      minus equipment, so it reuses the roster-row path). Dashboard owns the
+      `fileTarget` state and threads `onOpenPlayerFile` to the three screens.
+- [x] **Tryout music regression (2026-07-06)** — TWO faults, both from the
+      "Harden audio" commit (2e4b31e):
+      1. **No sound at all (root cause):** the tryout bed was swapped from an
+         `.m4a` to a ~30 MB `tryout-signing.wav` that was
+         `WAVE_FORMAT_EXTENSIBLE` (0xFFFE) — browsers decode that variant
+         unreliably and the size stalled first play, so tryouts opened silent.
+         Re-encoded to AAC/`.m4a` (~3.4 MB) via `afconvert` and repointed
+         `TRYOUT_SCENE_TRACK`. (The source `.wav` is still on disk, unused —
+         safe to delete to save ~30 MB.)
+      2. **No crossfade:** the silent gesture-scoped *prime* had been collapsed
+         into `startTryoutMusic`, so the fade fired TWICE (prime event + the
+         `tryoutActive` effect), each resetting volume to 0 and stomping it.
+         Restored `primeTryoutAudioElement` (unlock-only, no fade) as the event
+         handler; the `tryoutActive` effect is again the single crossfade driver.
 - [ ] **Indie 'Send Introduction' / influence refinement (playtest
       2026-07-05)** — owner: the current introduction verb + influence economy
       at each independent needs a design pass (per-org flavor, costs, what
@@ -230,10 +296,14 @@ is deferred to Act III** (D33); do not build it here.
       refinement, which is already flagged "after playtesting."
 
 ### 7. Era wiring
-- [ ] **Confirm + wire `club-formation` `ERA_REQUIREMENTS`** — proposed:
-      `scouting-network`, `territory-projected`, `club-identity`,
-      `training-camp` (docs/14 §1). Add requirement ids to the `EraRequirement`
-      union + `selectors.isRequirementMet` cases.
+- [x] **Confirm + wire `club-formation` `ERA_REQUIREMENTS`** (2026-07-06) —
+      owner signed off on all four proposed gates (docs/14 §1). Added
+      `scouting-network` / `territory-projected` / `club-identity` /
+      `training-camp` to the `EraRequirementId` union (`types/game.ts`), the
+      requirement list in `data/eras.ts`, and `selectors.isRequirementMet`:
+      network = any `hockeyOrgs[].networkedByPlayer`; territory = `getPlayerRinks
+      (world, 1).length >= TERRITORY_RINKS_REQUIRED` (= 3, on top of HQ);
+      identity = `club-identity` researched; camp = `trainingCampsHeld >= 1`.
 
 ### Deferred to Act III (do NOT build in Act II)
 - [x] **Match Engine v0 (D51, 2026-07-05)** — pulled forward once ratings
@@ -274,6 +344,15 @@ is deferred to Act III** (D33); do not build it here.
 - [ ] Scouting map prototype (Step 9) — only after the loop is proven fun.
 
 ## Icebox / design themes (not scheduled)
+- [x] **Compact default map + terrain tuning (2026-07-06)** — world shrunk to
+      72×45 (was 120×75); `TILES_PER_MAJOR_CLUB` 1125→400 keeps the full 8
+      majors + 12 indies (uniform scale-down of the old placement). Terrain:
+      fewer lakes (`LAKE_BASIN` 0.89→0.93), fewer mountains (`MOUNTAIN_RIDGE`
+      0.93→0.955, `MOUNTAIN_INLAND` 0.54→0.6), more jitter (0.15/0.22→0.20/0.28),
+      `SEA_LEVEL` 0.47→0.42 for a healthy ~58%-land landmass. Headless worldgen
+      sim clean. See docs/18 "Smaller default map" (✅). Backlog items now live
+      in docs/18 (Name your rinks; wandering neutral units; fundraising/youth
+      academy) — the owner-maintained brainstorm doc, not here.
 - [ ] **Make the map more meaningful — urban footprint, districts & travel**
       (parked 2026-07-05, unrelated to the scouting/attributes work). Sense-check
       from playtest: building local rinks + harvesting stickwood is not enough to

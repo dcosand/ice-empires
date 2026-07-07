@@ -9,6 +9,7 @@ import { CANDIDATE_NOTES, GOALIE_NOTES } from "../data/playerNames";
 import { playerImageFor } from "../data/playerImages";
 import { getClubRinks } from "./rinkSystem";
 import { playerTerritorySize } from "./territorySystem";
+import type { AttrBand } from "./playerGen";
 import {
   POND_TRYOUT_BAND,
   WANDERER_BAND,
@@ -310,35 +311,54 @@ export function closeTryouts(state: GameState): GameState {
 // A wanderer from a map encounter joins the roster directly (no tryout).
 // Slightly better than tryout locals — they've clearly done this before.
 // Returns null if the roster is full.
-export function createWandererPlayer(
-  draft: GameState,
-  position: PlayerPosition,
-  name: string,
-  gender: Player["gender"],
-  nationality: PersonNationality,
-): Player | null {
-  if (draft.roster.length >= ROSTER_CAP) return null;
+// Quality tiers a recruited wanderer can land in (wandererSystem's balanced
+// odds): most are ordinary, a few are genuinely good, a rare one is a legend.
+export type WandererTier = "normal" | "good" | "legend";
+const WANDERER_TIER_BANDS: Record<WandererTier, { attrs: AttrBand; pot: AttrBand }> = {
+  normal: { attrs: WANDERER_BAND, pot: { min: 8, span: 22 } },
+  good: { attrs: { min: 46, span: 24 }, pot: { min: 16, span: 24 } },
+  legend: { attrs: { min: 62, span: 26 }, pot: { min: 32, span: 20 } },
+};
+
+// Pure builder for a wanderer-tier player — the SINGLE source of a recruit's
+// stats so the human and rival paths stay in exact parity (same tier bands,
+// same rolls). Threads the seed; never touches any roster/equipment. The rival
+// path (wandererSystem.resolveRivalWandererAt) and the human path below both
+// call this so a rival that bumps a wanderer draws the identical odds/quality.
+export function buildWandererPlayer(
+  seed: number,
+  opts: {
+    position: PlayerPosition;
+    name: string;
+    gender: Player["gender"];
+    nationality: PersonNationality;
+    tier: WandererTier;
+    month: number;
+    geared: boolean;
+    idPrefix?: string;
+  },
+): { player: Player; seed: number } {
+  let s = seed;
   const draw = () => {
-    const roll = nextRandom(draft.rngSeed);
-    draft.rngSeed = roll.seed;
+    const roll = nextRandom(s);
+    s = roll.seed;
     return roll.value;
   };
   const thread = <T>(rolled: T & { seed: number }): T => {
-    draft.rngSeed = rolled.seed;
+    s = rolled.seed;
     return rolled;
   };
-  const geared = draft.equipment >= 1;
-  if (geared) draft.equipment -= 1;
+  const { position, name, gender, nationality, tier, month, geared } = opts;
   const notes = position === "G" ? GOALIE_NOTES : CANDIDATE_NOTES;
-  // Wanderers roll a cut above tryout locals — they've clearly played before.
-  const { style } = thread(rollStyle(draft.rngSeed, position));
-  const { attrs } = thread(rollAttrs(draft.rngSeed, position, style, WANDERER_BAND));
-  const { potential } = thread(
-    rollPotential(draft.rngSeed, position, attrs, { min: 8, span: 22 }),
-  );
-  const { traits } = thread(rollTraits(draft.rngSeed));
+  const bands = WANDERER_TIER_BANDS[tier];
+  // Wanderers roll a cut above tryout locals — they've clearly played before;
+  // "good"/"legend" tiers roll from a markedly higher band with a taller ceiling.
+  const { style } = thread(rollStyle(s, position));
+  const { attrs } = thread(rollAttrs(s, position, style, bands.attrs));
+  const { potential } = thread(rollPotential(s, position, attrs, bands.pot));
+  const { traits } = thread(rollTraits(s));
   const player: Player = {
-    id: `wanderer-${draft.month}-${Math.floor(draw() * 1e6)}`,
+    id: `${opts.idPrefix ?? "wanderer"}-${month}-${Math.floor(draw() * 1e6)}`,
     name,
     nationality,
     gender,
@@ -352,15 +372,42 @@ export function createWandererPlayer(
       gender,
       kind: "player",
       position,
-      seed: `${name}-${draft.month}-${position}`,
+      seed: `${name}-${month}-${position}`,
     }),
     hasEquipment: geared,
-    joinedMonth: draft.month,
-    origin: "map encounter",
-    note: notes[Math.floor(draw() * notes.length)],
+    joinedMonth: month,
+    origin: tier === "legend" ? "a legend walks in" : "map encounter",
+    note:
+      tier === "legend"
+        ? "The kind of player the whole league will one day claim to have seen first."
+        : notes[Math.floor(draw() * notes.length)],
   };
-  draft.roster.push(player);
-  return player;
+  return { player, seed: s };
+}
+
+export function createWandererPlayer(
+  draft: GameState,
+  position: PlayerPosition,
+  name: string,
+  gender: Player["gender"],
+  nationality: PersonNationality,
+  tier: WandererTier = "normal",
+): Player | null {
+  if (draft.roster.length >= ROSTER_CAP) return null;
+  const geared = draft.equipment >= 1;
+  if (geared) draft.equipment -= 1;
+  const built = buildWandererPlayer(draft.rngSeed, {
+    position,
+    name,
+    gender,
+    nationality,
+    tier,
+    month: draft.month,
+    geared,
+  });
+  draft.rngSeed = built.seed;
+  draft.roster.push(built.player);
+  return built.player;
 }
 
 // Monthly pass: gear up ungeared players FIFO while shed stock lasts, so

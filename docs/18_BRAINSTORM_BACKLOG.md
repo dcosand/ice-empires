@@ -137,7 +137,76 @@ to zero) before calling it done.
 **Model: Sonnet** — parameter tuning + playtest, not new design. Try a couple
 of sizes (e.g. 70×45, 50×32) and see which feels right before committing.
 
+**✅ Implemented (experiment) 2026-07-06:** compacted to **72×45 (3240 tiles**,
+36% of the old area). To keep the SAME 8 majors + 12 independents (rather than
+letting the count drop with area), `TILES_PER_MAJOR_CLUB` was lowered 1125→400 —
+so the placement is a uniform scale-down of the old map (identical relative
+spacing, guaranteed to pack the same), just ~1.7× closer in absolute tiles.
+Terrain was tuned alongside (owner request): fewer lakes (`LAKE_BASIN` 0.89→0.93),
+fewer mountain ranges (`MOUNTAIN_RIDGE` 0.93→0.955, `MOUNTAIN_INLAND` 0.54→0.6),
+more per-tile randomization (`BIOME_JITTER_T/M` 0.15/0.22→0.20/0.28), and
+`SEA_LEVEL` 0.47→0.42 (+ smaller edge falloff) so the smaller sampling window
+still yields a healthy ~58%-land single landmass instead of an archipelago.
+Headless worldgen sim (8 majors + 12 indies place every seed; job tmp
+`worldgen-sim.ts`). PLAYTEST NEXT: does 72×45 feel right, or try smaller still?
+
 ---
+
+## Map life & encounters
+
+### Wandering neutral units (recruit-or-scrap)  — ✅ SHIPPED 2026-07-06 (D53)
+**Status: built and validated.** `engine/wandererSystem.ts` (roam/spawn/despawn,
+scout-tell, recruit/scrap resolution, penalty box), `Wanderer` type + `world.wanderers`,
+`WorldUnit.penaltyBoxTurns`, `WandererScene.tsx` encounter popup, nomad sprite in
+`IsoWorldMap.tsx` + minimap dot + penalty-box card notice, `DEV_SPAWN_WANDERER`
+dev button. **Rivals have full parity** — a rival scout that bumps a wanderer
+engages on the *identical* odds (shared `tryoutSystem.buildWandererPlayer` + shared
+constants; recruit grows the rival roster incl. rare good/legend, hostile boxes the
+rival unit 1–2 turns via `RivalUnit.penaltyBoxTurns`); logs only for contacted rivals.
+Validated headless: player path 1106 assertions; rival path 4,000 encounters
+(recruit 0.342 vs 0.35 target, legend 0.039 vs 0.043, all hostiles boxed).
+**Parked follow-on:** consolation "progress toward a fighting/toughness tech" for
+losing a scrap (currently pays +2 HK + scout XP only — the tech doesn't exist yet).
+
+_Original brainstorm (kept for context):_
+### Wandering neutral units (recruit-or-scrap)  — GREENLIT 2026-07-06
+Owner idea (2026-07-06): Civ games have barbarians / neutral map units; we have
+no on-map combat (our "combat" is the simulated hockey game), so instead add
+**visible neutral "wanderers"** that roam the map in the early game. Any major
+club can interact with one:
+- **Recruit** — attempt to sign them to play hockey. A chance they join; a
+  *remote* chance they're actually good; an *even more remote* chance they
+  become a **club legend**.
+- **Bad-guy wanderers** — some are hostile and introduce your pond scouts to the
+  first-ever ice-hockey **fights / scraps**, which sends your scout to the
+  **penalty box** (immobilized) for a turn or two.
+The point: chance encounters with real risk/payoff that make the early game fun,
+and give the otherwise-quiet map some life between settlements. Builds on the
+existing goodie-hut `wanderer` encounter + the shared `PlayerRevealScene` (which
+already fires for wanderer recruits) and `world.scouts` roaming-unit model, but
+promotes wanderers to persistent, moving, interactable units. Vision details
+(movement, blind-vs-tell risk, odds, penalty-box severity, rival AI in v1) being
+confirmed with the owner before the build.
+**Model: Opus** for the first pass (new roaming-unit system + encounter/penalty
+mechanic + odds/balance); **Sonnet** for follow-on content/tuning.
+
+## Economy & funds
+
+### Fundraising & the youth academy (cash-positive district)  — PARKED
+Owner idea (2026-07-06): players hit a wall where upkeep (field units + rink
+maintenance) outpaces income and the treasury goes negative — see the club's
+Treasury card (base +3, rinks +3, minus ~8 upkeep = underwater). Needs
+player-driven ways to **generate more funds**:
+- **Intrasquad fundraiser scrimmages / exhibitions for local fans** — put on a
+  show to raise money (ties into the match engine).
+- **Learn "fundraising"** as a researchable art.
+- **Youth Academy** — a cash-positive on-map / district-like improvement a Rink
+  Rat can build. Gated behind **local coach / volunteer coaching + Rules of the
+  Game**; sited on (or adjacent to / within 2–3 tiles of) the club's Level-1 rink
+  or HQ. First real "district" that earns recurring Funds, echoing the
+  Districts/urban-footprint icebox idea below.
+**Model: Opus** for the economy-balance design (upkeep vs. new faucets, what
+gates what); **Sonnet** to implement once the numbers are picked.
 
 ## Act III — Competitive Hockey
 

@@ -127,6 +127,14 @@ export function DevPanel({
           ⛏ Spawn builder at HQ
         </button>
         <button
+          style={hasWorld ? actionBtnStyle : disabledBtnStyle}
+          disabled={!hasWorld}
+          onClick={() => dispatch({ type: "DEV_SPAWN_WANDERER" })}
+          title="Drop a friendly + hostile wanderer next to your scout"
+        >
+          🧍 Spawn wanderers by scout
+        </button>
+        <button
           style={inGame ? actionBtnStyle : disabledBtnStyle}
           disabled={!inGame}
           onClick={() => dispatch({ type: "DEV_ADD_EQUIPMENT" })}

@@ -8,6 +8,7 @@ import type {
   PlayerPosition,
   ScoutMission,
   ScoutReport,
+  TryoutCandidate,
 } from "../types/game";
 import { CLUBS } from "../data/clubs";
 import { nationalityFlag, nationalityLabel } from "../data/nationalities";
@@ -300,6 +301,36 @@ function buildRows(state: GameState): Row[] {
   return [...rosterRows, ...prospectRows];
 }
 
+// A roster-style row for any Player-like object (a signed player OR an
+// unsigned tryout candidate — `TryoutCandidate` is a Player minus equipment).
+// Lets the same player file open from the Team screen, the signing cinematic,
+// and a tryout card, without the subject having to live in state.roster yet.
+type PlayerLike = TryoutCandidate;
+export function rowForPlayerLike(
+  state: GameState,
+  p: PlayerLike,
+  source?: string,
+): Row {
+  const ovr = computeOverall(p as Player);
+  return {
+    id: p.id,
+    kind: "roster",
+    name: p.name,
+    position: p.position,
+    age: p.age,
+    nationality: nationalityFlag(p.nationality),
+    nationalityTitle: nationalityLabel(p.nationality),
+    style: p.style,
+    source: source ?? p.origin,
+    ovrSort: ovr,
+    ovrLabel: `${ovr}`,
+    potSort: 0,
+    potLabel: "—",
+    reports: state.scoutReports.filter((r) => r.subjectId === p.id).length,
+    player: p as Player,
+  };
+}
+
 const POS_ORDER: Record<PlayerPosition, number> = { C: 0, W: 1, D: 2, G: 3 };
 
 function compareRows(a: Row, b: Row, key: SortKey): number {
@@ -329,18 +360,20 @@ function compareRows(a: Row, b: Row, key: SortKey): number {
 // actions, and the scouting history.
 // ---------------------------------------------------------------------------
 
-function PlayerDetail({
+export function PlayerDetail({
   state,
   row,
   reports,
   dispatch,
   onBack,
+  backLabel = "← Scouting board",
 }: {
   state: GameState;
   row: Row;
   reports: ScoutReport[];
   dispatch: Dispatch<GameAction>;
   onBack: () => void;
+  backLabel?: string;
 }) {
   const p = row.player;
   const stars = p ? starTier(computeOverall(p)) : null;
@@ -356,7 +389,7 @@ function PlayerDetail({
   return (
     <div className="panel scouting-panel sc-detail">
       <button className="btn sc-back" onClick={onBack}>
-        ← Scouting board
+        {backLabel}
       </button>
 
       <div className="sc-detail-head">
@@ -581,6 +614,66 @@ function ProspectActions({
       {gate !== "ok" && (
         <span className="faint sc-action-hint">{signGateHint(gate)}</span>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Player-file overlay — the EHM player file, openable from ANYWHERE (Team
+// screen, the signing cinematic, a tryout card), not just the scouting board.
+// Stacks above every other modal so it can float over the tryout/HQ screens.
+// ---------------------------------------------------------------------------
+export type PlayerFileTarget =
+  | { kind: "player"; player: Player }
+  | { kind: "candidate"; candidate: TryoutCandidate };
+
+export function PlayerFileOverlay({
+  state,
+  dispatch,
+  target,
+  onClose,
+}: {
+  state: GameState;
+  dispatch: Dispatch<GameAction>;
+  target: PlayerFileTarget;
+  onClose: () => void;
+}) {
+  const row =
+    target.kind === "candidate"
+      ? rowForPlayerLike(state, target.candidate, "Tryout hopeful")
+      : rowForPlayerLike(state, target.player);
+  const reports = state.scoutReports.filter((r) => r.subjectId === row.id);
+
+  return (
+    <div
+      className="task-overlay player-file-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`${row.name} — player file`}
+    >
+      <button
+        className="overlay-scrim"
+        aria-label="Close player file"
+        onClick={onClose}
+      />
+      <div className="overlay-sheet">
+        <div className="overlay-head">
+          <h2>Player File</h2>
+          <button className="btn" onClick={onClose}>
+            Close
+          </button>
+        </div>
+        <div className="overlay-body">
+          <PlayerDetail
+            state={state}
+            row={row}
+            reports={reports}
+            dispatch={dispatch}
+            onBack={onClose}
+            backLabel="← Back"
+          />
+        </div>
+      </div>
     </div>
   );
 }

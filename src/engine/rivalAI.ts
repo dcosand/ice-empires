@@ -10,6 +10,7 @@ import { CANDIDATE_NOTES, GOALIE_NOTES } from "../data/playerNames";
 import { playerImageFor } from "../data/playerImages";
 import { createRivalUnit, isAdjacent, tileAt } from "./world";
 import { allScouts } from "./scoutSystem";
+import { resolveRivalWandererAt } from "./wandererSystem";
 import { prependLog } from "./log";
 import { nextRandom } from "./rng";
 import {
@@ -194,8 +195,16 @@ function moveRivalUnits(draft: GameState, rival: RivalClub, push: PushLog): void
       runRivalBuilder(draft, rival, unit, push);
       continue;
     }
+    // A boxed scout sits out the turn (mirrors the human's penalty box).
+    if ((unit.penaltyBoxTurns ?? 0) > 0) {
+      unit.penaltyBoxTurns = (unit.penaltyBoxTurns ?? 0) - 1;
+      if (unit.penaltyBoxTurns <= 0) unit.penaltyBoxTurns = undefined;
+      unit.movesRemaining = 0;
+      continue;
+    }
     unit.movesRemaining = unit.movesPerTurn;
     consumePondMarkerAt(draft, unit.x, unit.y);
+    if (resolveRivalWandererAt(draft, rival, unit, push)) continue;
     while (unit.movesRemaining > 0) {
       const candidates = wanderCandidates(unit, rival.hqTile, draft);
       if (candidates.length === 0) break;
@@ -206,6 +215,9 @@ function moveRivalUnits(draft: GameState, rival: RivalClub, push: PushLog): void
       unit.y = pick.y;
       unit.movesRemaining -= 1;
       consumePondMarkerAt(draft, unit.x, unit.y);
+      // Bumped a wanderer mid-walk? Engage on the same odds; a scrap boxes the
+      // unit and ends its turn here.
+      if (resolveRivalWandererAt(draft, rival, unit, push)) break;
     }
   }
 }

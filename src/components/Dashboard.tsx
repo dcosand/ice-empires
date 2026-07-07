@@ -20,7 +20,8 @@ import { ClubHQScreen, type HQTab } from "./ClubHQScreen";
 import { RivalMeetingScreen } from "./RivalMeetingScreen";
 import { ResearchPanel } from "./ResearchPanel";
 import { CardsPanel } from "./CardsPanel";
-import { ScoutingScreen } from "./ScoutingScreen";
+import { ScoutingScreen, PlayerFileOverlay } from "./ScoutingScreen";
+import type { PlayerFileTarget } from "./ScoutingScreen";
 import { Inbox } from "./Inbox";
 import { unreadCount } from "../engine/log";
 import { EraProgressPanel } from "./EraProgressPanel";
@@ -51,6 +52,7 @@ import { MatchResultScreen } from "./MatchResultScreen";
 import { exhibitionGate, exhibitionGateHint } from "../engine/matchEngine";
 import { NetworkEstablishedScene } from "./NetworkEstablishedScene";
 import { IndependentsScreen } from "./IndependentsScreen";
+import { WandererScene } from "./WandererScene";
 import { primeTryoutMusic } from "./BackgroundMusic";
 
 type OverlayView =
@@ -72,6 +74,9 @@ export function Dashboard({
   dispatch: Dispatch<GameAction>;
 }) {
   const [overlay, setOverlay] = useState<OverlayView>(null);
+  // The EHM player file, openable over any screen (Team, tryout, the signing
+  // cinematic). Rendered top-level so it stacks above every other modal.
+  const [fileTarget, setFileTarget] = useState<PlayerFileTarget | null>(null);
   const [inboxFocusId, setInboxFocusId] = useState<string | null>(null);
   const [leaderClubId, setLeaderClubId] = useState<string | null>(null);
   // Deep link from an independent meeting straight to that org's detail page.
@@ -176,8 +181,8 @@ export function Dashboard({
               />
             </div>
           }
+          railSlot={<CommandRail state={state} dispatch={dispatch} open={openView} />}
         />
-        <CommandRail state={state} dispatch={dispatch} open={openView} />
         {eraToast && (
           <button className="era-toast" onClick={() => openView("era")}>
             <span className="era-toast-check" aria-hidden>✓</span>
@@ -232,6 +237,9 @@ export function Dashboard({
           dispatch={dispatch}
           onClose={() => setOverlay(null)}
           initialTab={hqInitialTab}
+          onOpenPlayerFile={(player) =>
+            setFileTarget({ kind: "player", player })
+          }
         />
       )}
 
@@ -242,13 +250,24 @@ export function Dashboard({
         />
       )}
 
-      {state.pendingTryout && <TryoutScreen state={state} dispatch={dispatch} />}
+      {state.pendingWanderer && <WandererScene state={state} dispatch={dispatch} />}
+
+      {state.pendingTryout && (
+        <TryoutScreen
+          state={state}
+          dispatch={dispatch}
+          onOpenPlayerFile={(candidate) =>
+            setFileTarget({ kind: "candidate", candidate })
+          }
+        />
+      )}
 
       {state.pendingPlayerReveal && (
         <PlayerRevealScene
           reveal={state.pendingPlayerReveal}
           club={state.club}
           dispatch={dispatch}
+          onViewProfile={(player) => setFileTarget({ kind: "player", player })}
         />
       )}
 
@@ -335,6 +354,15 @@ export function Dashboard({
             const firstScout = allScouts(state.world)[0];
             if (firstScout) dispatch({ type: "SELECT_SCOUT", scoutId: firstScout.id });
           }}
+        />
+      )}
+
+      {fileTarget && (
+        <PlayerFileOverlay
+          state={state}
+          dispatch={dispatch}
+          target={fileTarget}
+          onClose={() => setFileTarget(null)}
         />
       )}
     </div>

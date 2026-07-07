@@ -407,6 +407,22 @@ function drawScene(
         }
       }
 
+      // Wandering neutral units roam and are LIVE info — only render where the
+      // player has current sightline (never leak positions from memory). The
+      // friendly/hostile tell stays off the map (it lives in the encounter),
+      // so the sprite is a neutral hooded nomad.
+      if (visible) {
+        const wanderersHere = world.wanderers.filter(
+          (w) => w.x === gx && w.y === gy,
+        );
+        for (let i = 0; i < wanderersHere.length; i++) {
+          const mk = wandererMarker(gx, gy, c);
+          mk.position.x += (i - (wanderersHere.length - 1) / 2) * 10;
+          mk.position.y -= rise;
+          layer.addChild(mk);
+        }
+      }
+
       if (founder && founder.x === gx && founder.y === gy) {
         const mk = leaderMarker(gx, gy, c, world.founderSelected, accent, leaderTexture);
         mk.position.y -= rise;
@@ -1933,6 +1949,63 @@ function scoutMarker(
   return s;
 }
 
+// A wandering neutral unit (docs/18): a hooded traveler mid-journey — muted
+// earthy cloak, a walking staff, and a bindle bundle over the shoulder. No team
+// color, no banner: reads instantly as an outsider passing through, distinct
+// from the bright parka Pond Scout. Disposition (friend/foe) is deliberately
+// NOT shown here — the tell lives in the encounter.
+const NOMAD_CLOAK = 0x6b5b4a;
+const NOMAD_CLOAK_DK = 0x483d31;
+const NOMAD_CLOAK_LT = 0x8b7a63;
+const NOMAD_STAFF = 0x7a5a36;
+const NOMAD_STAFF_LT = 0xa9865a;
+const NOMAD_BINDLE = 0x9a5f52;
+
+function wandererMarker(
+  gx: number,
+  gy: number,
+  c: { x: number; y: number },
+) {
+  const s = new Graphics();
+  s.position.set(isoX(gx, gy) - c.x, isoY(gx, gy) - c.y);
+  s.zIndex = gx + gy + 0.55;
+
+  // contact shadow
+  s.ellipse(0, 1, 10, 4).fill({ color: 0x000000, alpha: 0.32 });
+
+  // walking staff planted to the right, with a bindle bundle tied at the top
+  s.roundRect(9, -46, 2.2, 48, 1).fill(NOMAD_STAFF);
+  s.roundRect(9, -46, 0.9, 48, 1).fill({ color: NOMAD_STAFF_LT, alpha: 0.85 });
+  s.circle(10.2, -46, 4.6).fill(NOMAD_BINDLE);
+  s.circle(10.2, -46, 4.6).stroke({ width: 0.8, color: darkenBy(NOMAD_BINDLE, 0.3) });
+  s.roundRect(8.4, -47.4, 3.6, 2, 1).fill({ color: darkenBy(NOMAD_BINDLE, 0.25), alpha: 0.7 }); // knot
+
+  // chunky boots
+  s.roundRect(-6, -4, 6, 4, 1.5).fill(BOOT);
+  s.roundRect(0.4, -4, 6, 4, 1.5).fill(BOOT);
+
+  // long travelling cloak — flared hem, body, shaded right side + center seam
+  s.poly([-10, -12, 10, -12, 7, -2, -7, -2]).fill(NOMAD_CLOAK);
+  s.roundRect(-8.5, -30, 17, 20, 5).fill(NOMAD_CLOAK);
+  s.roundRect(2.5, -30, 6, 20, 4).fill({ color: NOMAD_CLOAK_DK, alpha: 0.5 });
+  s.roundRect(-0.7, -30, 1.4, 26, 0.6).fill({ color: NOMAD_CLOAK_DK, alpha: 0.7 });
+
+  // right arm gripping the staff
+  s.roundRect(6, -30, 5, 10, 3).fill(NOMAD_CLOAK);
+  s.circle(10, -24, 2.3).fill(NOMAD_CLOAK_DK);
+
+  // hood + shadowed interior, face peeking out with a two-eye gaze
+  s.circle(0, -37, 7.6).fill(NOMAD_CLOAK);
+  s.circle(0, -37, 5.4).fill(NOMAD_CLOAK_DK);
+  s.circle(0, -36.5, 4.6).fill(SKIN).stroke({ width: 1, color: SKIN_SHADE });
+  s.circle(-1.7, -36.7, 0.8).fill(EYE);
+  s.circle(1.8, -36.7, 0.8).fill(EYE);
+  // hood peak pulled up over the head
+  s.poly([-6, -41.5, 6, -41.5, 0, -48]).fill(NOMAD_CLOAK_LT);
+
+  return s;
+}
+
 // The Club Scout (D38): the professional tier — long charcoal overcoat, a
 // club-accent flat cap and scarf, nose down in a clipboard of reports. No
 // banner, no expedition fur: this one watches games for a living. Reads
@@ -2124,12 +2197,16 @@ export function IsoWorldMap({
   onOpenHQ,
   onOpenIndependent,
   headerTools,
+  railSlot,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onOpenHQ?: () => void;
   onOpenIndependent?: (orgId: string) => void;
   headerTools?: ReactNode;
+  // The command rail (Next Tasks / End Turn). Docked bottom-right alongside the
+  // selected-unit card so the two read as one Civ VI-style action cluster.
+  railSlot?: ReactNode;
 }) {
   const activeClub = getActiveClub(state);
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -2712,8 +2789,11 @@ export function IsoWorldMap({
       <div className="iso-stage">
         <div ref={hostRef} className="iso-canvas" />
         <MapControls state={state} selectedKey={selectedKey} />
-        <UnitOverlay state={state} dispatch={dispatch} />
         <MiniMap state={state} cameraRef={cameraRef} />
+        <div className="map-command-dock">
+          <UnitOverlay state={state} dispatch={dispatch} />
+          {railSlot}
+        </div>
       </div>
 
     </div>
@@ -2836,6 +2916,11 @@ function MiniMap({
       if (pond.investigated) continue;
       if (!state.devRevealAll && !revealedSet.has(`${pond.x},${pond.y}`)) continue;
       dot(pond.x, pond.y, 0x9fd4ff, 2);
+    }
+    // Wanderers are live info — plot only where the player currently has eyes.
+    for (const w of world.wanderers) {
+      if (!state.devRevealAll && !visibleSet.has(`${w.x},${w.y}`)) continue;
+      dot(w.x, w.y, 0xd08a5a, 2.2, true);
     }
     // Club rinks: bright white dots (level 1+) / faint for cleared ponds.
     for (const rink of world.rinks) {
@@ -3024,6 +3109,13 @@ function UnitOverlay({
           </strong>
           <span className="um-label">Moves</span>
         </div>
+        {!isLeader && (unit.penaltyBoxTurns ?? 0) > 0 && (
+          <div className="unit-penalty">
+            🥊 In the penalty box — {unit.penaltyBoxTurns} more turn
+            {unit.penaltyBoxTurns === 1 ? "" : "s"}. A wanderer's scrap left them
+            cooling off.
+          </div>
+        )}
         <div className="unit-orders">
           {isLeader && club && (
             <button

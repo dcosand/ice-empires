@@ -11,7 +11,11 @@ import {
 import { RESEARCH } from "../data/research";
 import { ERA_REQUIREMENTS } from "../data/eras";
 import { addResources, EMPTY_RESOURCES } from "./resources";
-import { getClubRinks } from "./rinkSystem";
+import { getClubRinks, getPlayerRinks } from "./rinkSystem";
+
+// Club-formation "territory projected" exit gate: HQ plus this many player
+// rinks (level >= 1, at any distance) projecting borders (docs/14 §1).
+export const TERRITORY_RINKS_REQUIRED = 3;
 
 // Monthly income = club base + completed-facility effects + acquired-card effects.
 export function getMonthlyIncome(state: GameState): ResourceSet {
@@ -160,6 +164,17 @@ export function isRequirementMet(
       return state.completedResearch.includes("rules-of-the-game");
     case "full-roster":
       return hasFullLine(state);
+    case "scouting-network":
+      return !!state.world?.hockeyOrgs.some((o) => o.networkedByPlayer);
+    case "territory-projected":
+      return (
+        !!state.world &&
+        getPlayerRinks(state.world, 1).length >= TERRITORY_RINKS_REQUIRED
+      );
+    case "club-identity":
+      return state.completedResearch.includes("club-identity");
+    case "training-camp":
+      return state.trainingCampsHeld >= 1;
   }
 }
 

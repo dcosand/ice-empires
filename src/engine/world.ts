@@ -2,6 +2,7 @@ import type {
   GameState,
   RivalClub,
   RivalUnit,
+  Wanderer,
   WorldState,
   WorldFeature,
   WorldHockeyOrg,
@@ -17,8 +18,14 @@ import { rollNationality } from "./playerGen";
 
 // The persistent world. The founding tile map IS the in-game world — the same
 // grid, fog, and HQ carry from founding into Month 1+. Generated at game start.
-export const WORLD_WIDTH = 120;
-export const WORLD_HEIGHT = 75;
+// Compact default world (docs/18 "Smaller default map"): 72×45 = 3240 tiles,
+// down from the old 120×75 = 9000. TILES_PER_MAJOR_CLUB is lowered in step so
+// the SAME 8 majors + 12 independents still place — the placement geometry is a
+// uniform scale-down of the old map (identical relative spacing, guaranteed to
+// pack the same), so actors sit ~1.7× closer in absolute tiles and first
+// contact / territory contention arrive far sooner in the early game.
+export const WORLD_WIDTH = 72;
+export const WORLD_HEIGHT = 45;
 export const FOUNDER_MOVES = 2;
 export const SCOUT_MOVES = 3;
 // Rival scouts wander at the same pace as the player's Pond Scout.
@@ -31,21 +38,26 @@ const POND_MARKER_COUNT = 24;
 // --- Settlement placement (Civ VI-inspired) -------------------------------
 // Civ VI scales the number of major civs and city-states to map size and keeps
 // them spaced apart, with the ordering major↔major > major↔minor > minor↔minor.
-// We mirror that: counts derive from map area (so the 120×75 map yields 8 major
-// clubs and 12 independents — a 1.5 ratio, exactly Civ VI's Standard map), and
-// the separation distances derive from how far apart the majors would sit if
-// evenly spread, so everything scales together when the map size changes.
+// We mirror that: counts derive from map area (so the compact 72×45 map still
+// yields 8 major clubs and 12 independents — a 1.5 ratio, exactly Civ VI's
+// Standard map), and the separation distances derive from how far apart the
+// majors would sit if evenly spread, so everything scales together when the map
+// size changes.
 //
-// One major club (human + AI) per this many map tiles. 120*75/1125 = 8 majors.
-const TILES_PER_MAJOR_CLUB = 1125;
+// One major club (human + AI) per this many map tiles. 72*45/400 = 8.1 → capped
+// at the 8 club defs, so the full roster places on the compact map (was 1125 at
+// the old 120×75 size). Keep this ≤ area/CLUB_LIST.length to place every club.
+const TILES_PER_MAJOR_CLUB = 400;
 // Independents per major club (Civ VI Standard is 12:8). 8 * 1.5 = 12.
 const INDEPENDENT_RATIO = 1.5;
 // Separation distances as fractions of the even-spread unit U = sqrt(area/majors)
-// (≈ 33.5 tiles on the current map): majors spread the widest, independents tuck
-// into the gaps between and around them. Preserves Civ VI's distance ordering.
-const SEP_MAJOR_MAJOR = 0.62; // ≈ 21 tiles between major club HQs
-const SEP_MAJOR_INDEP = 0.34; // ≈ 11 tiles from any major HQ to an independent
-const SEP_INDEP_INDEP = 0.3; // ≈ 10 tiles between independents
+// (≈ 20 tiles on the compact 72×45 map): majors spread the widest, independents
+// tuck into the gaps between and around them. Preserves Civ VI's distance
+// ordering. (These fractions are unchanged from the old map — only U shrank, so
+// everyone sits proportionally closer.)
+const SEP_MAJOR_MAJOR = 0.62; // ≈ 12–13 tiles between major club HQs
+const SEP_MAJOR_INDEP = 0.34; // ≈ 7 tiles from any major HQ to an independent
+const SEP_INDEP_INDEP = 0.3; // ≈ 6 tiles between independents
 // Tried strictest-first; if a tight/fragmented map offers no spot at the ideal
 // distance, relax step-by-step so the target counts still fill (Civ VI likewise
 // relaxes its minimums rather than dropping civs).
@@ -285,6 +297,53 @@ export function visibleTiles(world: WorldState): Set<string> {
   return out;
 }
 
+// Wandering neutral units seeded at worldgen (docs/18 "Wandering neutral
+// units"): a few roamers out on the map so the opening turns have chance
+// encounters. Placed on passable land a comfortable ring off the start and away
+// from settlements; disposition mixes friendly prospects and hostile scrappers.
+// More spawn over time (wandererSystem). ~40% start hostile.
+export const WANDERER_SEED_COUNT = 3;
+export const WANDERER_HOSTILE_CHANCE = 0.4;
+function seedWanderers(
+  tiles: WorldTile[],
+  start: { x: number; y: number },
+  avoidPts: { x: number; y: number }[],
+  orgs: WorldHockeyOrg[],
+  seed: number,
+): Wanderer[] {
+  const cheb = (ax: number, ay: number, bx: number, by: number) =>
+    Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+  const avoid = [...avoidPts, ...orgs.map((o) => ({ x: o.x, y: o.y }))];
+  const cand = tiles
+    .filter((t) => {
+      if (!t.valid) return false;
+      const d = cheb(t.x, t.y, start.x, start.y);
+      if (d < 4 || d > 18) return false;
+      return !avoid.some((p) => cheb(p.x, p.y, t.x, t.y) < 3);
+    })
+    .map((t) => ({ x: t.x, y: t.y, score: noise2d(t.x, t.y, seed + 61213) }))
+    .sort((a, b) => b.score - a.score);
+
+  const out: Wanderer[] = [];
+  for (const c of cand) {
+    if (out.length >= WANDERER_SEED_COUNT) break;
+    if (out.some((w) => cheb(w.x, w.y, c.x, c.y) < 6)) continue;
+    out.push({
+      id: `wanderer-seed-${out.length}`,
+      x: c.x,
+      y: c.y,
+      homeX: c.x,
+      homeY: c.y,
+      disposition:
+        noise2d(c.x, c.y, seed + 71011) < WANDERER_HOSTILE_CHANCE
+          ? "hostile"
+          : "friendly",
+      spawnedMonth: 1,
+    });
+  }
+  return out;
+}
+
 export function createWorld(seed = Date.now(), playerClubId?: string | null): WorldState {
   const tiles: WorldTile[] = [];
   for (let y = 0; y < WORLD_HEIGHT; y++) {
@@ -373,6 +432,7 @@ export function createWorld(seed = Date.now(), playerClubId?: string | null): Wo
     hockeyOrgs,
     rivals,
     rinks: [],
+    wanderers: seedWanderers(tiles, start, majorPts, hockeyOrgs, seed),
     harvestedTiles: [],
     scout: null,
     scoutSelected: false,
@@ -976,14 +1036,22 @@ function chooseStart(
 
 // ---- Map generation tunables ---------------------------------------------
 // Raise SEA_LEVEL for more ocean / smaller continents; lower it for more land.
-const SEA_LEVEL = 0.47; // continent field below this is open water
+const SEA_LEVEL = 0.42; // continent field below this is open water (lowered for
+// the compact map: keeps land fraction healthy so 20 settlements aren't crammed
+// onto tiny islands, was 0.47)
 const COAST_BAND = 0.045; // band just above sea level rendered as coast
-const EDGE_MARGIN = 0.16; // outer fraction of the map that falls away to ocean
-const EDGE_FALLOFF = 0.6; // how hard that outer margin is pushed underwater
-const MOUNTAIN_RIDGE = 0.93; // ridged-noise level that becomes mountains (higher = fewer)
-const MOUNTAIN_INLAND = 0.54; // mountains only where the land field is this high
-const BIOME_JITTER_T = 0.15; // per-tile temperature wobble for within-cluster variety
-const BIOME_JITTER_M = 0.22; // per-tile moisture wobble for within-cluster variety
+const EDGE_MARGIN = 0.12; // outer fraction of the map that falls away to ocean
+const EDGE_FALLOFF = 0.5; // how hard that outer margin is pushed underwater
+const MOUNTAIN_RIDGE = 0.955; // ridged-noise level that becomes mountains (higher = fewer ranges)
+const MOUNTAIN_INLAND = 0.6; // mountains only where the land field is this high (higher = fewer)
+const BIOME_JITTER_T = 0.2; // per-tile temperature wobble for within-cluster variety (more = noisier terrain)
+const BIOME_JITTER_M = 0.28; // per-tile moisture wobble for within-cluster variety (more = noisier terrain)
+// Standing-water basins on wet terrain: ponds (skateable rink sites, GOOD) sit
+// in the shallow band, the deepest basins become impassable lakes. Raising
+// LAKE_BASIN shrinks the lake band into the pond band → fewer lakes, so travel
+// is less blocked and there are more places to build.
+const POND_BASIN_MIN = 0.82;
+const LAKE_BASIN = 0.93; // was 0.89 — deeper basins now stay ponds, not lakes
 
 // Landmass field. A domain-warped, medium-frequency noise gathers land into
 // several discrete masses (continents) with irregular, fragmented coastlines,
@@ -1151,13 +1219,13 @@ function isWetTerrain(terrain: WorldTerrain): boolean {
 // A pond is a small basin pool on wet ground. It's promoted to a first-class
 // `pond` terrain (skateable / buildable / future rink site) in createWorld,
 // rather than living as a feature overlay. Rivers take precedence (a river
-// tile is never a pond), and the larger/deeper basins (basin > 0.89) become
+// tile is never a pond), and the larger/deeper basins (basin > LAKE_BASIN) become
 // impassable lakes instead.
 function isPondTile(x: number, y: number, terrain: WorldTerrain, seed: number): boolean {
   if (!isWetTerrain(terrain)) return false;
   if (isRiverTile(x, y, terrain, seed)) return false;
   const basin = smoothNoise(x / 4, y / 4, seed + 1701);
-  return basin > 0.82 && basin <= 0.89;
+  return basin > POND_BASIN_MIN && basin <= LAKE_BASIN;
 }
 
 function generatedFeature(
@@ -1170,7 +1238,7 @@ function generatedFeature(
   if (isRiverTile(x, y, terrain, seed)) return "river";
 
   const basin = smoothNoise(x / 4, y / 4, seed + 1701);
-  if (isWetTerrain(terrain) && basin > 0.89) return "lake";
+  if (isWetTerrain(terrain) && basin > LAKE_BASIN) return "lake";
   return undefined;
 }
 

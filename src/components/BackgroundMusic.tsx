@@ -215,6 +215,23 @@ export function BackgroundMusic({
       });
   };
 
+  // Unlock the tryout bed WITHIN the user's click gesture (autoplay policy):
+  // start it playing but silent. The actual crossfade is driven separately by
+  // the tryoutActive effect (startTryoutMusic), so the fade isn't restarted by
+  // a second trigger. Keeping prime and crossfade apart is what makes the
+  // tryout transition cross-fade cleanly instead of popping.
+  const primeTryoutAudioElement = () => {
+    const tryout = tryoutRef.current;
+    if (!tryout || !tryout.paused) return;
+    tryout.currentTime = 0;
+    tryout.volume = TRYOUT_START_VOLUME;
+    // Force an eager (re)load so the bed is buffered before play(): without it,
+    // play() resolves against an unbuffered element and the wall-clock fade
+    // desyncs from audible playback → the track pops in instead of fading.
+    tryout.load();
+    tryout.play().catch(() => {});
+  };
+
   const startTryoutMusic = (restart = false) => {
     const game = gameAudio();
     const tryout = tryoutRef.current;
@@ -278,7 +295,9 @@ export function BackgroundMusic({
   }, []);
 
   useEffect(() => {
-    const onTryoutAudioStart = () => startTryoutMusic(true);
+    // The click that opens tryouts only PRIMES the bed (silent, gesture-scoped);
+    // the tryoutActive effect owns the crossfade so it runs exactly once.
+    const onTryoutAudioStart = () => primeTryoutAudioElement();
     const onScene = (event: Event) => {
       setSceneOverride((event as CustomEvent<MusicScene | null>).detail ?? null);
     };

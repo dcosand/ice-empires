@@ -486,9 +486,21 @@ function resourceLabel(resource: ResourceKey): string {
 export function refreshScoutMoves(draft: GameState): void {
   const world = draft.world;
   if (!world) return;
-  const scouts = allScouts(world).map((unit) =>
-    unit.working ? { ...unit, movesRemaining: 0 } : { ...unit, movesRemaining: unit.movesPerTurn },
-  );
+  const scouts = allScouts(world).map((unit) => {
+    // Penalty box (wanderer scrap): pinned at 0 moves; the sentence burns down
+    // one turn at a time.
+    if ((unit.penaltyBoxTurns ?? 0) > 0) {
+      const remaining = (unit.penaltyBoxTurns ?? 0) - 1;
+      return {
+        ...unit,
+        penaltyBoxTurns: remaining > 0 ? remaining : undefined,
+        movesRemaining: 0,
+      };
+    }
+    return unit.working
+      ? { ...unit, movesRemaining: 0 }
+      : { ...unit, movesRemaining: unit.movesPerTurn };
+  });
   draft.world = syncLegacyScout(
     world,
     scouts,

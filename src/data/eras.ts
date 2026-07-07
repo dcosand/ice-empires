@@ -59,7 +59,21 @@ export const ERA_REQUIREMENTS: Record<string, EraRequirement[]> = {
       label: "Ice a full line: 6 geared players including a goalie",
     },
   ],
-  [CLUB_FORMATION_ERA_ID]: [],
+  [CLUB_FORMATION_ERA_ID]: [
+    {
+      id: "scouting-network",
+      label: "Establish a scouting network with an independent",
+    },
+    {
+      id: "territory-projected",
+      label: "Project your borders: HQ plus 3 rinks",
+    },
+    { id: "club-identity", label: "Research Club Identity" },
+    {
+      id: "training-camp",
+      label: "Run a full training-camp tryout cycle",
+    },
+  ],
   [COMPETITIVE_HOCKEY_ERA_ID]: [],
   [HOCKEY_OPERATIONS_ERA_ID]: [],
   [DYNASTY_ERA_ID]: [],

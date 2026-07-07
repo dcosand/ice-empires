@@ -32,6 +32,7 @@ import {
 } from "./independentsSystem";
 import { endMonth } from "./turnResolution";
 import { triggerRivalContact } from "./rivalAI";
+import { resolveWanderer, triggerWandererContact } from "./wandererSystem";
 import {
   devAddEquipment,
   devForceExhibition,
@@ -43,6 +44,7 @@ import {
   devResetTurn1,
   devSetRevealAll,
   devSpawnBuilder,
+  devSpawnWanderer,
   devToggleFacility,
   devToggleResearch,
 } from "./devSystem";
@@ -175,10 +177,14 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       // first contact, then independent first contact. Each trigger bails if
       // something is already pending, so the player only ever sees one pop-up.
       // (Networks are NOT auto-established — the player gives the order.)
-      return triggerIndependentContact(
-        triggerRivalContact(
-          triggerPondEncounter(
-            moveScout(state, action.x, action.y, action.scoutId),
+      return triggerWandererContact(
+        triggerIndependentContact(
+          triggerRivalContact(
+            triggerPondEncounter(
+              moveScout(state, action.x, action.y, action.scoutId),
+              action.x,
+              action.y,
+            ),
             action.x,
             action.y,
           ),
@@ -236,6 +242,9 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "MARK_INBOX_READ":
       return markInboxRead(state, action.ids);
+
+    case "RESOLVE_WANDERER":
+      return resolveWanderer(state, action.choice);
 
     case "RESOLVE_ENCOUNTER":
       // Resolving may stage a player reveal (wanderer); if so the retry bails
@@ -296,6 +305,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
     case "DEV_SPAWN_BUILDER":
       return devSpawnBuilder(state);
+    case "DEV_SPAWN_WANDERER":
+      return devSpawnWanderer(state);
 
     case "DEV_GRANT_POND_TECH":
       return devGrantPondTech(state);

@@ -14,10 +14,12 @@ export function PlayerRevealScene({
   reveal,
   club,
   dispatch,
+  onViewProfile,
 }: {
   reveal: PlayerReveal;
   club: ClubDef | null;
   dispatch: Dispatch<GameAction>;
+  onViewProfile?: (player: PlayerReveal["player"]) => void;
 }) {
   const [flipped, setFlipped] = useState(false);
   const [ready, setReady] = useState(false);
@@ -88,13 +90,23 @@ export function PlayerRevealScene({
           <div className="reveal-eyebrow">{eyebrow}</div>
           <h2 className="reveal-headline">{headline}</h2>
           <p className="reveal-line">{line}</p>
-          <button
-            className="btn btn-gold reveal-continue"
-            aria-label="Continue"
-            onClick={() => dispatch({ type: "ACKNOWLEDGE_PLAYER_REVEAL" })}
-          >
-            {player.hasEquipment ? "Hand them a stick" : "Welcome them aboard"}
-          </button>
+          <div className="reveal-actions">
+            <button
+              className="btn btn-gold reveal-continue"
+              aria-label="Continue"
+              onClick={() => dispatch({ type: "ACKNOWLEDGE_PLAYER_REVEAL" })}
+            >
+              {player.hasEquipment ? "Hand them a stick" : "Welcome them aboard"}
+            </button>
+            {onViewProfile && (
+              <button
+                className="btn reveal-profile"
+                onClick={() => onViewProfile(player)}
+              >
+                View full profile
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </div>

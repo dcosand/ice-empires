@@ -68,11 +68,13 @@ export function ClubHQScreen({
   dispatch,
   onClose,
   initialTab = "overview",
+  onOpenPlayerFile,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onClose: () => void;
   initialTab?: Tab;
+  onOpenPlayerFile?: (player: Player) => void;
 }) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const club = state.club;
@@ -147,7 +149,13 @@ export function ClubHQScreen({
 
           <div className="hq-modal-body">
             {tab === "overview" && <OverviewTab state={state} />}
-            {tab === "team" && <TeamTab state={state} dispatch={dispatch} />}
+            {tab === "team" && (
+              <TeamTab
+                state={state}
+                dispatch={dispatch}
+                onOpenPlayerFile={onOpenPlayerFile}
+              />
+            )}
             {tab === "personnel" && <PersonnelTab state={state} />}
             {tab === "production" && (
               <ProductionTab state={state} dispatch={dispatch} />
@@ -303,9 +311,11 @@ function assignLines(roster: Player[]): {
 function TeamTab({
   state,
   dispatch,
+  onOpenPlayerFile,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
+  onOpenPlayerFile?: (player: Player) => void;
 }) {
   const roster = state.roster;
   const lines = assignLines(roster);
@@ -345,16 +355,16 @@ function TeamTab({
       </div>
 
       <div className="line-grid line-forwards">
-        <LineSlot label="LW" player={lines.forwards[0]} />
-        <LineSlot label="C" player={lines.forwards[1]} />
-        <LineSlot label="RW" player={lines.forwards[2]} />
+        <LineSlot label="LW" player={lines.forwards[0]} onOpen={onOpenPlayerFile} />
+        <LineSlot label="C" player={lines.forwards[1]} onOpen={onOpenPlayerFile} />
+        <LineSlot label="RW" player={lines.forwards[2]} onOpen={onOpenPlayerFile} />
       </div>
       <div className="line-grid line-defense">
-        <LineSlot label="LD" player={lines.defense[0]} />
-        <LineSlot label="RD" player={lines.defense[1]} />
+        <LineSlot label="LD" player={lines.defense[0]} onOpen={onOpenPlayerFile} />
+        <LineSlot label="RD" player={lines.defense[1]} onOpen={onOpenPlayerFile} />
       </div>
       <div className="line-grid line-goalie">
-        <LineSlot label="G" player={lines.goalie} />
+        <LineSlot label="G" player={lines.goalie} onOpen={onOpenPlayerFile} />
       </div>
 
       <SectionTitle>Bench</SectionTitle>
@@ -367,7 +377,12 @@ function TeamTab({
       ) : (
         <div className="line-grid">
           {lines.bench.map((p) => (
-            <LineSlot key={p.id} label={p.position} player={p} />
+            <LineSlot
+              key={p.id}
+              label={p.position}
+              player={p}
+              onOpen={onOpenPlayerFile}
+            />
           ))}
         </div>
       )}
@@ -469,7 +484,15 @@ function turnsText(turns: number): string {
   return `${turns} turn${turns === 1 ? "" : "s"}`;
 }
 
-function LineSlot({ label, player }: { label: string; player: Player | null }) {
+function LineSlot({
+  label,
+  player,
+  onOpen,
+}: {
+  label: string;
+  player: Player | null;
+  onOpen?: (player: Player) => void;
+}) {
   if (!player) {
     return (
       <div className="line-slot empty">
@@ -482,8 +505,25 @@ function LineSlot({ label, player }: { label: string; player: Player | null }) {
   // real six attributes).
   const bars = cardBars(player.attrs).slice(0, 4);
   const overall = computeOverall(player);
+  const clickable = !!onOpen;
   return (
-    <div className="line-slot">
+    <div
+      className={`line-slot${clickable ? " clickable" : ""}`}
+      role={clickable ? "button" : undefined}
+      tabIndex={clickable ? 0 : undefined}
+      title={clickable ? `Open ${player.name}'s player file` : undefined}
+      onClick={clickable ? () => onOpen!(player) : undefined}
+      onKeyDown={
+        clickable
+          ? (e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onOpen!(player);
+              }
+            }
+          : undefined
+      }
+    >
       <div className="line-slot-top">
         <span className="line-pos">{label}</span>
         <div className="line-headshot">

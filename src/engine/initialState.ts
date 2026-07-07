@@ -40,6 +40,7 @@ export function createInitialState(): GameState {
     rngSeed: 0,
     pendingEncounter: null,
     pendingMeeting: null,
+    pendingWanderer: null,
     devRevealAll: false,
   };
 }

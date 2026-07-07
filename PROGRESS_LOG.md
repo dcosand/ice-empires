@@ -1,5 +1,33 @@
 # Ice Empires — Progress Log
 
+## 2026-07-06 (night) — Wanderers + rival parity; UI dock; compact map (mid-session bedtime commit)
+Big bundled chunk. See TASKS.md "🌙 SESSION HANDOFF" for the authoritative
+where-we-left-off / what's-next.
+- **Wandering neutral units (D53):** new `engine/wandererSystem.ts` (seeded
+  roam/spawn/despawn, scout-tell whose accuracy scales with Judging Ability,
+  recruit-or-scrap resolution, penalty box). `Wanderer` type + `world.wanderers`,
+  `WorldUnit.penaltyBoxTurns`. `WandererScene.tsx` encounter popup; nomad sprite +
+  minimap dot + penalty-box card notice in `IsoWorldMap`. `DEV_SPAWN_WANDERER` dev
+  button. Recruit gamble reuses `tryoutSystem` tier bands; scrap-loss pays a +2 HK
+  + scout-XP consolation.
+- **Rival wanderer parity (D54):** extracted a pure `tryoutSystem.buildWandererPlayer`
+  so human + rival recruits share ONE generator/odds. `resolveRivalWandererAt`
+  (wandererSystem) engages a rival scout that lands on a wanderer; recruits grow the
+  rival roster (rare good/legend), hostiles box the rival unit via
+  `RivalUnit.penaltyBoxTurns`; logs only for contacted rivals.
+  `rivalAI.moveRivalUnits` gates boxed units + calls it per step. Sim: 4,000
+  encounters — recruit 0.342 (0.35 target), legend 0.039 (0.043), all hostiles boxed.
+- **UI:** bottom-right command dock (tasks + unit card, Civ VI style); "Choose
+  Research" simplified default with unlock icons + clock/integer turns, full tree
+  behind a toggle.
+- **Compact map + terrain:** 72×45 uniform scale-down, fewer lakes/mountains, more
+  jitter, 8 majors preserved (`world.ts` constants).
+- **Act II (D52):** Club Formation era exit set wired.
+- **OPEN BUG:** tryout music still doesn't fade in (owner-confirmed). Re-encoded
+  source to `.m4a` + re-added `tryout.load()`; STILL broken. Next: instrument the
+  audio path (play() promise, volume RAF, readyState). Details in TASKS.md handoff.
+- Verify: `npm run typecheck` + `npm run build` clean.
+
 ## 2026-07-05 (late night) — Match Engine v0: hockey is actually played (D51)
 The Act III headliner pulled forward now that ratings unblocked it — scoped to
 a self-contained EXHIBITION (no calendar, no era wiring). Design-first:

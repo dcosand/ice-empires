@@ -1,6 +1,12 @@
 import { useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
-import type { GameAction, GameState, Player, PlayerAttrs } from "../types/game";
+import type {
+  GameAction,
+  GameState,
+  Player,
+  PlayerAttrs,
+  TryoutCandidate,
+} from "../types/game";
 import { clubAsset } from "../data/clubs";
 import { ROSTER_CAP } from "../engine/tryoutSystem";
 import { turnDateLabel } from "../engine/calendar";
@@ -29,9 +35,11 @@ const GAP = 24;
 export function TryoutScreen({
   state,
   dispatch,
+  onOpenPlayerFile,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
+  onOpenPlayerFile?: (candidate: TryoutCandidate) => void;
 }) {
   const tryout = state.pendingTryout;
   const club = state.club;
@@ -212,6 +220,11 @@ export function TryoutScreen({
             <button className="btn" onClick={() => go(-1)} disabled={index <= 0}>
               Previous
             </button>
+            {current && onOpenPlayerFile && (
+              <button className="btn" onClick={() => onOpenPlayerFile(current)}>
+                View full file
+              </button>
+            )}
             {index < candidates.length - 1 && (
               <button className="btn" onClick={goNextOrFinish}>
                 Next Hopeful

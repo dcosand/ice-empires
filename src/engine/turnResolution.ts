@@ -14,6 +14,7 @@ import { progressResearch } from "./researchSystem";
 import { runRivalTurns } from "./rivalAI";
 import { rivalSigningPressure } from "./signingSystem";
 import { progressScoutMissions, refreshScoutMoves } from "./scoutSystem";
+import { advanceWanderers } from "./wandererSystem";
 import { applyScoutPromotions } from "./scoutStaff";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
@@ -62,6 +63,7 @@ export function endMonth(state: GameState): GameState {
   progressScoutMissions(draft, push); // assigned scouts file reports on a cadence
   progressResearch(draft, push);
   refreshScoutMoves(draft); // scout gets fresh movement points (silent)
+  advanceWanderers(draft); // neutral roamers drift, retire, and occasionally spawn
   runRivalTurns(draft, push); // rival clubs produce + move units; may make contact
   trackRivalOrgContacts(draft); // rivals quietly meet independents (ledger crests)
   accrueRinkPresence(draft, push); // rinks near an indie court them monthly (D35)

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { CSSProperties, Dispatch } from "react";
 import type { GameAction, GameState, ResearchBranch } from "../types/game";
 import { RESEARCH_BY_ID } from "../data/research";
+import { ALL_UNIT_DEFS_BY_ID } from "../data/clubUniques";
 import { ERAS, ERA_ORDER } from "../data/eras";
 import {
   canCancelResearch,
@@ -67,6 +68,9 @@ export function ResearchPanel({
     lookup.some((o) => o.branch === b.id),
   );
 
+  // The list of available techs is the default "Choose Research" screen; the
+  // full era×branch tree lives one click away, like Civ VI.
+  const [mode, setMode] = useState<"choose" | "tree">("choose");
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [detailId, setDetailId] = useState<string | null>(null);
 
@@ -74,7 +78,6 @@ export function ResearchPanel({
   const detail = lookup.find((o) => o.id === detailId) ?? null;
 
   const selectable = (o: ResearchOption) => o.status === "available" && !slotBusy;
-  const availableCount = lookup.filter(selectable).length;
   const activeTurns =
     active && hkPerMonth > 0
       ? Math.max(1, Math.ceil(active.knowledgeRemaining / hkPerMonth))
@@ -103,32 +106,18 @@ export function ResearchPanel({
 
   return (
     <div className="panel production-panel tech-tree-panel">
-      <div className="panel-sub">
-        Pick one project. Research advances at the end of each turn; cards show
-        the estimated turns required. Future eras remain visible but locked
-        until your club reaches them.
-      </div>
-
-      <div className="research-summary">
-        <div className="research-summary-card">
-          <span>Active project</span>
-          <strong>{activeDef?.name ?? "None selected"}</strong>
-          <em>
-            {active && activeDef
-              ? turnEstimateLabel(activeTurns, "left")
-              : "Choose a card below"}
-          </em>
+      <div className="research-mode-bar">
+        <div className="panel-sub" style={{ margin: 0 }}>
+          {mode === "choose"
+            ? "Pick your next project. Research advances at the end of each turn."
+            : "The full arc — era columns × branch rows. Later eras stay locked until you reach them."}
         </div>
-        <div className="research-summary-card">
-          <span>Research pace</span>
-          <strong>{hkPerMonth > 0 ? "Advancing" : "Stopped"}</strong>
-          <em>{hkPerMonth > 0 ? "Progress each turn" : "No knowledge income"}</em>
-        </div>
-        <div className="research-summary-card">
-          <span>Open choices</span>
-          <strong>{availableCount}</strong>
-          <em>{availableCount === 1 ? "available tech" : "available techs"}</em>
-        </div>
+        <button
+          className="btn research-mode-toggle"
+          onClick={() => setMode((m) => (m === "choose" ? "tree" : "choose"))}
+        >
+          {mode === "choose" ? "Open Technology Tree" : "◂ Choose Research"}
+        </button>
       </div>
 
       {active && activeDef && (
@@ -158,35 +147,46 @@ export function ResearchPanel({
         </div>
       )}
 
-      <div className="tech-tree-scroll">
-        <div
-          className="tech-tree"
-          style={{ "--tech-eras": ERA_ORDER.length } as CSSProperties}
-        >
-          <div className="tech-corner" />
-          {ERA_ORDER.map((eraId) => (
-            <div
-              key={eraId}
-              className={`tech-era-head${state.eraId === eraId ? " current" : ""}`}
-            >
-              <div className="tech-era-name">{ERAS[eraId]?.name ?? eraId}</div>
-              <div className="tech-era-q">{ERAS[eraId]?.description}</div>
-            </div>
-          ))}
-          {branches.map((branch) => (
-            <TechBranchRow
-              key={branch.id}
-              branch={branch}
-              byEraBranch={byEraBranch}
-              selectedId={selectedId}
-              selectable={selectable}
-              turnsFor={turnsFor}
-              onNodeClick={onNodeClick}
-              onDetails={setDetailId}
-            />
-          ))}
+      {mode === "choose" ? (
+        <ChooseResearchList
+          options={lookup}
+          selectedId={selectedId}
+          selectable={selectable}
+          turnsFor={turnsFor}
+          onNodeClick={onNodeClick}
+          onDetails={setDetailId}
+        />
+      ) : (
+        <div className="tech-tree-scroll">
+          <div
+            className="tech-tree"
+            style={{ "--tech-eras": ERA_ORDER.length } as CSSProperties}
+          >
+            <div className="tech-corner" />
+            {ERA_ORDER.map((eraId) => (
+              <div
+                key={eraId}
+                className={`tech-era-head${state.eraId === eraId ? " current" : ""}`}
+              >
+                <div className="tech-era-name">{ERAS[eraId]?.name ?? eraId}</div>
+                <div className="tech-era-q">{ERAS[eraId]?.description}</div>
+              </div>
+            ))}
+            {branches.map((branch) => (
+              <TechBranchRow
+                key={branch.id}
+                branch={branch}
+                byEraBranch={byEraBranch}
+                selectedId={selectedId}
+                selectable={selectable}
+                turnsFor={turnsFor}
+                onNodeClick={onNodeClick}
+                onDetails={setDetailId}
+              />
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
       <ConfirmBar
         selected={selected}
@@ -204,6 +204,193 @@ export function ResearchPanel({
           onClose={() => setDetailId(null)}
         />
       )}
+    </div>
+  );
+}
+
+// A small clock glyph — the minimal "turns" indicator (clock + integer).
+function ClockIcon() {
+  return (
+    <svg className="cr-clock" viewBox="0 0 16 16" aria-hidden="true">
+      <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
+      <path
+        d="M8 4.4V8l2.5 1.6"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function turnsBadge(turns: number) {
+  return (
+    <span className="cr-turns" title={turnEstimateLabel(turns)}>
+      <ClockIcon />
+      {turns === Infinity ? "∞" : turns}
+    </span>
+  );
+}
+
+// The units a completed tech puts on the production menu — its concrete
+// "unlocks" icons, mirroring Civ VI's row of unlocked-thing glyphs.
+function unitsUnlockedBy(techId: string) {
+  return Object.values(ALL_UNIT_DEFS_BY_ID).filter((u) =>
+    (u.requiredTechIds ?? []).includes(techId),
+  );
+}
+
+// Default research screen: a flat, scannable list of what you can research now,
+// plus a muted "coming up" peek at what those choices open next.
+function ChooseResearchList({
+  options,
+  selectedId,
+  selectable,
+  turnsFor,
+  onNodeClick,
+  onDetails,
+}: {
+  options: ResearchOption[];
+  selectedId: string | null;
+  selectable: (o: ResearchOption) => boolean;
+  turnsFor: (cost: number) => number;
+  onNodeClick: (o: ResearchOption) => void;
+  onDetails: (id: string) => void;
+}) {
+  const byId = new Map(options.map((o) => [o.id, o]));
+  const available = options
+    .filter((o) => o.status === "available")
+    .sort((a, b) => a.cost - b.cost);
+  // One-step lookahead: locked techs whose only missing prereqs are the choices
+  // on offer right now (or already in progress) — the "what unlocks next" peek.
+  const coming = options
+    .filter(
+      (o) =>
+        o.status === "locked" &&
+        o.prereqs.length > 0 &&
+        o.prereqs.every((p) => {
+          if (p.met) return true;
+          const dep = byId.get(p.id)?.status;
+          return dep === "available" || dep === "active";
+        }),
+    )
+    .sort((a, b) => a.cost - b.cost);
+
+  return (
+    <div className="choose-research">
+      {available.length === 0 ? (
+        <div className="cr-empty">
+          No projects are open right now — every available tech is done or in
+          progress. Open the Technology Tree to see what's ahead.
+        </div>
+      ) : (
+        <div className="cr-grid">
+          {available.map((opt) => (
+            <ChooseCard
+              key={opt.id}
+              opt={opt}
+              selected={opt.id === selectedId}
+              selectable={selectable(opt)}
+              turns={turnsFor(opt.cost)}
+              onClick={() => onNodeClick(opt)}
+              onDetails={() => onDetails(opt.id)}
+            />
+          ))}
+        </div>
+      )}
+
+      {coming.length > 0 && (
+        <>
+          <div className="cr-section-label">Coming up next</div>
+          <div className="cr-grid">
+            {coming.map((opt) => (
+              <ChooseCard
+                key={opt.id}
+                opt={opt}
+                selected={false}
+                selectable={false}
+                turns={turnsFor(opt.cost)}
+                onClick={() => onDetails(opt.id)}
+                onDetails={() => onDetails(opt.id)}
+              />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ChooseCard({
+  opt,
+  selected,
+  selectable,
+  turns,
+  onClick,
+  onDetails,
+}: {
+  opt: ResearchOption;
+  selected: boolean;
+  selectable: boolean;
+  turns: number;
+  onClick: () => void;
+  onDetails: () => void;
+}) {
+  const units = unitsUnlockedBy(opt.id);
+  const locked = opt.status === "locked";
+  return (
+    <div
+      className={[
+        "cr-card",
+        selected ? "selected" : "",
+        locked ? "locked" : "",
+        !selectable && !locked ? "slot-busy" : "",
+      ]
+        .filter(Boolean)
+        .join(" ")}
+      role="button"
+      tabIndex={0}
+      aria-pressed={selected}
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        onDetails();
+      }}
+    >
+      <ItemArt kind="research" id={opt.id} className="cr-art" />
+      <div className="cr-main">
+        <div className="cr-name-row">
+          <span className="cr-name">{opt.name}</span>
+          {turnsBadge(turns)}
+        </div>
+        <div className="cr-payoff">{opt.unlockSummary}</div>
+        <div className="cr-unlocks">
+          {units.map((u) => (
+            <span key={u.id} className="cr-unlock" title={`Unlocks ${u.name}`}>
+              <ItemArt kind="unit" id={u.id} className="cr-unlock-art" />
+            </span>
+          ))}
+          <button
+            type="button"
+            className="cr-info"
+            aria-label={`${opt.name} details`}
+            onClick={(e) => {
+              e.stopPropagation();
+              onDetails();
+            }}
+          >
+            ⓘ
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 import type { GameState, PlayerPosition } from "../types/game";
 import { RESEARCH } from "../data/research";
-import { createWorld } from "./world";
+import { createWorld, tileAt } from "./world";
+import { activeScout } from "./scoutSystem";
 import { ensureRivalRosters, generateRivalRoster, nearestRivalClubId } from "./rivalAI";
 import { playExhibition } from "./matchEngine";
 import { rollPersonIdentity } from "./playerGen";
@@ -155,6 +156,55 @@ export function devSpawnBuilder(state: GameState): GameState {
         },
       ],
       selectedScoutId: id,
+    },
+  };
+}
+
+// Drop a friendly + a hostile wanderer right next to the player's active scout
+// (or HQ) so both encounter branches — recruit and scrap — are one move away.
+export function devSpawnWanderer(state: GameState): GameState {
+  const world = state.world;
+  if (!world) return state;
+  const scout = activeScout(world);
+  const anchor =
+    scout ??
+    world.hqTile ??
+    (world.founder ? { x: world.founder.x, y: world.founder.y } : null);
+  if (!anchor) return state;
+
+  const ring: [number, number][] = [
+    [1, 0], [-1, 0], [0, 1], [0, -1],
+    [1, 1], [-1, -1], [1, -1], [-1, 1],
+    [2, 0], [-2, 0], [0, 2], [0, -2],
+  ];
+  const taken = new Set(world.wanderers.map((w) => `${w.x},${w.y}`));
+  const spots: { x: number; y: number }[] = [];
+  for (const [dx, dy] of ring) {
+    const x = anchor.x + dx;
+    const y = anchor.y + dy;
+    const tile = tileAt(world, x, y);
+    if (!tile || !tile.valid) continue;
+    if (taken.has(`${x},${y}`)) continue;
+    spots.push({ x, y });
+    if (spots.length >= 2) break;
+  }
+  if (spots.length < 2) return state;
+
+  const mk = (i: number, disposition: "friendly" | "hostile") => ({
+    id: `dev-wanderer-${state.month}-${i}-${world.wanderers.length}`,
+    x: spots[i].x,
+    y: spots[i].y,
+    homeX: spots[i].x,
+    homeY: spots[i].y,
+    disposition,
+    spawnedMonth: state.month,
+  });
+
+  return {
+    ...state,
+    world: {
+      ...world,
+      wanderers: [...world.wanderers, mk(0, "friendly"), mk(1, "hostile")],
     },
   };
 }

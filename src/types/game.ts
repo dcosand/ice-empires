@@ -502,7 +502,12 @@ export type EraRequirementId =
   | "independent-contact" // met >=1 independent hockey org
   | "rink-built" // >=1 Level-1 rink on the map
   | "rules-of-the-game" // the tech: your players can actually play
-  | "full-roster"; // >=6 players incl. >=1 goalie, all geared
+  | "full-roster" // >=6 players incl. >=1 goalie, all geared
+  // --- Club Formation era (Act II) exit set (docs/14 §1) ---
+  | "scouting-network" // established a scouting network with >=1 independent
+  | "territory-projected" // HQ + >=3 player rinks (level >=1) projecting borders
+  | "club-identity" // the tech: the club has a stated identity
+  | "training-camp"; // held >=1 tryout in a training-camp window
 
 export type EraRequirement = {
   id: EraRequirementId;
@@ -591,6 +596,24 @@ export type WorldUnit = {
   movesPerTurn: number;
   movesRemaining: number;
   working?: UnitWork;
+  // Ice-hockey scrap fallout (wanderers): the scout sits in the penalty box,
+  // pinned at 0 moves, for this many more turns. Decremented each turn refresh.
+  penaltyBoxTurns?: number;
+};
+
+// A roaming neutral map unit (Civ-barbarian analog). Some are prospects you can
+// try to recruit; some are hostiles who drop the gloves and box your scout. The
+// TRUE disposition is engine-side — the UI shows only a scout-judged "tell".
+export type WandererDisposition = "friendly" | "hostile";
+export type Wanderer = {
+  id: string;
+  x: number;
+  y: number;
+  // Roam anchor: they drift within a small radius of here, 1 tile/turn.
+  homeX: number;
+  homeY: number;
+  disposition: WandererDisposition; // engine-side truth
+  spawnedMonth: number; // for despawning stale wanderers
 };
 
 // A rink (or pre-rink surface) created on the map by a builder unit.
@@ -731,6 +754,9 @@ export type RivalUnit = {
   kind: RivalUnitKind;
   // Rival builders lock in place while raising a rink (months remaining).
   workingMonths?: number;
+  // A scout boxed after losing a scrap with a hostile wanderer sits out this
+  // many turns (mirrors WorldUnit.penaltyBoxTurns for the human).
+  penaltyBoxTurns?: number;
 };
 
 export type RivalClub = {
@@ -807,6 +833,7 @@ export type WorldState = {
   hockeyOrgs: WorldHockeyOrg[]; // persistent neutral hockey powers / city-state analogs
   rivals: RivalClub[]; // AI opponent clubs with their own HQs + units
   rinks: WorldRink[]; // player-built rinks / cleared ponds on the map
+  wanderers: Wanderer[]; // roaming neutral units — recruit-or-scrap encounters
   harvestedTiles: string[]; // "x,y" keys of forest tiles already harvested for sticks
   scout: WorldUnit | null; // null until the Scout is recruited
   scoutSelected: boolean; // play-phase scout selection
@@ -859,6 +886,14 @@ export type GameState = {
   pendingEncounter: PendingEncounter | null;
   // A rival first-contact meeting awaiting acknowledgement (leader scene open).
   pendingMeeting: PendingMeeting | null;
+  // A wanderer encounter awaiting the player's choice (approach vs. move on).
+  // `read` is the scout's subtle TELL (estimated disposition, may be wrong);
+  // `scoutId` is the unit that made contact (it takes the scrap / earns XP).
+  pendingWanderer: {
+    wandererId: string;
+    read: WandererDisposition | "unsure";
+    scoutId?: string;
+  } | null;
   // A just-established scouting network awaiting its celebration scene — the
   // trek across the map deserves a payoff beat (docs/15 §4).
   pendingNetwork: { orgId: string; unitId: string } | null;
@@ -892,6 +927,7 @@ export type GameAction =
   | { type: "SELECT_SCOUT"; scoutId?: string }
   | { type: "MOVE_SCOUT"; x: number; y: number; scoutId?: string }
   | { type: "RESOLVE_ENCOUNTER" }
+  | { type: "RESOLVE_WANDERER"; choice: "approach" | "ignore" }
   | { type: "ACKNOWLEDGE_MEETING" }
   | { type: "RESPOND_MEETING"; attitude: "friendly" | "wary" }
   // ---- builder (map work crew) actions ----
@@ -936,6 +972,7 @@ export type GameAction =
   | { type: "DEV_MEET_RIVAL" }
   | { type: "DEV_MEET_INDEPENDENT" }
   | { type: "DEV_SPAWN_BUILDER" }
+  | { type: "DEV_SPAWN_WANDERER" }
   | { type: "DEV_GRANT_POND_TECH" }
   | { type: "DEV_FORCE_TRYOUTS" }
   | { type: "DEV_ADD_EQUIPMENT" }
