@@ -440,13 +440,18 @@ by tier; replaces the bar grid in `ScoutingScreen.PlayerDetail` for both own
 players and scouted reads). (2) Depth-chart Team view shipped as a Lines / Depth
 Chart toggle in the ClubHQ Team tab (`ClubHQScreen.DepthChart` — position
 columns sorted by OVR + a leaders strip). (3) "View your squad" button added to
-the player reveal → opens the Team tab. **Still TODO:** the full EHM player-
-detail *layout* (left bio panel — headshot, born/age, nationality, shoots/
-height/weight — + tabbed right pane Profile/Information/Scout Report with
-Current/Future stars); today `PlayerDetail` is still one scrolling panel, just
-with the new number columns. Also consider bringing the number columns to the
-compact `HockeyCard` (still group-roll-up bars there — arguably fine as a
-summary). Original direction below.
+the player reveal → opens the Team tab. (4) Player-file **bio-panel layout**
+shipped — `PlayerDetail` is now a left bio card (headshot, name, position, big
+OVR + stars, Age/Nation/Style/Source/Joined/Gear facts) beside a main pane
+(attributes/potential/history), collapsing to one column on narrow overlays.
+(5) **Club HQ readability + real-estate pass** — the HQ/Team modal is larger
+(`min(1720px, 98vw)` × `min(97vh, 1220px)`) and type is bumped across every tab
+(tabs, section titles, line-slot cards, resource/funds cards, depth chart,
+attribute columns). **Still optional:** formal tabs inside the player file
+(Profile/Information/Scout Report) — owner said "we don't need that much
+detail," so the bio-panel + single main pane covers it for now; and bringing
+the number columns to the compact `HockeyCard` (still group-roll-up bars there,
+fine as a summary). Original direction below.
 
 _Original direction (kept for context):_
 1. **Attribute display: numbers, not bars.** Replace the current progress-bar

@@ -22,6 +22,7 @@ import {
 } from "../engine/ratings";
 import { POSITION_LABELS } from "../data/attributes";
 import { AttributeColumns } from "./AttributeColumns";
+import { PlayerHeadshot } from "./HockeyCard";
 import {
   latestReportMonth,
   prospectReadStale,
@@ -392,42 +393,84 @@ export function PlayerDetail({
         {backLabel}
       </button>
 
-      <div className="sc-detail-head">
-        <span className={`pos-badge pos-${row.position}`}>{row.position}</span>
-        <div>
-          <div className="sc-detail-name">{row.name}</div>
-          <div className="sc-detail-meta">
-            {POSITION_LABELS[row.position]}
-            {row.age ? ` · Age ${row.age}` : ""}
-            {" · "}
-            <span className="nation-flag" title={row.nationalityTitle}>
-              {row.nationality}
-            </span>
-            {row.style ? ` · ${row.style}` : ""} · {row.source}
-          </div>
-        </div>
-        <div className="sc-detail-ovr">
+      <div className="pf-layout">
+        <aside className="pf-bio">
           {p ? (
-            <>
-              <strong>{computeOverall(p)}</strong>
-              <span>{stars ? starString(stars) : ""}</span>
-            </>
-          ) : readOvr != null ? (
-            <>
-              <strong>{readOvr}</strong>
-              <span title="Your scout's ability rating">
-                {starString(starTier(readOvr))} <span className="faint">read</span>
-              </span>
-            </>
+            <div className="pf-headshot">
+              <PlayerHeadshot subject={p} />
+            </div>
           ) : (
-            <>
-              <strong>?</strong>
-              <span className="faint">unscouted</span>
-            </>
+            <div className={`pf-headshot pf-headshot-badge pos-${row.position}`}>
+              {row.position}
+            </div>
           )}
-        </div>
-      </div>
+          <div className="pf-bio-name">{row.name}</div>
+          <div className="pf-bio-role">
+            <span className={`pos-badge pos-${row.position}`}>{row.position}</span>
+            <span>{POSITION_LABELS[row.position]}</span>
+          </div>
+          <div className="pf-ovr">
+            {p ? (
+              <>
+                <strong>{computeOverall(p)}</strong>
+                <span>{stars ? starString(stars) : ""}</span>
+              </>
+            ) : readOvr != null ? (
+              <>
+                <strong>{readOvr}</strong>
+                <span title="Your scout's ability rating">
+                  {starString(starTier(readOvr))} <span className="faint">read</span>
+                </span>
+              </>
+            ) : (
+              <>
+                <strong>?</strong>
+                <span className="faint">unscouted</span>
+              </>
+            )}
+          </div>
+          <dl className="pf-facts">
+            {row.age ? (
+              <div>
+                <dt>Age</dt>
+                <dd>{row.age}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>Nation</dt>
+              <dd>
+                <span className="nation-flag" title={row.nationalityTitle}>
+                  {row.nationality}
+                </span>{" "}
+                {row.nationalityTitle}
+              </dd>
+            </div>
+            {row.style ? (
+              <div>
+                <dt>Style</dt>
+                <dd>{row.style}</dd>
+              </div>
+            ) : null}
+            <div>
+              <dt>Source</dt>
+              <dd>{row.source}</dd>
+            </div>
+            {p ? (
+              <div>
+                <dt>Joined</dt>
+                <dd>{turnDateLabel(p.joinedMonth)}</dd>
+              </div>
+            ) : null}
+            {p ? (
+              <div>
+                <dt>Gear</dt>
+                <dd>{p.hasEquipment ? "Geared up" : "No equipment"}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </aside>
 
+        <div className="pf-main">
       {row.prospect && (
         <ProspectActions state={state} row={row} dispatch={dispatch} />
       )}
@@ -514,6 +557,8 @@ export function PlayerDetail({
           ))}
         </div>
       )}
+        </div>
+      </div>
     </div>
   );
 }

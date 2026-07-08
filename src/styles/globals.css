@@ -7461,3 +7461,159 @@ tr.signed-away .scouting-flag.flag-signed { opacity: 1; }
 @media (max-width: 720px) {
   .depth-grid { grid-template-columns: repeat(2, 1fr); }
 }
+
+/* ===========================================================================
+   Club HQ readability + real-estate pass (owner, 2026-07-07): the HQ/Team modal
+   needs more room and larger type on every tab. Appended last so these win on
+   source order. Keep proportions sane on small screens via the existing
+   min()/vw caps.
+   ========================================================================== */
+.hq-modal { padding: 10px; }
+.hq-modal-sheet {
+  width: min(1720px, 98vw);
+  height: min(97vh, 1220px);
+}
+.hq-modal-body { padding: 22px 26px 30px; font-size: 15px; }
+
+/* Tabs + section headers */
+.hq-tabs { padding: 12px 22px; gap: 8px; }
+.hq-tab { font-size: 15px; padding: 9px 20px; }
+.hq-head-sub { font-size: 15.5px; }
+.hq-section-title { font-size: 14px; letter-spacing: 0.07em; }
+
+/* Team tab — line-slot player cards */
+.line-grid { grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.line-forwards { grid-template-columns: repeat(3, minmax(230px, 1fr)); }
+.line-defense { grid-template-columns: repeat(2, minmax(230px, 1fr)); max-width: 72%; }
+.line-goalie { grid-template-columns: minmax(230px, 1fr); max-width: 40%; }
+.line-slot { padding: 14px 16px; border-radius: 12px; }
+.line-headshot { flex: 0 0 44px !important; width: 44px; height: 44px; }
+.line-pos { min-width: 32px; height: 32px; font-size: 14px; }
+.line-name { font-size: 16.5px; }
+.line-ovr { font-size: 14px; }
+.line-meta { font-size: 13px; }
+.line-note { font-size: 13.5px; }
+.attr-row { font-size: 14px; grid-template-columns: 100px 1fr 28px; }
+.attr-bar { height: 9px; }
+.gear-badge { font-size: 15px; }
+.gear-badge.missing { font-size: 11px; }
+.pos-badge { width: 34px; height: 34px; font-size: 14px; }
+
+/* Overview — resource + funds cards */
+.hq-res-label { font-size: 13px; }
+.hq-res-total { font-size: 26px; }
+.hq-res-rate { font-size: 13px; }
+.hq-funds-title { font-size: 14.5px; }
+.hq-funds-line { font-size: 14px; }
+.hq-identity { font-size: 15.5px; line-height: 1.6; }
+
+/* Depth chart + attribute columns (bump the numbers so they read at a glance) */
+.attr-columns { gap: 14px 24px; }
+.attr-column-head { font-size: 12.5px; }
+.attr-num-row { font-size: 14px; line-height: 1.6; }
+.attr-num-cell { min-width: 32px; font-size: 14px; }
+.depth-col-head { font-size: 13.5px; }
+.depth-row { grid-template-columns: 20px 1fr auto auto; padding: 5px 9px; }
+.depth-name { font-size: 14px; }
+.depth-age { font-size: 12.5px; }
+.depth-ovr { font-size: 13.5px; min-width: 30px; }
+.depth-rank { font-size: 12px; }
+.depth-leader-label { font-size: 11.5px; }
+.depth-leader-player { font-size: 14.5px; }
+.tvt-btn { font-size: 14px; padding: 7px 14px; }
+
+/* ===========================================================================
+   Player file (EHM-style): left bio panel + main pane (owner, 2026-07-07).
+   Replaces the single-column head with a headshot/bio card beside the
+   attributes/potential/history. Collapses to one column on narrow overlays.
+   ========================================================================== */
+.pf-layout {
+  display: grid;
+  grid-template-columns: 232px 1fr;
+  gap: 22px;
+  align-items: start;
+}
+.pf-bio {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 16px 18px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: rgba(9, 16, 24, 0.55);
+  text-align: center;
+  position: sticky;
+  top: 0;
+}
+.pf-headshot {
+  width: 132px;
+  height: 132px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.05);
+}
+.pf-headshot .hc-headshot { position: relative; width: 100%; height: 100%; }
+.pf-headshot .hc-headshot-img { object-position: 50% 14%; }
+.pf-headshot-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 54px;
+  font-weight: 800;
+  color: #0a1018;
+}
+.pf-bio-name {
+  font-family: var(--font-display, inherit);
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  margin-top: 2px;
+}
+.pf-bio-role {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+.pf-ovr {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+  margin: 4px 0 8px;
+}
+.pf-ovr strong { font-size: 42px; color: var(--gold); font-weight: 800; }
+.pf-ovr span { font-size: 14px; color: var(--text-dim); }
+.pf-facts {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+.pf-facts > div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px 2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 13.5px;
+}
+.pf-facts dt {
+  color: var(--text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 11.5px;
+  align-self: center;
+}
+.pf-facts dd { margin: 0; text-align: right; font-weight: 600; }
+.pf-main { min-width: 0; display: flex; flex-direction: column; }
+@media (max-width: 640px) {
+  .pf-layout { grid-template-columns: 1fr; }
+  .pf-bio { position: static; flex-direction: row; flex-wrap: wrap; text-align: left; justify-content: flex-start; }
+  .pf-facts { width: 100%; }
+}
