@@ -51,7 +51,7 @@ const RIVAL_ROSTER_TEMPLATE: PlayerPosition[] = [
   "C", "C", "W", "W", "W", "D", "D", "D", "G",
 ];
 
-const RIVAL_ROSTER_BANDS: Record<string, AttrBand> = {
+export const RIVAL_ROSTER_BANDS: Record<string, AttrBand> = {
   "pond-hockey": { min: 20, span: 25 },
   "club-formation": { min: 28, span: 27 },
   "competitive-hockey": { min: 38, span: 27 },

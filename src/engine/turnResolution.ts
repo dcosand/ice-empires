@@ -16,6 +16,7 @@ import { rivalSigningPressure } from "./signingSystem";
 import { progressScoutMissions, refreshScoutMoves } from "./scoutSystem";
 import { advanceWanderers } from "./wandererSystem";
 import { applyScoutPromotions } from "./scoutStaff";
+import { advanceDevelopment } from "./developmentSystem";
 import { triggerMonthlyEvent } from "./eventSystem";
 import { checkEraProgress, progressRivalEras } from "./eraSystem";
 import { getMonthlyEquipment, getMonthlyUpkeep } from "./selectors";
@@ -71,6 +72,7 @@ export function endMonth(state: GameState): GameState {
   checkIndependentContact(draft, push); // a unit parked beside an org meets them
   progressRivalEras(draft, push); // rivals advance eras on their own clock
   applyScoutPromotions(draft, push); // banked fieldwork XP becomes promotions
+  advanceDevelopment(draft, push); // players grow/age/retire; rivals age + backfill
   triggerMonthlyEvent(draft, push);
   checkEraProgress(draft, push);
 

@@ -38,11 +38,16 @@ getting the design right, not typing the code.
 - ~~Wire Club Formation era exit requirements~~ — ✅ DONE (D52).
 - ~~Smaller default map~~ — ✅ DONE (72×45, experiment shipped 2026-07-06).
 
+- ~~Player development & aging (core)~~ — ✅ Phase 1 DONE (D55); pyramid /
+  coach / self-fog remain (Act IV).
+
 1. Research economy model + tech pacing — owner-felt playability problem
    (techs come too fast); a decision + tuning pass, see Economy & funds.
 2. Back out the multi-level scout system — owner-flagged confusion; subtractive
    simplification, see Units, scouts & personnel.
-3. Name your rinks — cheap, pure upside, no design risk.
+3. EHM player detail + number-value attributes + depth-chart Team tab — owner
+   UI direction (2026-07-07), pairs with the new development system.
+4. Name your rinks — cheap, pure upside, no design risk.
 4. Make the rink → tryouts connection legible — likely a quick UI fix that
    resolves real player confusion about what forward rinks are for.
 5. Victory conditions & endgame — foundational, everything else assumes an
@@ -340,15 +345,24 @@ Halifax Harbor Ferry flavor unit. Nice-to-have, isolated, not an exit gate.
 
 ## Act IV — Development & Organization
 
-### Player development & aging
-No aging system exists at all — `Player.age` is a field nothing increments
-(confirmed via `docs/09_OPEN_QUESTIONS.md` Q34). This is the biggest gap
-relative to how much of the scouting/ratings arc (docs/15 §8C) already
-assumes development exists (`potential` vs. current OVR, self-fog). Needs a
-dedicated design session: aging curves by position, development windows,
-what a Development Coach actually modifies.
-**Model: Opus** — this is architecture-sensitive (derived-vs-stored,
-determinism) and touches ratings, scouting, and roster systems at once.
+### Player development & aging — ✅ Phase 1 SHIPPED 2026-07-07 (D55)
+**Core aging + development is built** (`engine/developmentSystem.ts`, D55):
+honest calendar (1 yr / 12 turns, id-staggered birthdays), monthly growth
+toward the hidden `potential` ceiling on an age curve, prime plateau,
+weighted decline (skating/physicality first, Hockey IQ ages well; goalies/D
+peak later), seeded retirement (human retirees leave a hole + Inbox send-off;
+rivals age with parity and backfill to stay competitive). 10-assertion sim.
+**Phase 2+ still open (docs/15 §8C-C), needs its own session(s):**
+- **The development pyramid** — Affiliate independents as the farm system, a
+  **PROMOTE** action, and a **permanent stunted-ceiling penalty for rushing**
+  (the doc defers the affiliate-tier balance until after playtesting).
+- **Development Coach** staff card (mirrors `ScoutCharacter`/`scoutStaff`):
+  self-scouts own players' potential + accelerates growth.
+- **Current-fast / potential-slow self-fog** — own roster shows true current
+  ability but the ceiling stays fogged until earned (no display mechanism yet).
+- **Tryouts reframed** — homegrown youth + castoffs instead of random walk-ons.
+**Model: Opus** for the pyramid/self-fog design (architecture-sensitive);
+**Sonnet** for the Development Coach (rides the scout-card pattern).
 
 ### Affiliate / minor-league pyramid
 "Affiliate" today is just the top independent-relationship tier (D21) — no
@@ -380,6 +394,37 @@ entry points from ClubHQ Team rows, the reveal cinematic ("view full
 profile"), and tryout candidate cards (which need a candidate-mode variant
 since candidates aren't roster/prospects).
 **Model: Sonnet** — pattern already exists, just more entry points.
+
+### EHM-style player detail, number-value attributes, depth-chart Team tab
+Owner direction (2026-07-07, with EHM reference shots) — three linked UI wants,
+"we don't need that much detail but you get the idea":
+1. **Attribute display: numbers, not bars.** Replace the current progress-bar
+   attribute rows (`HockeyCard`, tryout/roster/scouting reads) with EHM's
+   **integer value per attribute** laid out in **three columns — Technical /
+   Mental / Physical** (EHM's grouping; ours today is Offense/Defense/Skating/
+   Sense/Mental in `data/attributes.ts` `SKATER_GROUPS`, so this needs a
+   regroup + a small colored value cell per attr). Decide the display scale:
+   show our native 1–100, or map to a tidier read — but keep the number the
+   headline, not a bar. This is the owner's most concrete ask ("instead of the
+   progress bar thing we have right now"). Pairs with development/aging (D-next)
+   — you watch the numbers move.
+2. **EHM player detail screen.** Evolve the existing `PlayerFileOverlay`
+   (exported from `ScoutingScreen`) toward EHM's layout: left bio panel
+   (headshot, born date + **age**, nationality/flag, position, shoots/height/
+   weight — skip salary/contract, we have none) and tabbed right pane
+   (Profile = attributes, Information = personal/other details, Scout Report =
+   the `scoutReport.ts` prose + **Current / Future rating stars**, optionally
+   History/Game Log off `matchHistory`). Keep it lighter than EHM.
+3. **Depth-chart Team tab.** Add a Team-screen tab modeled on EHM's "Team
+   Report": a **grid of columns by position** (our C / W / D / G) with rows =
+   depth 1..N, plus a small **leaders panel** (Biggest Star / Best Shooter /
+   Best Checker / Most Physical …, computed from attrs like income/OVR are).
+Cross-refs: `HockeyCard.tsx`, `ScoutingScreen.tsx` (`PlayerFileOverlay`,
+`rowForPlayerLike`), ClubHQ Team tab, `ratings.ts` (OVR/stars/teamRatings),
+`data/attributes.ts` (groups/labels). Fog rules still apply — own roster shows
+true numbers, prospects/rivals show fogged reads (`talentFog.ts`).
+**Model: Sonnet** — established screen/overlay patterns; the only real design
+call is the attribute display scale + regrouping.
 
 ### Tryout music cross-fade regression — ✅ FIXED 2026-07-07
 Playtest note (2026-07-05): tryout scene audio stopped cross-fading like it

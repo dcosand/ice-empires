@@ -42,7 +42,9 @@ export function cardBars(attrs: PlayerAttrs): { label: string; value: number }[]
   if (attrs.kind === "goalie") {
     return GOALIE_ATTR_ORDER.map((key) => ({
       label: ATTR_LABELS[key],
-      value: attrs.goalie[key],
+      // Round for display: development/aging keep attrs as floats internally so
+      // small monthly changes aren't lost to rounding.
+      value: Math.round(attrs.goalie[key]),
     }));
   }
   return SKATER_GROUPS.map((g) => ({

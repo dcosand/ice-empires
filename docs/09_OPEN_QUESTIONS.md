@@ -82,10 +82,11 @@ exist as hidden traits (D42). NOT modeled: injury risk, personality, bust
 probability, development curve — see Q12.
 
 **Q12. How should development work?**
-STILL OPEN — no development or aging system exists yet. `docs/15
-_PLAYER_AND_TEAM_RATINGS.md` §8C (Act IV) calls for development + aging +
-an affiliate pyramid + a Development Coach; none of it is built. Highest-value
-remaining design/build gap alongside Q34.
+PARTIALLY RESOLVED (Phase 1, D55, 2026-07-07) — monthly growth toward a hidden
+`potential` ceiling on an age curve is built (`engine/developmentSystem.ts`,
+see Q34). STILL OPEN (Act IV, docs/15 §8C-C): the affiliate development pyramid
++ PROMOTE + rushing penalty, the Development Coach staff card, and
+current-fast/potential-slow self-fog.
 
 ---
 
@@ -225,9 +226,12 @@ candidate, wanderer, and independent prospect is a named individual with an
 age from the Pond Hockey era on; no gating to a later era.
 
 **Q34. How much aging realism is enough?**
-STILL OPEN — `Player.age` exists as a field but nothing increments it
-anywhere in the codebase. No aging curve, no development windows. Paired
-with Q12 as the biggest remaining systems gap.
+RESOLVED (Phase 1, D55, 2026-07-07) — honest calendar (1 yr / 12 turns,
+id-staggered birthdays); age curve grows attrs toward `potential` (fastest
+≤18, done ~25), prime plateau, weighted decline (skating/physicality first,
+Hockey IQ ages well; goalies/D later), seeded retirement (starts ~34). Rivals
+age with parity + backfill. `engine/developmentSystem.ts`. Deferred to Act IV:
+the pyramid, Development Coach, self-fog (see Q12 / docs/15 §8C-C).
 
 ---
 

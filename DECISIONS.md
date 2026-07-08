@@ -626,3 +626,40 @@ Owner: "rival AI clubs should have the same effects/risks/benefits from nomads" 
   only becomes meaningful once club uniques + player development/XP are actually
   built out, and it's where difficulty/balance gets decided — so it wants a
   deliberate pass w/ a difficulty dial, not a bolt-on. Revisit then.
+
+## D55
+**Player development & aging — Phase 1 (core), honest calendar.** 2026-07-07.
+The biggest remaining systems gap (Q34/Q12): `Player.age` existed but nothing
+incremented it and attributes never changed. Owner chose the **core slice** now
+(pyramid / Development Coach / PROMOTE + rushing / self-fog deferred per
+docs/15 §8C, which defers the affiliate balance anyway) and the **honest
+calendar** time model. Shipped:
+- **Time model.** A turn is one month; a player ages one year every 12 turns,
+  staggered by a birthday derived from the player id (hash → month 0–11) so ages
+  and retirements don't all tick at once.
+- **Development (growth).** Each turn, players with `growthMult(age) > 0`
+  (fastest ≤18, gone by ~25) raise every attribute toward their hidden
+  `potential` ceiling — a fraction (`GROWTH_PER_TURN`) of the remaining
+  (potential − derived OVR) gap, so it compounds and asymptotes. Uniform add
+  preserves the generated attribute shape.
+- **Aging (decline).** Prime (~25–29) plateaus; then `declineMult(age)` erodes
+  attributes by per-attribute weights — skating/physicality fade first, Hockey
+  IQ / Compete / a goalie's positioning-composure barely move. Goalies (+3) and
+  D (+1) peak/fade later via `positionShift`.
+- **Retirement.** Rolled once on the birthday from `retirementChance(age, pos)`
+  (starts ~34, certain by ~41; goalies/D later). Human retirees leave a hole to
+  fill (scout/tryout/sign a replacement — intended churn) and post an Inbox
+  send-off. **Rivals age with full parity** but **backfill** a young era-banded
+  replacement so their rosters stay competitive; silent + never for uncontacted
+  clubs (no spoilers).
+- **Determinism (D3).** Growth/decline are pure functions of age/attrs; only
+  retirement rolls consume `rngSeed`. New system `engine/developmentSystem.ts`
+  runs in `endMonth` after scout promotions. OVR is derived, so this only moves
+  attributes — no stored headline to desync. Attributes are kept as floats
+  internally (rounded at display) so small monthly changes accrue.
+- Headless sim: 10 assertions (job tmp `dev-sim.ts`) — young grows toward
+  ceiling, prime flat, vets decline (IQ > speed), cohort retires, rival roster
+  backfills to size, deterministic.
+**Deferred (Phase 2+, docs/15 §8C-C):** the development pyramid (Affiliate-as-
+farm), PROMOTE + permanent rushing penalty, Development Coach staff card,
+current-fast/potential-slow self-fog, tryouts reframed (homegrown + castoffs).
