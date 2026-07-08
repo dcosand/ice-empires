@@ -35,9 +35,13 @@ getting the design right, not typing the code.
 
 ## Suggested order (top of backlog)
 
-1. Wire Club Formation era exit requirements — blocks Act III entirely.
-2. Smaller default map — cheap experiment, likely the fastest feel
-   improvement to early game pacing of anything on this list.
+- ~~Wire Club Formation era exit requirements~~ — ✅ DONE (D52).
+- ~~Smaller default map~~ — ✅ DONE (72×45, experiment shipped 2026-07-06).
+
+1. Research economy model + tech pacing — owner-felt playability problem
+   (techs come too fast); a decision + tuning pass, see Economy & funds.
+2. Back out the multi-level scout system — owner-flagged confusion; subtractive
+   simplification, see Units, scouts & personnel.
 3. Name your rinks — cheap, pure upside, no design risk.
 4. Make the rink → tryouts connection legible — likely a quick UI fix that
    resolves real player confusion about what forward rinks are for.
@@ -53,15 +57,11 @@ getting the design right, not typing the code.
 
 ## Blocking / near-term
 
-### Wire `club-formation` era exit requirements
-`ERA_REQUIREMENTS[club-formation]` is an empty list (`src/data/eras.ts:62`) —
-clubs can never advance past Club Formation no matter what they build.
-Proposed ids already named in TASKS.md: `scouting-network`,
-`territory-projected`, `club-identity`, `training-camp`. Needs a brainstorm
-only to pin down thresholds (how much territory? one network or several?);
-the wiring itself is mechanical.
-**Model: Sonnet** for wiring once thresholds are picked; a short Opus/owner
-conversation first to pick the thresholds.
+### Wire `club-formation` era exit requirements — ✅ DONE (D52)
+Shipped 2026-07-06: `ERA_REQUIREMENTS[club-formation]` is filled
+(`scouting-network`, `territory-projected` = HQ + 3 rinks, `club-identity`,
+`training-camp`) and `selectors.isRequirementMet` checks each. Kept here only
+as a pointer; no longer open.
 
 ### Rival AI parity
 Rivals found HQs, wander scouts, make contact, court independents, and now
