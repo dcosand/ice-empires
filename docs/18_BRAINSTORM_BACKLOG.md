@@ -62,6 +62,44 @@ getting the design right, not typing the code.
 
 ## Blocking / near-term
 
+### The per-turn hockey loop (map ↔ hockey feel disconnected) — NEEDS A BRAINSTORM
+Owner framing (2026-07-07): the map/4X layer and the hockey/sim layer feel
+**too disconnected**. As the player "discovers hockey" and hits the **"hey, we
+have players now" moment**, they should start to have a **basic recurring
+hockey trigger / need / habit** — *something hockey-related to do every turn*,
+not just move scouts and end turn. Right now the early loop is almost entirely
+map logistics (and slow — see travel below); the roster/scouting/match systems
+exist but don't yet generate a per-turn pull. This is a **core-loop design
+session** (the owner explicitly wants a dedicated brainstorm), not a feature:
+what is the Turn 1-with-players verb loop? Candidates to weigh — a weekly
+practice/line-tuning beat, a "set your lineup / who dresses" habit, a
+development check-in (now that D55 aging exists — who's rising/fading?), a
+tryout/scouting nudge, recurring exhibition/scrimmage offers, a fan/community
+demand. The goal: the hockey systems already built (ratings, scouting, match
+engine v0, development) should surface as a small, satisfying **every-turn
+habit** the moment you have a roster, so the map work and the hockey work
+reinforce each other instead of sitting in separate screens.
+**Model: Opus** — core-loop/cadence design touching several existing systems;
+the whole point is getting the loop right before building to it.
+
+### Travel tech branch + team bus (faster unit movement) — pairs with the loop
+Owner idea (2026-07-07), surfaced from the same pain: **getting scouts across
+the map is a lot of work** and slows the early game. Proposal — a **travel /
+transport research branch**, the first payoff being a **team bus** so **Club
+Scouts move much faster than Pond Scouts** (movement speed as a unit-type +
+tech property, not a flat map). This gives the tech tree a reason to invest in
+mobility, differentiates the scout tiers by *speed* (a real reason to want the
+better unit — relevant to the scout-simplification item too), and directly
+eases the "slog my scout across the map" friction. Later branch payoffs could
+tie into water/air traversal (already an Act III nice-to-have) and Roads/trade
+routes (map-meaningfulness icebox). Today movement is uniform
+(`movesPerTurn` / `SCOUT_SIGHT`-style constants, `moveableTilesFor`); this adds
+a per-unit / per-tech speed multiplier. Cross-refs: `scoutSystem.moveableTilesFor`,
+the scout-tier backout item (speed could be the thing that *justifies* a tier),
+the research branches in `data/research.ts`.
+**Model: Opus** for where it sits in the tech tree + how speed reads on the map;
+**Sonnet** to implement the movement multiplier once scoped.
+
 ### Wire `club-formation` era exit requirements — ✅ DONE (D52)
 Shipped 2026-07-06: `ERA_REQUIREMENTS[club-formation]` is filled
 (`scouting-network`, `territory-projected` = HQ + 3 rinks, `club-identity`,
