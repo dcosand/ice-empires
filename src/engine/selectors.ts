@@ -113,15 +113,13 @@ export function getAvailableResearch(state: GameState): ResearchDef[] {
   );
 }
 
-// Whether the "End Turn" button is enabled. Production never blocks End Turn:
-// with pay-upfront costs (D30), saving funds for a bigger purchase is a
-// legitimate play. Research still gates — an empty tech slot just wastes HK
-// income. Shared by the CommandRail button and the Enter-key shortcut so both
-// behave identically.
-export function canEndMonth(state: GameState): boolean {
-  const researchReady =
-    !!state.activeResearch || getAvailableResearch(state).length === 0;
-  return researchReady;
+// Whether the "End Turn" button is enabled. Nothing in the economy blocks it
+// anymore (D56 "buy when you want"): units, buildings, and research are all
+// optional upfront purchases, and unspent Funds / Hockey Knowledge simply bank
+// for a bigger buy later. Like Civ VI, ending the turn is always available;
+// the command rail only NUDGES toward open actions, it never gates them.
+export function canEndMonth(_state: GameState): boolean {
+  return true;
 }
 
 // Era-progress requirement checklist for the CURRENT era's exit criteria.

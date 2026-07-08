@@ -63,9 +63,6 @@ const RESOURCE_TIP: Record<ResourceKey, string> = {
     "Reputation — your standing in hockey. Never spent: doors open at higher standing.",
 };
 
-function turnLabel(turns: number): string {
-  return `${turns} turn${turns === 1 ? "" : "s"}`;
-}
 
 export function TopBar({
   state,
@@ -81,13 +78,6 @@ export function TopBar({
   const researchDef = state.activeResearch
     ? RESEARCH_BY_ID[state.activeResearch.techId]
     : null;
-  const researchTurns =
-    state.activeResearch && income.hockeyKnowledge > 0
-      ? Math.max(
-          1,
-          Math.ceil(state.activeResearch.knowledgeRemaining / income.hockeyKnowledge),
-        )
-      : null;
   const prevFundsRef = useRef(state.resources.funds);
   const [fundsGained, setFundsGained] = useState(false);
 
@@ -198,11 +188,7 @@ export function TopBar({
             />
             <span className="topbar-research-label">Research</span>
             <strong>{researchDef.name}</strong>
-            <span>
-              {researchTurns
-                ? `${turnLabel(researchTurns)} left`
-                : "needs knowledge"}
-            </span>
+            <span>unlocks next turn</span>
           </div>
         )}
         <img

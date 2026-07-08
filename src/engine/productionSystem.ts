@@ -132,8 +132,10 @@ export function startProduction(
     resources[res] = Math.max(0, resources[res] - amt);
   }
 
-  const months =
-    kind === "unit" ? 1 : Math.max(1, def?.buildMonths ?? 1);
+  // Everything arrives NEXT turn — units already did; buildings now too
+  // (D56: uniform pay-now/next-turn economy). buildMonths stays as pacing
+  // metadata only.
+  const months = 1;
 
   return {
     ...state,

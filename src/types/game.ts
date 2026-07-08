@@ -262,10 +262,14 @@ export type ResearchDef = {
   eraId: string;
 };
 
+// Research is an upfront Hockey Knowledge purchase (D56): the full HK cost is
+// paid when you pick the tech, which then unlocks NEXT turn — same shape as a
+// production slot (monthsRemaining timer), so units, buildings, and research
+// all read as "pay now, get it next turn".
 export type ActiveResearch = {
   techId: string;
-  knowledgeRemaining: number;
-  progressKnowledge: number;
+  monthsRemaining: number;
+  totalMonths: number;
 };
 
 // NOTE: The legacy "Local Hockey Search" / rumor-region discovery system was

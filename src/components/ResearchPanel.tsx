@@ -10,8 +10,6 @@ import {
   type ResearchOption,
   type ResearchStatus,
 } from "../engine/researchSystem";
-import { getMonthlyIncome } from "../engine/selectors";
-import { ProgressBar } from "./ProgressBar";
 import { ItemArt } from "./ItemArt";
 import { playSfx } from "../engine/sfx";
 
@@ -40,11 +38,12 @@ export function ResearchPanel({
   const groups = useMemo(() => getResearchOptions(state), [state]);
   const active = state.activeResearch;
   const activeDef = active ? RESEARCH_BY_ID[active.techId] : null;
-  const hkPerMonth = getMonthlyIncome(state).hockeyKnowledge;
+  const hk = state.resources.hockeyKnowledge;
   const slotBusy = !!active;
 
-  const turnsFor = (cost: number) =>
-    hkPerMonth > 0 ? Math.max(1, Math.ceil(cost / hkPerMonth)) : Infinity;
+  // Research is an upfront HK purchase (D56): affordability, not a turn
+  // estimate, is what gates a pick.
+  const affordable = (o: ResearchOption) => hk >= o.cost;
 
   const lookup = useMemo(() => groups.flatMap((g) => g.options), [groups]);
 
@@ -77,11 +76,8 @@ export function ResearchPanel({
   const selected = lookup.find((o) => o.id === selectedId) ?? null;
   const detail = lookup.find((o) => o.id === detailId) ?? null;
 
-  const selectable = (o: ResearchOption) => o.status === "available" && !slotBusy;
-  const activeTurns =
-    active && hkPerMonth > 0
-      ? Math.max(1, Math.ceil(active.knowledgeRemaining / hkPerMonth))
-      : Infinity;
+  const selectable = (o: ResearchOption) =>
+    o.status === "available" && !slotBusy && affordable(o);
 
   // Drop a stale selection once the slot fills or the pick is no longer open.
   useEffect(() => {
@@ -135,15 +131,9 @@ export function ResearchPanel({
               </button>
             )}
           </div>
-          <ProgressBar
-            fraction={active.progressKnowledge / activeDef.cost}
-            left={`${Math.round((active.progressKnowledge / activeDef.cost) * 100)}% complete`}
-            right={
-              activeTurns === Infinity
-                ? "needs knowledge income"
-                : turnEstimateLabel(activeTurns, "left")
-            }
-          />
+          <div className="active-unlock-note">
+            Paid {activeDef.cost} Hockey Knowledge — unlocks next turn.
+          </div>
         </div>
       )}
 
@@ -152,7 +142,7 @@ export function ResearchPanel({
           options={lookup}
           selectedId={selectedId}
           selectable={selectable}
-          turnsFor={turnsFor}
+          affordable={affordable}
           onNodeClick={onNodeClick}
           onDetails={setDetailId}
         />
@@ -179,7 +169,7 @@ export function ResearchPanel({
                 byEraBranch={byEraBranch}
                 selectedId={selectedId}
                 selectable={selectable}
-                turnsFor={turnsFor}
+                affordable={affordable}
                 onNodeClick={onNodeClick}
                 onDetails={setDetailId}
               />
@@ -192,44 +182,30 @@ export function ResearchPanel({
         selected={selected}
         slotBusy={slotBusy}
         cancellable={canCancelResearch(state)}
-        estTurns={selected ? turnsFor(selected.cost) : Infinity}
         onConfirm={confirmStart}
         onCancel={() => setSelectedId(null)}
       />
 
       {detail && (
-        <DetailsModal
-          opt={detail}
-          estTurns={turnsFor(detail.cost)}
-          onClose={() => setDetailId(null)}
-        />
+        <DetailsModal opt={detail} onClose={() => setDetailId(null)} />
       )}
     </div>
   );
 }
 
-// A small clock glyph — the minimal "turns" indicator (clock + integer).
-function ClockIcon() {
+// The tech's Hockey Knowledge price — the minimal cost indicator. Dims/reddens
+// when the club can't yet afford it (D56 upfront purchase).
+function costBadge(cost: number, affordable: boolean) {
   return (
-    <svg className="cr-clock" viewBox="0 0 16 16" aria-hidden="true">
-      <circle cx="8" cy="8" r="6.4" fill="none" stroke="currentColor" strokeWidth="1.5" />
-      <path
-        d="M8 4.4V8l2.5 1.6"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function turnsBadge(turns: number) {
-  return (
-    <span className="cr-turns" title={turnEstimateLabel(turns)}>
-      <ClockIcon />
-      {turns === Infinity ? "∞" : turns}
+    <span
+      className={`cr-cost${affordable ? "" : " unafford"}`}
+      title={
+        affordable
+          ? `${cost} Hockey Knowledge`
+          : `Costs ${cost} Hockey Knowledge — save up more`
+      }
+    >
+      {cost} HK
     </span>
   );
 }
@@ -248,14 +224,14 @@ function ChooseResearchList({
   options,
   selectedId,
   selectable,
-  turnsFor,
+  affordable,
   onNodeClick,
   onDetails,
 }: {
   options: ResearchOption[];
   selectedId: string | null;
   selectable: (o: ResearchOption) => boolean;
-  turnsFor: (cost: number) => number;
+  affordable: (o: ResearchOption) => boolean;
   onNodeClick: (o: ResearchOption) => void;
   onDetails: (id: string) => void;
 }) {
@@ -293,7 +269,7 @@ function ChooseResearchList({
               opt={opt}
               selected={opt.id === selectedId}
               selectable={selectable(opt)}
-              turns={turnsFor(opt.cost)}
+              affordable={affordable(opt)}
               onClick={() => onNodeClick(opt)}
               onDetails={() => onDetails(opt.id)}
             />
@@ -311,7 +287,7 @@ function ChooseResearchList({
                 opt={opt}
                 selected={false}
                 selectable={false}
-                turns={turnsFor(opt.cost)}
+                affordable={affordable(opt)}
                 onClick={() => onDetails(opt.id)}
                 onDetails={() => onDetails(opt.id)}
               />
@@ -327,14 +303,14 @@ function ChooseCard({
   opt,
   selected,
   selectable,
-  turns,
+  affordable,
   onClick,
   onDetails,
 }: {
   opt: ResearchOption;
   selected: boolean;
   selectable: boolean;
-  turns: number;
+  affordable: boolean;
   onClick: () => void;
   onDetails: () => void;
 }) {
@@ -369,7 +345,7 @@ function ChooseCard({
       <div className="cr-main">
         <div className="cr-name-row">
           <span className="cr-name">{opt.name}</span>
-          {turnsBadge(turns)}
+          {costBadge(opt.cost, affordable)}
         </div>
         <div className="cr-payoff">{opt.unlockSummary}</div>
         <div className="cr-unlocks">
@@ -400,7 +376,7 @@ function TechBranchRow({
   byEraBranch,
   selectedId,
   selectable,
-  turnsFor,
+  affordable,
   onNodeClick,
   onDetails,
 }: {
@@ -408,7 +384,7 @@ function TechBranchRow({
   byEraBranch: Map<string, Map<ResearchBranch, ResearchOption[]>>;
   selectedId: string | null;
   selectable: (o: ResearchOption) => boolean;
-  turnsFor: (cost: number) => number;
+  affordable: (o: ResearchOption) => boolean;
   onNodeClick: (o: ResearchOption) => void;
   onDetails: (id: string) => void;
 }) {
@@ -428,7 +404,7 @@ function TechBranchRow({
                 opt={opt}
                 selected={opt.id === selectedId}
                 selectable={selectable(opt)}
-                estTurns={turnsFor(opt.cost)}
+                affordable={affordable(opt)}
                 onClick={() => onNodeClick(opt)}
                 onDetails={() => onDetails(opt.id)}
               />
@@ -450,14 +426,14 @@ function TechNode({
   opt,
   selected,
   selectable,
-  estTurns,
+  affordable,
   onClick,
   onDetails,
 }: {
   opt: ResearchOption;
   selected: boolean;
   selectable: boolean;
-  estTurns: number;
+  affordable: boolean;
   onClick: () => void;
   onDetails: () => void;
 }) {
@@ -469,7 +445,7 @@ function TechNode({
         ? "Active"
         : opt.status === "locked"
           ? "Locked"
-          : turnEstimateLabel(estTurns);
+          : `${opt.cost} HK${affordable ? "" : " — save up"}`;
   return (
     <div
       className={[
@@ -537,14 +513,12 @@ function ConfirmBar({
   selected,
   slotBusy,
   cancellable,
-  estTurns,
   onConfirm,
   onCancel,
 }: {
   selected: ResearchOption | null;
   slotBusy: boolean;
   cancellable: boolean;
-  estTurns: number;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -573,7 +547,9 @@ function ConfirmBar({
         <ItemArt kind="research" id={selected.id} className="prod-confirm-art" />
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
-          <div className="prod-confirm-cost">{turnEstimateLabel(estTurns)}</div>
+          <div className="prod-confirm-cost">
+            {selected.cost} Hockey Knowledge · unlocks next turn
+          </div>
         </div>
       </div>
       <div className="prod-confirm-actions">
@@ -590,11 +566,9 @@ function ConfirmBar({
 
 function DetailsModal({
   opt,
-  estTurns,
   onClose,
 }: {
   opt: ResearchOption;
-  estTurns: number;
   onClose: () => void;
 }) {
   return (
@@ -622,10 +596,8 @@ function DetailsModal({
         {opt.flavor && <p className="prod-detail-flavor">{opt.flavor}</p>}
         <div className="prod-detail-rows">
           <DetailRow label="Unlocks" value={opt.unlockSummary} tone="good" />
-          <DetailRow
-            label="Turns"
-            value={turnEstimateLabel(estTurns)}
-          />
+          <DetailRow label="Cost" value={`${opt.cost} Hockey Knowledge`} />
+          <DetailRow label="Ready" value="Unlocks next turn" />
           <DetailRow
             label="Research effort"
             value={`${opt.cost} knowledge`}
@@ -643,11 +615,6 @@ function DetailsModal({
       </div>
     </div>
   );
-}
-
-function turnEstimateLabel(turns: number, suffix = ""): string {
-  if (turns === Infinity) return "Needs knowledge income";
-  return `${turns} turn${turns === 1 ? "" : "s"}${suffix ? ` ${suffix}` : ""}`;
 }
 
 function DetailRow({

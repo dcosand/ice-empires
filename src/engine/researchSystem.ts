@@ -1,39 +1,61 @@
 import type { GameState, ResearchBranch, ResearchDef, Unlock } from "../types/game";
 import { RESEARCH, RESEARCH_BY_ID } from "../data/research";
 import { ERAS, ERA_ORDER as ERA_PROGRESSION } from "../data/eras";
-import { getAvailableResearch, getMonthlyIncome } from "./selectors";
+import { getAvailableResearch } from "./selectors";
 import type { PushLog } from "./turnContext";
 import { grantCard } from "./cardSystem";
 
-// Select a tech to research. Science-per-turn: no upfront cost; Hockey Knowledge
-// income funds progress each month (see DECISIONS.md).
+// Can the club afford to research this tech right now? (Upfront HK purchase.)
+export function canAffordResearch(state: GameState, techId: string): boolean {
+  const def = RESEARCH_BY_ID[techId];
+  return !!def && state.resources.hockeyKnowledge >= def.cost;
+}
+
+// Buy a tech: pay its full Hockey Knowledge cost up front (D56), opening the
+// research slot for one turn — it unlocks NEXT turn, like a production item.
+// Nothing to research while a purchase is pending (one slot at a time).
 export function selectResearch(state: GameState, techId: string): GameState {
   const def = RESEARCH_BY_ID[techId];
   if (!def) return state;
+  if (state.activeResearch) return state;
   if (!getAvailableResearch(state).some((r) => r.id === techId)) return state;
+  if (!canAffordResearch(state, techId)) return state;
 
   return {
     ...state,
-    activeResearch: {
-      techId,
-      knowledgeRemaining: def.cost,
-      progressKnowledge: 0,
+    resources: {
+      ...state.resources,
+      hockeyKnowledge: Math.max(0, state.resources.hockeyKnowledge - def.cost),
     },
+    activeResearch: { techId, monthsRemaining: 1, totalMonths: 1 },
   };
 }
 
-// A research pick can be taken back until the first End Turn applies progress
-// toward it — after that, the club has committed real work.
+// A research purchase can be taken back until the first End Turn starts the
+// work — the HK paid on purchase is refunded.
 export function canCancelResearch(state: GameState): boolean {
-  return !!state.activeResearch && state.activeResearch.progressKnowledge === 0;
+  return (
+    !!state.activeResearch &&
+    state.activeResearch.monthsRemaining === state.activeResearch.totalMonths
+  );
 }
 
 export function cancelResearch(state: GameState): GameState {
   if (!canCancelResearch(state)) return state;
-  return { ...state, activeResearch: null };
+  const def = RESEARCH_BY_ID[state.activeResearch!.techId];
+  const refund = def?.cost ?? 0;
+  return {
+    ...state,
+    resources: {
+      ...state.resources,
+      hockeyKnowledge: state.resources.hockeyKnowledge + refund,
+    },
+    activeResearch: null,
+  };
 }
 
-// Apply this month's Hockey Knowledge income toward the active tech.
+// Advance the pending tech one turn; unlock it when the timer runs out. The HK
+// cost was already paid at purchase (no per-turn accrual anymore).
 export function progressResearch(draft: GameState, push: PushLog): void {
   const research = draft.activeResearch;
   if (!research) return;
@@ -43,25 +65,10 @@ export function progressResearch(draft: GameState, push: PushLog): void {
     return;
   }
 
-  const hkPerMonth = getMonthlyIncome(draft).hockeyKnowledge;
-  research.progressKnowledge += hkPerMonth;
-  research.knowledgeRemaining = Math.max(
-    0,
-    def.cost - research.progressKnowledge,
-  );
+  research.monthsRemaining -= 1;
+  if (research.monthsRemaining > 0) return;
 
-  if (research.progressKnowledge < def.cost) {
-    push(
-      "research",
-      `${def.name} progressing`,
-      `${def.name} research is ${Math.round(
-        (research.progressKnowledge / def.cost) * 100,
-      )}% complete.`,
-    );
-    return;
-  }
-
-  // Completed.
+  // Unlocked.
   draft.completedResearch.push(def.id);
   draft.activeResearch = null;
   push("research", `${def.name} complete`, def.flavor);
