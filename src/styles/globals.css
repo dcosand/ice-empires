@@ -7617,3 +7617,29 @@ tr.signed-away .scouting-flag.flag-signed { opacity: 1; }
   .pf-bio { position: static; flex-direction: row; flex-wrap: wrap; text-align: left; justify-content: flex-start; }
   .pf-facts { width: 100%; }
 }
+
+/* ===========================================================================
+   Readability bump v2 (owner, 2026-07-07): depth chart + attribute columns
+   were still too small. Larger, roomier rows. Appended last to win.
+   ========================================================================== */
+.attr-columns { gap: 16px 26px; }
+.attr-column-head { font-size: 14px; letter-spacing: 0.09em; padding-bottom: 5px; }
+.attr-num-row { font-size: 15.5px; line-height: 1.75; }
+.attr-num-cell { min-width: 36px; font-size: 15.5px; padding: 2px 8px; }
+
+.depth-col-head { font-size: 16.5px; padding-bottom: 7px; margin-bottom: 6px; }
+.depth-count { font-size: 13px; }
+.depth-row {
+  grid-template-columns: 26px 1fr auto auto;
+  gap: 11px;
+  padding: 9px 13px;
+}
+.depth-rank { font-size: 13.5px; }
+.depth-name { font-size: 16.5px; }
+.depth-age { font-size: 14.5px; }
+.depth-ovr { font-size: 16px; min-width: 36px; padding: 2px 9px; }
+.depth-empty { font-size: 15px; padding: 8px 4px; }
+.depth-leaders { gap: 12px; padding-top: 18px; }
+.depth-leader { padding: 11px 14px; }
+.depth-leader-label { font-size: 12.5px; }
+.depth-leader-player { font-size: 16.5px; }
