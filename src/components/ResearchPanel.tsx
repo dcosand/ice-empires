@@ -76,8 +76,11 @@ export function ResearchPanel({
   const selected = lookup.find((o) => o.id === selectedId) ?? null;
   const detail = lookup.find((o) => o.id === detailId) ?? null;
 
+  // ANY open tech is selectable — affordability is a separate gate shown on the
+  // confirm bar, so the player can line up a pick and watch it become buyable as
+  // Hockey Knowledge banks (D56). Locked/completed/active techs stay un-pickable.
   const selectable = (o: ResearchOption) =>
-    o.status === "available" && !slotBusy && affordable(o);
+    o.status === "available" && !slotBusy;
 
   // Drop a stale selection once the slot fills or the pick is no longer open.
   useEffect(() => {
@@ -94,7 +97,7 @@ export function ResearchPanel({
   };
 
   const confirmStart = () => {
-    if (!selected || !selectable(selected)) return;
+    if (!selected || !selectable(selected) || !affordable(selected)) return;
     playSfx("confirm");
     dispatch({ type: "SELECT_RESEARCH", techId: selected.id });
     setSelectedId(null);
@@ -105,9 +108,13 @@ export function ResearchPanel({
       <div className="research-mode-bar">
         <div className="panel-sub" style={{ margin: 0 }}>
           {mode === "choose"
-            ? "Pick your next project. Research advances at the end of each turn."
+            ? "Pick your next project — pay its cost up front, unlock it next turn."
             : "The full arc — era columns × branch rows. Later eras stay locked until you reach them."}
         </div>
+        <span className="research-hk-balance" title="Your Hockey Knowledge — spend it on techs; it banks between turns.">
+          <img src="/assets/images/research.png" alt="" aria-hidden />
+          <strong>{hk}</strong> HK
+        </span>
         <button
           className="btn research-mode-toggle"
           onClick={() => setMode((m) => (m === "choose" ? "tree" : "choose"))}
@@ -182,6 +189,8 @@ export function ResearchPanel({
         selected={selected}
         slotBusy={slotBusy}
         cancellable={canCancelResearch(state)}
+        affordable={selected ? affordable(selected) : false}
+        shortfall={selected ? Math.max(0, selected.cost - hk) : 0}
         onConfirm={confirmStart}
         onCancel={() => setSelectedId(null)}
       />
@@ -323,6 +332,7 @@ function ChooseCard({
         selected ? "selected" : "",
         locked ? "locked" : "",
         !selectable && !locked ? "slot-busy" : "",
+        selectable && !affordable ? "unafford" : "",
       ]
         .filter(Boolean)
         .join(" ")}
@@ -513,12 +523,16 @@ function ConfirmBar({
   selected,
   slotBusy,
   cancellable,
+  affordable,
+  shortfall,
   onConfirm,
   onCancel,
 }: {
   selected: ResearchOption | null;
   slotBusy: boolean;
   cancellable: boolean;
+  affordable: boolean;
+  shortfall: number;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -542,13 +556,15 @@ function ConfirmBar({
   }
 
   return (
-    <div className="prod-confirm ready">
+    <div className={`prod-confirm ready${affordable ? "" : " unafford"}`}>
       <div className="prod-confirm-info">
         <ItemArt kind="research" id={selected.id} className="prod-confirm-art" />
         <div>
           <div className="prod-confirm-name">{selected.name}</div>
           <div className="prod-confirm-cost">
-            {selected.cost} Hockey Knowledge · unlocks next turn
+            {affordable
+              ? `${selected.cost} Hockey Knowledge · unlocks next turn`
+              : `Need ${shortfall} more Hockey Knowledge — keep banking, it'll be ready soon.`}
           </div>
         </div>
       </div>
@@ -556,7 +572,12 @@ function ConfirmBar({
         <button className="btn" onClick={onCancel}>
           Cancel
         </button>
-        <button className="btn btn-primary" onClick={onConfirm}>
+        <button
+          className="btn btn-primary"
+          onClick={onConfirm}
+          disabled={!affordable}
+          title={affordable ? undefined : `Need ${shortfall} more Hockey Knowledge`}
+        >
           Begin Research
         </button>
       </div>

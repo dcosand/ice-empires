@@ -67,12 +67,23 @@ const RESOURCE_TIP: Record<ResourceKey, string> = {
 export function TopBar({
   state,
   onOpenHQ,
+  onOpenProduction,
+  onOpenResearch,
 }: {
   state: GameState;
   dispatch: Dispatch<GameAction>;
   onOpenHQ?: () => void;
+  onOpenProduction?: () => void;
+  onOpenResearch?: () => void;
 }) {
   const club = state.club;
+
+  // Header currencies double as shortcuts to where they're spent: Funds →
+  // Production, Hockey Knowledge → Research (D56 "buy whenever you want").
+  const resourceAction: Partial<Record<ResourceKey, (() => void) | undefined>> = {
+    funds: onOpenProduction,
+    hockeyKnowledge: onOpenResearch,
+  };
 
   const income = getMonthlyIncome(state);
   const researchDef = state.activeResearch
@@ -137,24 +148,51 @@ export function TopBar({
         </div>
       </button>
       <div className="topbar-resources">
-        {RESOURCE_ORDER.map((key) => (
-          <div
-            className={`res-chip${key === "funds" && fundsGained ? " resource-gain" : ""}`}
-            key={key}
-            title={RESOURCE_TIP[key]}
-            style={{ "--res-color": RESOURCE_COLOR[key] } as CSSProperties}
-          >
-            <span className="res-icon">
-              <ResourceIcon resource={key} />
-            </span>
-            <span className="res-value">{state.resources[key]}</span>
-            {income[key] !== 0 && (
-              <span className={`res-rate${income[key] < 0 ? " down" : ""}`}>
-                {income[key] > 0 ? `+${income[key]}` : income[key]}
+        {RESOURCE_ORDER.map((key) => {
+          const action = resourceAction[key];
+          const gain = key === "funds" && fundsGained ? " resource-gain" : "";
+          const inner = (
+            <>
+              <span className="res-icon">
+                <ResourceIcon resource={key} />
               </span>
-            )}
-          </div>
-        ))}
+              <span className="res-value">{state.resources[key]}</span>
+              {income[key] !== 0 && (
+                <span className={`res-rate${income[key] < 0 ? " down" : ""}`}>
+                  {income[key] > 0 ? `+${income[key]}` : income[key]}
+                </span>
+              )}
+            </>
+          );
+          const chipStyle = {
+            "--res-color": RESOURCE_COLOR[key],
+          } as CSSProperties;
+          return action ? (
+            <button
+              type="button"
+              className={`res-chip res-chip-action${gain}`}
+              key={key}
+              title={`${RESOURCE_TIP[key]}${
+                key === "funds"
+                  ? "\n\nClick to open Production."
+                  : "\n\nClick to open Research."
+              }`}
+              style={chipStyle}
+              onClick={action}
+            >
+              {inner}
+            </button>
+          ) : (
+            <div
+              className={`res-chip${gain}`}
+              key={key}
+              title={RESOURCE_TIP[key]}
+              style={chipStyle}
+            >
+              {inner}
+            </div>
+          );
+        })}
         <div
           className="res-chip"
           title="Equipment — sticks & gear in the shed. Harvest branches or build the Equipment Shed; each recruit needs 1 to play."
@@ -173,9 +211,12 @@ export function TopBar({
       </div>
       <div className="meta">
         {state.activeResearch && researchDef && (
-          <div
+          <button
+            type="button"
             className="topbar-research"
-            title={`${researchDef.name} is the active research project`}
+            title={`${researchDef.name} is the active research project — click to open Research`}
+            onClick={onOpenResearch}
+            disabled={!onOpenResearch}
           >
             <img
               className="topbar-research-icon"
@@ -189,7 +230,7 @@ export function TopBar({
             <span className="topbar-research-label">Research</span>
             <strong>{researchDef.name}</strong>
             <span>unlocks next turn</span>
-          </div>
+          </button>
         )}
         <img
           className="topbar-game-logo"

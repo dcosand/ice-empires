@@ -34,10 +34,10 @@ export function PlayerRevealScene({
   // played a full-length practice track with no way to stop it, so it kept
   // playing after the scene closed.
   useEffect(() => {
+    // The signing beat rides the practice/crowd ambience only — the positive
+    // event stinger already fired on the map encounter that led here (goodie
+    // hut / wanderer approach), so playing it again here doubled the sound.
     setContactMusicActive(true);
-    // A wanderer recruit is a positive map event — give it the event stinger
-    // (goodie-hut recruits and other signings get their own beats elsewhere).
-    if (reveal.source === "encounter") playSfx("eventGood");
     const flip = setTimeout(() => {
       setFlipped(true);
       playSfx("cardFlip");

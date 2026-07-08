@@ -30,10 +30,6 @@ import {
   getAvailableResearch,
   getEraProgress,
 } from "../engine/selectors";
-import {
-  productionItemName,
-  startableProductionCount,
-} from "../engine/productionSystem";
 import { activeScout, allScouts } from "../engine/scoutSystem";
 import { techPayoff } from "../engine/researchSystem";
 import { turnDateLabel, turnDateLong } from "../engine/calendar";
@@ -165,6 +161,8 @@ export function Dashboard({
         state={state}
         dispatch={dispatch}
         onOpenHQ={() => openView("club")}
+        onOpenProduction={() => openView("build")}
+        onOpenResearch={() => setOverlay("research")}
       />
 
       <div className="map-stage">
@@ -398,9 +396,7 @@ function CommandRail({
   open: (view: OverlayView) => void;
 }) {
   const founded = !!state.world?.hqTile;
-  const buildOptions = startableProductionCount(state);
   const researchOptions = getAvailableResearch(state).length;
-  const buildReady = !!state.activeProduction || buildOptions === 0;
   const researchReady = !!state.activeResearch || researchOptions === 0;
   const scouts = allScouts(state.world);
   const selectedScout = activeScout(state.world);
@@ -464,25 +460,13 @@ function CommandRail({
     }
   };
 
-  const missing: string[] = [];
-  if (!researchReady) missing.push("research");
-
+  // "Next Tasks" is Civ-VI-style must-resolve-only now (D56): research and
+  // production are optional upfront purchases you make whenever you like (via
+  // the Funds/HK header shortcuts or the dock), so they no longer nag here. The
+  // only per-turn nudge left is moving scouts — their moves reset each turn.
   return (
     <aside className="command-rail">
       <div className="rail-title">Next Tasks</div>
-      <TaskButton
-        done={buildReady}
-        label={
-          state.activeProduction
-            ? "Production active"
-            : buildOptions === 0
-              ? "Nothing to build"
-              : "Choose production (or save up)"
-        }
-        detail={activeProductionName(state)}
-        onClick={() => open("build")}
-      />
-      {researchTask}
       {scouts.length > 0 && (
         <TaskButton
           done={scoutReady}
@@ -512,9 +496,6 @@ function CommandRail({
       >
         End Turn
       </button>
-      {!canEndMonth && (
-        <div className="rail-blocked">Needs: {missing.join(", ")}</div>
-      )}
     </aside>
   );
 }
@@ -766,14 +747,6 @@ function overlayTitle(view: Exclude<OverlayView, null>) {
     log: "Inbox",
   };
   return titles[view];
-}
-
-function activeProductionName(state: GameState) {
-  if (!state.activeProduction) return undefined;
-  return productionItemName(
-    state.activeProduction.kind,
-    state.activeProduction.itemId,
-  );
 }
 
 function activeResearchName(state: GameState) {

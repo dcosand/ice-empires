@@ -7643,3 +7643,73 @@ tr.signed-away .scouting-flag.flag-signed { opacity: 1; }
 .depth-leader { padding: 11px 14px; }
 .depth-leader-label { font-size: 12.5px; }
 .depth-leader-player { font-size: 16.5px; }
+
+/* ── Research affordability cues (D56 upfront purchase) ─────────────────── */
+/* HK balance chip in the research header — always in view so the player can
+   watch a pick become buyable as knowledge banks. */
+.research-hk-balance {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(90, 176, 230, 0.12);
+  border: 1px solid rgba(90, 176, 230, 0.35);
+  color: #bfe2f6;
+  font-size: 15px;
+  white-space: nowrap;
+}
+.research-hk-balance img { width: 18px; height: 18px; }
+.research-hk-balance strong { color: #eaf6ff; font-size: 16px; }
+
+/* Cost badge reddens when unaffordable. */
+.cr-cost.unafford {
+  color: #ff9d9d;
+  background: rgba(239, 111, 111, 0.14);
+  border-color: rgba(239, 111, 111, 0.4);
+}
+/* An available-but-not-yet-affordable tech: still fully clickable (you can line
+   it up), just visually flagged as "save up more". */
+.cr-card.unafford { border-color: rgba(239, 111, 111, 0.28); }
+.cr-card.unafford .cr-art { opacity: 0.82; }
+.cr-card.unafford.selected {
+  border-color: rgba(244, 198, 78, 0.85);
+}
+
+/* Confirm bar in the can't-afford-yet state. */
+.prod-confirm.ready.unafford { border-color: rgba(239, 111, 111, 0.45); }
+.prod-confirm.ready.unafford .prod-confirm-cost { color: #ff9d9d; }
+.prod-confirm .btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ── Header currency shortcuts (D56) ───────────────────────────────────── */
+/* Funds → Production, Hockey Knowledge → Research. The chip is a real button:
+   reset UA styling, inherit the font, and add a clear hover affordance. */
+.res-chip-action {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.res-chip-action:hover,
+.res-chip-action:focus-visible {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--res-color) 70%, var(--border));
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--res-color) 28%, transparent);
+  outline: none;
+}
+.res-chip-action:active { transform: translateY(0); }
+/* The active-research chip is now clickable too. */
+button.topbar-research {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+button.topbar-research:hover:not(:disabled) {
+  border-color: color-mix(in srgb, #5ab0e6 60%, var(--border));
+}
+button.topbar-research:disabled { cursor: default; }
