@@ -482,6 +482,36 @@ true numbers, prospects/rivals show fogged reads (`talentFog.ts`).
 **Model: Sonnet** — established screen/overlay patterns; the only real design
 call is the attribute display scale + regrouping.
 
+### "Confirm the Dynasty" screen shows meaningless resources
+Owner (2026-07-07): the club-select confirm screen (`FoundingScreen` /
+club-select confirm card) leads with **Funds / Hockey Knowledge / Reputation**
+starting-stat boxes (e.g. 16 / 5 / 9) that don't mean anything to the player at
+that moment. Replace them with the club's **identity**: its **special/unique
+unit**, **special facilities**, and **unique hockey characteristics** (pull from
+`data/clubUniques.ts` — `unitsForClub` / `facilitiesForClub` + the club's
+uniques). This is the moment to sell what makes *this* club different, not to
+show fungible starting resources. (Note: club uniques are still a thin layer —
+see the scout/uniques items — but showing the ones that exist is right.)
+**Model: Sonnet** — content/layout swap on an existing screen.
+
+### Uniform overlay sizing (Team / Independents / People / Scouting)
+Owner (2026-07-07): the task overlays (Team/ClubHQ, Independents, People,
+Scouting, Research, etc.) are **different shapes and sizes** — they should share
+**one responsive size/shape** (a consistent max-width/height container that
+adapts to the viewport), like a single modal chrome. Standardize the overlay
+shell (`TaskOverlay` / `.overlay-sheet` vs the `.hq-modal` sheet) so every panel
+opens at the same footprint. Pairs with the HQ real-estate pass already shipped.
+**Model: Sonnet** — CSS/layout consolidation.
+
+### Player File: text too small + dead space
+Owner (2026-07-07, "for later"): after the EHM bio-panel re-layout, the player
+file's right pane (attributes / potential / scouting history) reads **too small**
+relative to the large overlay, with a lot of **empty space** on the right. Bump
+the type in the main pane and either tighten the overlay to the content or use
+the width (e.g. wider attribute columns, a second content column). Fold into the
+uniform-overlay-sizing pass above.
+**Model: Sonnet/Haiku** — type + spacing tuning.
+
 ### Tryout music cross-fade regression — ✅ FIXED 2026-07-07
 Playtest note (2026-07-05): tryout scene audio stopped cross-fading like it
 did the day before. **Two distinct bugs, both fixed 2026-07-07:**
