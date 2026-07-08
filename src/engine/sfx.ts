@@ -1,5 +1,3 @@
-import { PRACTICE_SCENE_TRACKS } from "../data/sceneAudio";
-
 // Tiny SFX manager over the game audio in /assets/audio.
 // No dependencies: a pool of HTMLAudio elements per sound, fire-and-forget.
 // Browsers block audio before the first user gesture; play() failures are
@@ -18,7 +16,8 @@ export type SfxName =
   | "check" // era requirement ticked off
   | "recruit" // a player joins
   | "cardFlip" // flipping a candidate/player card in the tryout pack
-  | "crowd" // practice-rink ambience for reveal cinematics
+  | "eventGood" // a positive map event resolves (goodie hut, wanderer recruit)
+  | "eventBad" // a negative map event resolves (bad hut, wanderer scrap)
   | "walk"
   | "iceWalk"
   | "snowWalk"
@@ -37,7 +36,8 @@ const FILES: Record<SfxName, string[]> = {
   check: [`${SFX}/success-click.mp3`],
   recruit: [`${SFX}/success-click.mp3`],
   cardFlip: [`${SFX}/click.m4a`],
-  crowd: PRACTICE_SCENE_TRACKS.map((track) => track.url),
+  eventGood: [`${SFX}/event-sfx-01.mp3`],
+  eventBad: [`${SFX}/event-sfx-02.mp3`],
   walk: [`${SFX}/walking-01.wav`, `${SFX}/walking-02.wav`],
   iceWalk: [`${SFX}/ice-walking-01.wav`, `${SFX}/ice-walking-02.wav`],
   snowWalk: [`${SFX}/snow-walking-01.wav`, `${SFX}/snow-walking-02.wav`],
@@ -53,7 +53,8 @@ const VOLUME: Partial<Record<SfxName, number>> = {
   endTurn: 0.4,
   fanfare: 0.55,
   cardFlip: 0.3,
-  crowd: 0.45,
+  eventGood: 0.5,
+  eventBad: 0.5,
   walk: 0.32,
   iceWalk: 0.34,
   snowWalk: 0.34,

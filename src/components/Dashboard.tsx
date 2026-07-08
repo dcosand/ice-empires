@@ -129,6 +129,19 @@ export function Dashboard({
     if (state.month > 1) playSfx("endTurn");
   }, [state.month]);
 
+  // A player scout entering the penalty box only happens from a wanderer scrap,
+  // which today resolves to a log line with no modal — fire the negative event
+  // stinger the moment it does. Interim hook: when the scrap gets its own
+  // outcome modal (docs/18), move this SFX onto that modal's mount.
+  const boxedCountRef = useRef(0);
+  const boxedScoutCount = (state.world?.scouts ?? []).filter(
+    (s) => (s.penaltyBoxTurns ?? 0) > 0,
+  ).length;
+  useEffect(() => {
+    if (boxedScoutCount > boxedCountRef.current) playSfx("eventBad");
+    boxedCountRef.current = boxedScoutCount;
+  }, [boxedScoutCount]);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.code !== "Enter" && e.code !== "NumpadEnter") return;
@@ -805,6 +818,10 @@ function EncounterOverlay({
   onAcknowledge: () => void;
 }) {
   const icon = ENCOUNTER_ICON[encounter.kind] ?? "❄️";
+  // Positive/negative event stinger when the outcome appears (event-sfx-01/02).
+  useEffect(() => {
+    playSfx(encounter.tone === "bad" ? "eventBad" : "eventGood");
+  }, [encounter.tone]);
   return (
     <div
       className="task-overlay completion-overlay"

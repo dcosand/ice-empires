@@ -12,13 +12,13 @@ export const PRACTICE_SCENE_TRACKS: SceneAudioTrack[] = [
 ];
 
 // Dedicated bed for the tryout / new-signing flow (distinct from practice
-// ambience so tryouts always get their own theme).
-// AAC/m4a rather than the source 30 MB WAV: the WAV was WAVE_FORMAT_EXTENSIBLE
-// (0xFFFE), which browsers decode unreliably, and its size stalled the first
-// play — so tryouts opened in silence. Re-encoded with `afconvert` (~3.4 MB).
+// ambience so tryouts always get their own theme). MP3 for consistency with the
+// rest of the music/scene beds (the source was a 30 MB WAVE_FORMAT_EXTENSIBLE
+// WAV browsers decoded unreliably, which stalled the first play → silent
+// tryouts; the compressed MP3 avoids both problems).
 export const TRYOUT_SCENE_TRACK: SceneAudioTrack = {
   name: "Tryouts / New Signing",
-  url: "/assets/audio/scenes/tryout-signing.m4a",
+  url: "/assets/audio/scenes/tryout-signing.mp3",
 };
 
 export function randomPracticeSceneTrack(): SceneAudioTrack {

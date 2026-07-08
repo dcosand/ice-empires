@@ -4,6 +4,7 @@ import type { ClubDef, GameAction, PlayerReveal } from "../types/game";
 import { clubAsset } from "../data/clubs";
 import { HockeyCard } from "./HockeyCard";
 import { playSfx } from "../engine/sfx";
+import { setContactMusicActive } from "./BackgroundMusic";
 
 // The signing moment. A player has joined the club — whether the first-ever
 // recruit off the tryout ice or a wanderer met on the map — and it deserves a
@@ -24,9 +25,17 @@ export function PlayerRevealScene({
   const [flipped, setFlipped] = useState(false);
   const [ready, setReady] = useState(false);
 
-  // Play the crowd swell on mount, then flip the card face-up after the beat.
+  // Swell the crowd/practice ambience on mount, then flip the card face-up after
+  // the beat. The ambience runs through the shared scene-audio controller (same
+  // as the meeting scenes) so it fades IN here and, critically, fades OUT and
+  // STOPS when this scene unmounts — the old fire-and-forget playSfx("crowd")
+  // played a full-length practice track with no way to stop it, so it kept
+  // playing after the scene closed.
   useEffect(() => {
-    playSfx("crowd");
+    setContactMusicActive(true);
+    // A wanderer recruit is a positive map event — give it the event stinger
+    // (goodie-hut recruits and other signings get their own beats elsewhere).
+    if (reveal.source === "encounter") playSfx("eventGood");
     const flip = setTimeout(() => {
       setFlipped(true);
       playSfx("cardFlip");
@@ -35,6 +44,7 @@ export function PlayerRevealScene({
     return () => {
       clearTimeout(flip);
       clearTimeout(panel);
+      setContactMusicActive(false);
     };
   }, []);
 

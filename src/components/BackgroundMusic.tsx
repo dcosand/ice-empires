@@ -6,22 +6,40 @@ import type { Phase } from "../types/game";
 type MusicScene = "title" | "onboarding" | "gameplay";
 type Track = { name: string; url: string };
 
+// Title and club-select each get ONE fixed theme (strict: 01 = title screen,
+// 02 = club selection) — single-track pools loop without ever cycling to the
+// other theme. Only the gameplay era pools below shuffle.
 const TITLE_TRACKS: Track[] = [
   { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
-  { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
 ];
 const ONBOARDING_TRACKS: Track[] = [
   { name: "Ice Empires Theme 02", url: "/assets/audio/music/ice-empires-theme-02.mp3" },
-  { name: "Ice Empires Theme 01", url: "/assets/audio/music/ice-empires-theme-01.mp3" },
 ];
-// Era 03's track was removed; later eras reuse the Era 02 theme until a new one
-// lands, so every era still has music (fallback below also covers unknown ids).
-const ERA_TRACKS: Record<string, Track> = {
-  "pond-hockey": { name: "Era 01", url: "/assets/audio/music/era01-music.wav" },
-  "club-formation": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
-  "competitive-hockey": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
-  "hockey-operations": { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
-  dynasty: { name: "Era 02", url: "/assets/audio/music/era02-music.mp3" },
+// Gameplay music is a per-era POOL played at RANDOM (Civ VI-style: new tracks
+// come into rotation as you advance eras). To add/remove a track just edit the
+// pool — filenames map to /public/assets/audio/music. Eras past era 03 reuse
+// the era-03 pool until their own tracks land, so every era still has music
+// (the fallback below also covers unknown ids).
+const M = "/assets/audio/music";
+const ERA01_POOL: Track[] = [
+  { name: "Era 01 · I", url: `${M}/era01-music-01.mp3` },
+  { name: "Era 01 · II", url: `${M}/era01-music-02.mp3` },
+  { name: "Era 01 · III", url: `${M}/era01-music-03.mp3` },
+  { name: "Era 01 · IV", url: `${M}/era01-music-04.mp3` },
+];
+const ERA02_POOL: Track[] = [
+  { name: "Era 02 · I", url: `${M}/era02-music-01.mp3` },
+  { name: "Era 02 · II", url: `${M}/era02-music-02.mp3` },
+];
+const ERA03_POOL: Track[] = [
+  { name: "Era 03 · I", url: `${M}/era03-music-01.mp3` },
+];
+const ERA_TRACKS: Record<string, Track[]> = {
+  "pond-hockey": ERA01_POOL,
+  "club-formation": ERA02_POOL,
+  "competitive-hockey": ERA03_POOL,
+  "hockey-operations": ERA03_POOL,
+  dynasty: ERA03_POOL,
 };
 
 const GAME_VOLUME = 0.35;
@@ -59,10 +77,10 @@ function baseMusicScene(phase: Phase): MusicScene {
 function tracksFor(scene: MusicScene, eraId: string): Track[] {
   if (scene === "title") return TITLE_TRACKS;
   if (scene === "onboarding") return ONBOARDING_TRACKS;
-  // Gameplay loops the CURRENT era's single track; changing era crossfades to
-  // the new one (see the track-change effect). It never cycles through other
-  // eras' themes mid-play.
-  return [ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"]];
+  // Gameplay plays the CURRENT era's pool at random (see advanceTrack + the
+  // random pick on era change). Changing era swaps the pool and crossfades to a
+  // track from it; it never cycles through other eras' pools mid-play.
+  return ERA_TRACKS[eraId] ?? ERA_TRACKS["pond-hockey"];
 }
 
 function fadeAudio(
@@ -115,6 +133,7 @@ export function BackgroundMusic({
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
+  const indexInitRef = useRef(false); // first [scene,eraId] run stays on track 0
   const suppressGamePauseRef = useRef(false);
   const suppressTryoutPauseRef = useRef(false);
   const tryoutWasActiveRef = useRef(false);
@@ -225,10 +244,9 @@ export function BackgroundMusic({
     if (!tryout || !tryout.paused) return;
     tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
-    // Force an eager (re)load so the bed is buffered before play(): without it,
-    // play() resolves against an unbuffered element and the wall-clock fade
-    // desyncs from audible playback → the track pops in instead of fading.
-    tryout.load();
+    // Just unlock playback within the gesture; the element already preloads
+    // (preload="auto"). Do NOT call load() here — re-fetching stalls the very
+    // first play(), which is what left tryouts opening in silence.
     tryout.play().catch(() => {});
   };
 
@@ -239,15 +257,18 @@ export function BackgroundMusic({
 
     cancelFades();
     // Src is set declaratively on the <audio> (fixed tryout bed); just rewind.
-    if (!tryout.src) {
-      tryout.src = tryoutTrack.url;
-      tryout.load();
-    }
+    if (!tryout.src) tryout.src = tryoutTrack.url;
     if (restart) tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
 
-    const start = tryout.paused ? tryout.play() : Promise.resolve();
-    start
+    // Always drive the fade off a real play() resolution. The old code skipped
+    // play() when the primed bed was merely "not paused" and attached the fade
+    // to Promise.resolve() — but a primed play() that is still buffering (or
+    // later rejects) leaves us ramping the volume of an element that never
+    // actually started, so the tryout bed stayed silent. play() is a no-op when
+    // already playing, and this guarantees the crossfade tracks audible sound.
+    tryout
+      .play()
       .then(() => {
         fadeCleanupsRef.current.push(
           fadeAudio(tryout, TRYOUT_VOLUME, MUSIC_CROSSFADE_MS),
@@ -314,8 +335,12 @@ export function BackgroundMusic({
     };
   }, []);
 
+  // On the very first mount start at track 0 (the autoplay effect below loaded
+  // it); on every later scene/era change jump to a RANDOM track in the new pool
+  // so eras don't always open on the same song.
   useEffect(() => {
-    setIndex(0);
+    setIndex(indexInitRef.current ? Math.floor(Math.random() * tracks.length) : 0);
+    indexInitRef.current = true;
   }, [scene, eraId]);
 
   // Track change: cross-fade instead of replacing the active element's src.
@@ -477,6 +502,18 @@ export function BackgroundMusic({
   const go = (delta: number) =>
     setIndex((i) => (i + delta + tracks.length) % tracks.length);
 
+  // Auto-advance when a track ends: pick a RANDOM other track in the pool (a
+  // 1-track pool loops via the loop attr and never fires onEnded). The prev/next
+  // buttons stay sequential (go) so manual skipping is predictable.
+  const advanceTrack = () =>
+    setIndex((i) => {
+      if (tracks.length <= 1) return i;
+      const current = ((i % tracks.length) + tracks.length) % tracks.length;
+      let n = Math.floor(Math.random() * tracks.length);
+      if (n === current) n = (n + 1) % tracks.length;
+      return n;
+    });
+
   const track = tryoutActive ? tryoutTrack : gameTrack;
 
   return (
@@ -487,7 +524,7 @@ export function BackgroundMusic({
         autoPlay
         playsInline
         loop={tracks.length === 1}
-        onEnded={() => go(1)}
+        onEnded={advanceTrack}
         onPlay={() => {
           if (activeGameRef.current !== "a") return;
           setPlaying(true);
@@ -510,7 +547,7 @@ export function BackgroundMusic({
         preload="auto"
         playsInline
         loop={tracks.length === 1}
-        onEnded={() => go(1)}
+        onEnded={advanceTrack}
         onPlay={() => {
           if (activeGameRef.current !== "b") return;
           setPlaying(true);

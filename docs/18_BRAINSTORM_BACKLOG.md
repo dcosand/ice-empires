@@ -168,6 +168,25 @@ Validated headless: player path 1106 assertions; rival path 4,000 encounters
 **Parked follow-on:** consolation "progress toward a fighting/toughness tech" for
 losing a scrap (currently pays +2 HK + scout XP only — the tech doesn't exist yet).
 
+**Follow-on — wanderer outcome needs an immediate payoff modal + map animation**
+(owner, 2026-07-07): after the scout chooses to engage in `WandererScene`, the
+resolution is anticlimactic — a recruit fires the `PlayerRevealScene` cinematic,
+but a *scrap* (and a recruit that *passes*) only writes an Inbox/log line
+(`resolveScrap` / the "They passed" branch in `wandererSystem.ts` call
+`prependLog` and return), so the player gets **no immediate on-screen result** —
+they have to open the Inbox to find out what happened. Wants an immediate
+follow-up modal on resolve (win OR loss) — e.g. an `EncounterOverlay`-style
+outcome sheet — paired with **a map animation** (a scrap/penalty-box beat, a
+"they drifted off" beat). This is also the natural mount point for the
+positive/negative **event SFX** (`eventGood`/`eventBad`, event-sfx-01/02 —
+wired 2026-07-07): the goodie-hut `EncounterOverlay` and the recruit reveal got
+them immediately, but the scrap/"passed" outcomes have no modal to hang the
+sound on yet, so they currently cue off the resolution instead. Cross-refs:
+`RESOLVE_WANDERER` (`gameReducer.ts`), the one-popup rule (encounter > rival >
+independent), `pendingEncounter`/`EncounterOverlay` as the reusable shape.
+**Model: Sonnet** — reuses the existing overlay + reveal patterns and a
+map-marker animation; no new system, just a new outcome surface.
+
 _Original brainstorm (kept for context):_
 ### Wandering neutral units (recruit-or-scrap)  — GREENLIT 2026-07-06
 Owner idea (2026-07-06): Civ games have barbarians / neutral map units; we have
@@ -190,7 +209,69 @@ confirmed with the owner before the build.
 **Model: Opus** for the first pass (new roaming-unit system + encounter/penalty
 mechanic + odds/balance); **Sonnet** for follow-on content/tuning.
 
+## Units, scouts & personnel
+
+### Back out the multi-level scout system
+Owner call (2026-07-07, from the Helsinki Production screen): the scouting
+lineup has sprawled into several overlapping "levels" that don't earn their
+complexity, and the player can't tell them apart or why they'd want one over
+another. Today there are effectively **three axes of scout variety stacked on
+top of each other**:
+1. **Multiple scout UNITS** — Pond Scout (`pond-scout`), Club Scout
+   (`club-scout`, gated on `scouting-reports`, the only one that lays networks
+   — D38), and Regional Scout (`regional-scout`, gated on `regional-scouting`,
+   still a "Future unit" stub with no behavior) — plus recruiting/development
+   HQ-staff units in the same list (Rink Evangelist, Local Coach, Recruiter).
+2. **Quality TIERS at purchase** — Keen Volunteer / Traveled Scout / Ace Scout
+   (`data/scouts.ts` `SCOUT_TIERS`, cost ×1 / ×1.75 / ×2.5, sets the judging
+   roll band).
+3. **Judging PROMOTIONS in the field** — `scoutStaff.applyScoutPromotions`
+   (fieldwork XP bumps the weaker of Judging Potential / Judging Ability every
+   5 XP).
+Owner wants this **simplified back down** for now — the current implementation
+"isn't useful and doesn't make a whole lot of sense" to a player. We may bring
+back promotions and different unit levels later, but only once they're
+legible and each tier has an obvious reason to exist. Undecided: how far to
+collapse it — e.g. one scout unit + keep quality tiers, or one scout unit with
+a single flat judging stat and no tiers/promotions at all. Cross-refs: D29/D31
+(scout characters, tiers, XP), D38 (Club Scout instant networks), D32
+(fog-of-talent reads scout judging — whatever survives must still feed
+`talentFog.ts`). Watch the closed unions (`ScoutQualityTier`) and the
+tier-gated `WATCH_SLOTS` when cutting.
+**Model: Opus** — it's a subtractive design call that touches scout units,
+purchase flow, `scoutStaff` promotions, fog-of-talent width, and several
+closed unions at once; getting the collapse right (and reversible) is the
+expensive part, not the deletion.
+
 ## Economy & funds
+
+### Research economy model + tech pacing
+Owner questions (2026-07-07), two linked design calls on how research should
+feel:
+1. **Purchase model — Polytopia vs. Civ VI.** Should a tech be bought like our
+   current production builds (Polytopia-style, D30): pay the whole cost up
+   front from the single Funds pool, unlock next turn? Or accrue as a
+   per-turn value like Civ VI (science points chip away at a tech over several
+   turns)? Related: Polytopia pulls **units AND research from the same
+   currency pool**, while Civ VI separates **science (research) / gold
+   (purchases) / production (build)** into three currencies. Today Ice Empires
+   already half-commits to the Civ split — `hockeyKnowledge` funds research
+   (science-per-turn) while `funds` buys units/facilities — so "go full
+   Polytopia (one pool)" vs. "keep the HK/Funds split" is the real fork.
+2. **Pacing — techs come too fast.** With the current (Civ-ish) approach the
+   player rips through the 40-tech tree in very few turns compared to how long
+   Civ makes you work for each tech. Regardless of which purchase model wins,
+   the acquisition rate needs to slow down (higher tech costs, lower
+   HK income, or a per-era gate) so the tree paces across an era instead of
+   emptying early.
+These interact: the pacing fix depends on which currency model is chosen, so
+brainstorm them together. Cross-refs: D30 (pay-upfront economy), the
+`ResourceSet` closed union (`funds`/`hockeyKnowledge`/`reputation`),
+`selectors.getMonthlyIncome`, `data/research.ts` costs.
+**Model: Opus** — currency-model + economy-balance judgment call with wide
+blast radius (touches `ResourceSet`, income selectors, research costs, and how
+production reads the pool); **Sonnet** to implement once the model + numbers
+are picked.
 
 ### Fundraising & the youth academy (cash-positive district)  — PARKED
 Owner idea (2026-07-06): players hit a wall where upkeep (field units + rink
@@ -300,10 +381,24 @@ profile"), and tryout candidate cards (which need a candidate-mode variant
 since candidates aren't roster/prospects).
 **Model: Sonnet** — pattern already exists, just more entry points.
 
-### Tryout music cross-fade regression
+### Tryout music cross-fade regression — ✅ FIXED 2026-07-07
 Playtest note (2026-07-05): tryout scene audio stopped cross-fading like it
-did the day before. Check `BackgroundMusic.tsx` scene-transition handling.
-**Model: Haiku** — isolated bug fix.
+did the day before. **Two distinct bugs, both fixed 2026-07-07:**
+1. *Tryout bed opened in silence.* `startTryoutMusic` gated the crossfade on
+   `tryout.paused ? play() : Promise.resolve()`. Because `primeTryoutAudioElement`
+   already made the element non-paused, the fade attached to `Promise.resolve()`
+   instead of a real `play()`; if that primed play was still buffering or later
+   rejected, we ramped the volume of an element that never actually started →
+   silence. Fix: always drive the fade off a real `play()` resolution (no-op when
+   already playing). Also dropped prime's `load()` re-fetch, which stalled the
+   first play.
+2. *Scene ambience never stopped.* `PlayerRevealScene` played `playSfx("crowd")`,
+   and `crowd` was mapped to the full-length practice tracks — but `playSfx` is
+   fire-and-forget with **no stop handle**, so the practice/hockey ambience kept
+   playing after the reveal scene closed. Fix: put the reveal scene on the same
+   `setContactMusicActive(true/false)` controller the meeting scenes use, so it
+   fades IN on mount and fades OUT + stops on unmount. Removed the dead `crowd`
+   SFX entry so nobody reintroduces the same trap.
 
 ### SFX + notification/dock icon curation
 Current picks are placeholders (`public/assets/vendor/README.md`, `FILES` map
