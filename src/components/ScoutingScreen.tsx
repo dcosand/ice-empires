@@ -14,14 +14,14 @@ import { CLUBS } from "../data/clubs";
 import { nationalityFlag, nationalityLabel } from "../data/nationalities";
 import { hockeyOrgDisplayName } from "../engine/world";
 import {
-  attrEntries,
   computeOverall,
   estimateMid,
   scoutReadOverall,
   starString,
   starTier,
 } from "../engine/ratings";
-import { ATTR_LABELS, POSITION_LABELS } from "../data/attributes";
+import { POSITION_LABELS } from "../data/attributes";
+import { AttributeColumns } from "./AttributeColumns";
 import {
   latestReportMonth,
   prospectReadStale,
@@ -434,20 +434,13 @@ export function PlayerDetail({
 
       <div className="indy-col-title">Attributes</div>
       {p ? (
-        <div className="sc-attr-grid">
-          {attrEntries(p.attrs).map(([key, value]) => (
-            <div className="sc-attr-row" key={key}>
-              <span className="attr-label">{ATTR_LABELS[key as keyof typeof ATTR_LABELS]}</span>
-              <span className="attr-bar">
-                <span className="attr-fill" style={{ width: `${Math.min(100, value)}%` }} />
-              </span>
-              <span className="attr-value">{value}</span>
-            </div>
-          ))}
-        </div>
+        <AttributeColumns
+          kind={p.attrs.kind}
+          values={p.attrs.kind === "goalie" ? p.attrs.goalie : p.attrs.skater}
+        />
       ) : readAttrs ? (
         // The scout's static reads (EHM): believed values, not ranges — and
-        // not necessarily the truth. Gold fill marks them as scouted numbers.
+        // not necessarily the truth. `scouted` marks them as filed numbers.
         <>
           {row.stale && lastSeen !== null && (
             <div className="sc-stale-note">
@@ -455,24 +448,15 @@ export function PlayerDetail({
               Treat these numbers as the file, not the player.
             </div>
           )}
-          <div className="sc-attr-grid">
-            {Object.entries(readAttrs).map(([key, est]) =>
-              est ? (
-                <div className="sc-attr-row" key={key}>
-                  <span className="attr-label">
-                    {ATTR_LABELS[key as keyof typeof ATTR_LABELS]}
-                  </span>
-                  <span className="attr-bar">
-                    <span
-                      className="attr-fill scouted"
-                      style={{ width: `${Math.min(100, estimateMid(est))}%` }}
-                    />
-                  </span>
-                  <span className="attr-value">{estimateMid(est)}</span>
-                </div>
-              ) : null,
+          <AttributeColumns
+            kind={row.position === "G" ? "goalie" : "skater"}
+            scouted
+            values={Object.fromEntries(
+              Object.entries(readAttrs)
+                .filter(([, est]) => est)
+                .map(([key, est]) => [key, estimateMid(est!)]),
             )}
-          </div>
+          />
         </>
       ) : (
         <div className="faint">

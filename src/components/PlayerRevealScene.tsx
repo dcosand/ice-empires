@@ -16,11 +16,13 @@ export function PlayerRevealScene({
   club,
   dispatch,
   onViewProfile,
+  onViewSquad,
 }: {
   reveal: PlayerReveal;
   club: ClubDef | null;
   dispatch: Dispatch<GameAction>;
   onViewProfile?: (player: PlayerReveal["player"]) => void;
+  onViewSquad?: () => void;
 }) {
   const [flipped, setFlipped] = useState(false);
   const [ready, setReady] = useState(false);
@@ -114,6 +116,11 @@ export function PlayerRevealScene({
                 onClick={() => onViewProfile(player)}
               >
                 View full profile
+              </button>
+            )}
+            {onViewSquad && (
+              <button className="btn reveal-profile" onClick={onViewSquad}>
+                View your squad
               </button>
             )}
           </div>

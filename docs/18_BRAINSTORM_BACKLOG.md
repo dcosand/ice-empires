@@ -434,8 +434,21 @@ since candidates aren't roster/prospects).
 **Model: Sonnet** — pattern already exists, just more entry points.
 
 ### EHM-style player detail, number-value attributes, depth-chart Team tab
-Owner direction (2026-07-07, with EHM reference shots) — three linked UI wants,
-"we don't need that much detail but you get the idea":
+**Partly SHIPPED 2026-07-07:** (1) number-value attributes in Technical/Mental/
+Physical columns landed on the player file (`AttributeColumns.tsx`, color-coded
+by tier; replaces the bar grid in `ScoutingScreen.PlayerDetail` for both own
+players and scouted reads). (2) Depth-chart Team view shipped as a Lines / Depth
+Chart toggle in the ClubHQ Team tab (`ClubHQScreen.DepthChart` — position
+columns sorted by OVR + a leaders strip). (3) "View your squad" button added to
+the player reveal → opens the Team tab. **Still TODO:** the full EHM player-
+detail *layout* (left bio panel — headshot, born/age, nationality, shoots/
+height/weight — + tabbed right pane Profile/Information/Scout Report with
+Current/Future stars); today `PlayerDetail` is still one scrolling panel, just
+with the new number columns. Also consider bringing the number columns to the
+compact `HockeyCard` (still group-roll-up bars there — arguably fine as a
+summary). Original direction below.
+
+_Original direction (kept for context):_
 1. **Attribute display: numbers, not bars.** Replace the current progress-bar
    attribute rows (`HockeyCard`, tryout/roster/scouting reads) with EHM's
    **integer value per attribute** laid out in **three columns — Technical /

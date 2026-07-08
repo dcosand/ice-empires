@@ -80,6 +80,20 @@ export const SKATER_GROUPS: { group: string; keys: (keyof SkaterAttrs)[] }[] = [
   { group: "Mental", keys: ["compete"] },
 ];
 
+// EHM-style detail columns (owner direction 2026-07-07): the full attribute
+// list as number values laid out in three columns — Technical / Mental /
+// Physical — for the player-detail screen (see AttributeColumns).
+export const SKATER_COLUMNS: { group: string; keys: (keyof SkaterAttrs)[] }[] = [
+  { group: "Technical", keys: ["shooting", "passing", "puckControl", "checking", "faceoffs"] },
+  { group: "Mental", keys: ["hockeyIq", "compete"] },
+  { group: "Physical", keys: ["speed", "agility", "physicality"] },
+];
+export const GOALIE_COLUMNS: { group: string; keys: (keyof GoalieAttrs)[] }[] = [
+  { group: "Technical", keys: ["gloveHands", "reboundControl"] },
+  { group: "Mental", keys: ["positioning", "composure"] },
+  { group: "Physical", keys: ["reflexes", "athleticism"] },
+];
+
 // ---------------------------------------------------------------------------
 // OVR weights (position/role-weighted roll-up, docs/15 §3)
 // ---------------------------------------------------------------------------

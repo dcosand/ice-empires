@@ -7,6 +7,7 @@ import type {
   Player,
   ResourceKey,
   ScoutCharacter,
+  SkaterAttrs,
 } from "../types/game";
 import {
   ALL_FACILITY_DEFS_BY_ID,
@@ -37,7 +38,8 @@ import {
 } from "../engine/tryoutSystem";
 import { AttrBar } from "./TryoutScreen";
 import { cardBars, PlayerHeadshot } from "./HockeyCard";
-import { computeOverall } from "../engine/ratings";
+import { computeOverall, starTier, starString } from "../engine/ratings";
+import { attrTierClass } from "./AttributeColumns";
 import { ProductionPanel } from "./ProductionPanel";
 import { ItemArt } from "./ItemArt";
 import { primeTryoutMusic } from "./BackgroundMusic";
@@ -317,6 +319,7 @@ function TeamTab({
   dispatch: Dispatch<GameAction>;
   onOpenPlayerFile?: (player: Player) => void;
 }) {
+  const [view, setView] = useState<"lines" | "depth">("lines");
   const roster = state.roster;
   const lines = assignLines(roster);
   const geared = roster.filter((p) => p.hasEquipment);
@@ -336,56 +339,172 @@ function TeamTab({
     <div className="hq-tabpane">
       <div className="team-head">
         <div>
-          <SectionTitle>First Line</SectionTitle>
+          <SectionTitle>{view === "lines" ? "First Line" : "Depth Chart"}</SectionTitle>
           <div className="muted" style={{ fontSize: 12 }}>
             {eraHint} Equipment in shed: {state.equipment}
           </div>
         </div>
-        <button
-          className="btn btn-gold"
-          disabled={!canHoldTryouts(state)}
-          title={tryoutGateHint(gate, state.month)}
-          onClick={() => {
-            primeTryoutMusic();
-            dispatch({ type: "HOLD_TRYOUTS" });
-          }}
-        >
-          Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
-        </button>
-      </div>
-
-      <div className="line-grid line-forwards">
-        <LineSlot label="LW" player={lines.forwards[0]} onOpen={onOpenPlayerFile} />
-        <LineSlot label="C" player={lines.forwards[1]} onOpen={onOpenPlayerFile} />
-        <LineSlot label="RW" player={lines.forwards[2]} onOpen={onOpenPlayerFile} />
-      </div>
-      <div className="line-grid line-defense">
-        <LineSlot label="LD" player={lines.defense[0]} onOpen={onOpenPlayerFile} />
-        <LineSlot label="RD" player={lines.defense[1]} onOpen={onOpenPlayerFile} />
-      </div>
-      <div className="line-grid line-goalie">
-        <LineSlot label="G" player={lines.goalie} onOpen={onOpenPlayerFile} />
-      </div>
-
-      <SectionTitle>Bench</SectionTitle>
-      {lines.bench.length === 0 ? (
-        <div className="faint">
-          {roster.length === 0
-            ? "No players yet. Build a rink near your HQ, research Local Tryouts, and see who shows up."
-            : "Everyone is on the ice."}
+        <div className="team-head-actions">
+          <div className="team-view-toggle" role="tablist" aria-label="Team view">
+            <button
+              className={`tvt-btn${view === "lines" ? " on" : ""}`}
+              onClick={() => setView("lines")}
+            >
+              Lines
+            </button>
+            <button
+              className={`tvt-btn${view === "depth" ? " on" : ""}`}
+              onClick={() => setView("depth")}
+            >
+              Depth Chart
+            </button>
+          </div>
+          <button
+            className="btn btn-gold"
+            disabled={!canHoldTryouts(state)}
+            title={tryoutGateHint(gate, state.month)}
+            onClick={() => {
+              primeTryoutMusic();
+              dispatch({ type: "HOLD_TRYOUTS" });
+            }}
+          >
+            Hold Tryouts ({TRYOUT_COST_FUNDS} Funds)
+          </button>
         </div>
+      </div>
+
+      {view === "lines" ? (
+        <>
+          <div className="line-grid line-forwards">
+            <LineSlot label="LW" player={lines.forwards[0]} onOpen={onOpenPlayerFile} />
+            <LineSlot label="C" player={lines.forwards[1]} onOpen={onOpenPlayerFile} />
+            <LineSlot label="RW" player={lines.forwards[2]} onOpen={onOpenPlayerFile} />
+          </div>
+          <div className="line-grid line-defense">
+            <LineSlot label="LD" player={lines.defense[0]} onOpen={onOpenPlayerFile} />
+            <LineSlot label="RD" player={lines.defense[1]} onOpen={onOpenPlayerFile} />
+          </div>
+          <div className="line-grid line-goalie">
+            <LineSlot label="G" player={lines.goalie} onOpen={onOpenPlayerFile} />
+          </div>
+
+          <SectionTitle>Bench</SectionTitle>
+          {lines.bench.length === 0 ? (
+            <div className="faint">
+              {roster.length === 0
+                ? "No players yet. Build a rink near your HQ, research Local Tryouts, and see who shows up."
+                : "Everyone is on the ice."}
+            </div>
+          ) : (
+            <div className="line-grid">
+              {lines.bench.map((p) => (
+                <LineSlot
+                  key={p.id}
+                  label={p.position}
+                  player={p}
+                  onOpen={onOpenPlayerFile}
+                />
+              ))}
+            </div>
+          )}
+        </>
       ) : (
-        <div className="line-grid">
-          {lines.bench.map((p) => (
-            <LineSlot
-              key={p.id}
-              label={p.position}
-              player={p}
-              onOpen={onOpenPlayerFile}
-            />
-          ))}
-        </div>
+        <DepthChart roster={roster} onOpen={onOpenPlayerFile} />
       )}
+    </div>
+  );
+}
+
+// EHM-style depth chart (owner direction 2026-07-07): every player in a column
+// for their position, sorted by OVR, plus a compact leaders strip. Reads like
+// the EHM "Team Report". OVR/leaders are derived (like income), never stored.
+const DEPTH_COLUMNS: { label: string; match: (p: Player) => boolean }[] = [
+  { label: "Centers", match: (p) => p.position === "C" },
+  { label: "Wings", match: (p) => p.position === "W" },
+  { label: "Defense", match: (p) => p.position === "D" },
+  { label: "Goalies", match: (p) => p.position === "G" },
+];
+
+function squadLeaders(roster: Player[]): { label: string; player: Player | null }[] {
+  const skaters = roster.filter((p) => p.position !== "G");
+  const best = (pool: Player[], score: (p: Player) => number): Player | null =>
+    pool.length ? pool.reduce((a, b) => (score(b) > score(a) ? b : a)) : null;
+  const sk = (key: keyof SkaterAttrs) => (p: Player) =>
+    p.attrs.kind === "skater" ? p.attrs.skater[key] : -1;
+  return [
+    { label: "Biggest Star", player: best(roster, (p) => computeOverall(p)) },
+    { label: "Best Shooter", player: best(skaters, sk("shooting")) },
+    { label: "Top Playmaker", player: best(skaters, sk("passing")) },
+    { label: "Best Checker", player: best(skaters, sk("checking")) },
+    { label: "Most Physical", player: best(skaters, sk("physicality")) },
+    { label: "Fastest Skater", player: best(skaters, sk("speed")) },
+  ];
+}
+
+function DepthChart({
+  roster,
+  onOpen,
+}: {
+  roster: Player[];
+  onOpen?: (player: Player) => void;
+}) {
+  if (roster.length === 0) {
+    return (
+      <div className="faint">
+        No players yet. Build a rink near your HQ, research Local Tryouts, and
+        see who shows up.
+      </div>
+    );
+  }
+  return (
+    <div className="depth-chart">
+      <div className="depth-grid">
+        {DEPTH_COLUMNS.map((col) => {
+          const players = roster
+            .filter(col.match)
+            .sort((a, b) => computeOverall(b) - computeOverall(a));
+          return (
+            <div className="depth-col" key={col.label}>
+              <div className="depth-col-head">
+                {col.label} <span className="depth-count">{players.length}</span>
+              </div>
+              {players.length === 0 ? (
+                <div className="depth-empty">—</div>
+              ) : (
+                players.map((p, i) => {
+                  const ovr = computeOverall(p);
+                  return (
+                    <button
+                      className="depth-row"
+                      key={p.id}
+                      onClick={() => onOpen?.(p)}
+                      title={`${p.name} · ${starString(starTier(ovr))}`}
+                    >
+                      <span className="depth-rank">{i + 1}</span>
+                      <span className="depth-name">{p.name}</span>
+                      <span className="depth-age">{p.age}</span>
+                      <span className={`depth-ovr ${attrTierClass(ovr)}`}>{ovr}</span>
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="depth-leaders">
+        {squadLeaders(roster).map((l) => (
+          <button
+            className="depth-leader"
+            key={l.label}
+            disabled={!l.player}
+            onClick={() => l.player && onOpen?.(l.player)}
+          >
+            <span className="depth-leader-label">{l.label}</span>
+            <span className="depth-leader-player">{l.player ? l.player.name : "—"}</span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }

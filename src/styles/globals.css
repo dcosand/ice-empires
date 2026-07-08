@@ -7236,3 +7236,228 @@ tr.signed-away .scouting-flag.flag-signed { opacity: 1; }
   border-radius: 8px;
   padding: 6px 8px;
 }
+
+/* ===========================================================================
+   EHM-style attribute columns (owner direction 2026-07-07): the full attribute
+   list as NUMBER values in three columns — Technical / Mental / Physical —
+   color-coded by tier. Replaces the progress-bar attribute rows on the player
+   file. See AttributeColumns.tsx.
+   ========================================================================== */
+.attr-columns {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px 20px;
+  margin: 8px 0 6px;
+}
+.attr-column {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+.attr-column-head {
+  font-family: "Cinzel", serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--club-accent, var(--gold));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding-bottom: 4px;
+  margin-bottom: 3px;
+}
+.attr-num-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.attr-num-label {
+  color: rgba(255, 255, 255, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.attr-num-cell {
+  flex: 0 0 auto;
+  min-width: 28px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  border-radius: 5px;
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.05);
+}
+/* Value tiers (thresholds match AttributeColumns.attrTierClass). */
+.attr-t-elite { color: #5fe08f; background: rgba(95, 224, 143, 0.15); }
+.attr-t-good  { color: #93d86c; background: rgba(147, 216, 108, 0.12); }
+.attr-t-fair  { color: #dccb66; background: rgba(220, 203, 102, 0.10); }
+.attr-t-mid   { color: #e3b46b; background: rgba(227, 180, 107, 0.10); }
+.attr-t-low   { color: #e59169; background: rgba(229, 145, 105, 0.10); }
+.attr-t-poor  { color: #e56a6a; background: rgba(229, 106, 106, 0.13); }
+.attr-t-none  { color: rgba(255, 255, 255, 0.4); }
+/* Scouted reads (a filed number, not the truth) get a faint gold outline. */
+.attr-columns.scouted .attr-num-cell {
+  outline: 1px solid color-mix(in srgb, var(--gold) 32%, transparent);
+}
+@media (max-width: 560px) {
+  .attr-columns { grid-template-columns: 1fr; }
+}
+
+/* ===========================================================================
+   Team screen: Lines / Depth Chart toggle + EHM-style depth chart (owner
+   direction 2026-07-07). Position columns sorted by OVR + a leaders strip.
+   OVR cells reuse the .attr-t-* tier colors from the attribute columns.
+   ========================================================================== */
+.team-head-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.team-view-toggle {
+  display: inline-flex;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 8px;
+  overflow: hidden;
+}
+.tvt-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.66);
+  font: inherit;
+  font-size: 12.5px;
+  padding: 6px 12px;
+  cursor: pointer;
+}
+.tvt-btn.on {
+  background: var(--club-accent, var(--gold));
+  color: #10151f;
+  font-weight: 700;
+}
+
+.depth-chart {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.depth-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+.depth-col {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.depth-col-head {
+  font-family: "Cinzel", serif;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--club-accent, var(--gold));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.14);
+  padding-bottom: 4px;
+  margin-bottom: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+}
+.depth-count {
+  font-family: "Inter", sans-serif;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+.depth-empty {
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 13px;
+  padding: 4px 2px;
+}
+.depth-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid transparent;
+  border-radius: 6px;
+  padding: 4px 7px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+}
+.depth-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  border-color: color-mix(in srgb, var(--club-accent, var(--gold)) 40%, transparent);
+}
+.depth-rank {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.38);
+  font-variant-numeric: tabular-nums;
+}
+.depth-name {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.depth-age {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+.depth-ovr {
+  min-width: 26px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 12px;
+  border-radius: 4px;
+  padding: 0 5px;
+  font-variant-numeric: tabular-nums;
+  background: rgba(255, 255, 255, 0.05);
+}
+.depth-leaders {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+  gap: 8px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 12px;
+}
+.depth-leader {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  align-items: flex-start;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  padding: 7px 9px;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+.depth-leader:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--club-accent, var(--gold)) 45%, transparent);
+}
+.depth-leader:disabled {
+  cursor: default;
+  opacity: 0.5;
+}
+.depth-leader-label {
+  font-size: 10.5px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--club-accent, var(--gold));
+}
+.depth-leader-player {
+  font-size: 13px;
+  font-weight: 600;
+}
+@media (max-width: 720px) {
+  .depth-grid { grid-template-columns: repeat(2, 1fr); }
+}

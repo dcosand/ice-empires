@@ -281,6 +281,11 @@ export function Dashboard({
           club={state.club}
           dispatch={dispatch}
           onViewProfile={(player) => setFileTarget({ kind: "player", player })}
+          onViewSquad={() => {
+            dispatch({ type: "ACKNOWLEDGE_PLAYER_REVEAL" });
+            setHqInitialTab("team");
+            setOverlay("club");
+          }}
         />
       )}
 
