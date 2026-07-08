@@ -1,5 +1,24 @@
 # Ice Empires — Progress Log
 
+## 2026-07-07 (night) — Research affordability UX; anytime-buy shortcuts; wanderer sound
+See TASKS.md "🌙 SESSION HANDOFF — 2026-07-07" for the authoritative
+where-we-left-off / what's-next. Highlights:
+- **Research selection fix (owner repro):** the "can't select techs I can afford"
+  bug was a feedback gap, not logic. Any available tech is now selectable; the
+  unaffordable ones show a red cost badge/border and the confirm bar reports
+  "Need N more Hockey Knowledge" with a disabled Begin Research; HK balance shown
+  in the research header (`ResearchPanel.tsx`).
+- **Next Tasks = must-resolve-only (D56):** removed the "Choose research"/"Choose
+  production (or save up)" nags + dead End-Turn blocked line (`Dashboard.tsx`).
+- **Header currency shortcuts:** Funds → Production, Hockey Knowledge → Research,
+  active-research chip → Research (`TopBar.tsx`).
+- **Wanderer signing sound:** stopped the double (practice ambience + eventGood
+  stinger); reveal rides ambience only (`PlayerRevealScene.tsx`).
+- **OPEN BUG (unchanged):** tryout music still doesn't fade in; `[tryout-audio]`
+  instrumentation is live — needs owner's dev-server console output to diagnose.
+- Verify: `npm run typecheck` + `npm run build` clean; research flow covered by an
+  8-assertion headless sim.
+
 ## 2026-07-06 (night) — Wanderers + rival parity; UI dock; compact map (mid-session bedtime commit)
 Big bundled chunk. See TASKS.md "🌙 SESSION HANDOFF" for the authoritative
 where-we-left-off / what's-next.

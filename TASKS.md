@@ -1,6 +1,74 @@
 # Ice Empires — Tasks
 
-## 🌙 SESSION HANDOFF — 2026-07-06 (night). READ THIS FIRST.
+## 🌙 SESSION HANDOFF — 2026-07-07 (night). READ THIS FIRST.
+
+All work below is committed + pushed to `main`. Verified: `npm run typecheck`
++ `npm run build` clean; research flow covered by an 8-assertion headless sim.
+
+### ✅ DONE & VERIFIED this session
+- **Research affordability UX (fixes owner repro "can't select affordable
+  techs").** Root cause was a FEEDBACK GAP, not a logic bug: Basic Skating costs
+  4 HK, you start with 5, so after buying it you're at ~1–2 HK and the other pond
+  techs (4–5 HK) are genuinely unaffordable — but the UI gave no cue and clicking
+  them just opened a details modal. Fix (`ResearchPanel.tsx`): ANY available tech
+  is selectable regardless of affordability; unaffordable ones get a red cost
+  badge + border (still clickable, so you can line one up); the confirm bar shows
+  **"Need N more Hockey Knowledge"** and disables *Begin Research* until payable;
+  current HK balance now shown in the research header. `selectResearch` already
+  guards affordability engine-side (no-op if you can't pay).
+- **Next Tasks box = must-resolve-only (Civ VI style, D56).** Dropped the
+  "Choose research" and "Choose production (or save up)" nags and the dead
+  End-Turn "Needs:" blocked line (`Dashboard.tsx CommandRail`). Research +
+  production are optional upfront buys now — nothing gates End Turn.
+- **Header currencies double as spend shortcuts** (`TopBar.tsx`): click **Funds
+  → Production** (Club HQ prod tab), **Hockey Knowledge → Research**, and the
+  active-research chip → Research. Hover lift/glow marks them as buttons.
+- **Wanderer double-sound fix** (`PlayerRevealScene.tsx`): "A Wanderer Signs On"
+  no longer plays BOTH the practice ambience and the `eventGood` stinger — the
+  stinger already fired on the map encounter, so the reveal now rides ambience
+  only. Goodie-hut encounters still get their stinger via the map EncounterOverlay.
+
+Earlier commits this same session (already on `main`): EHM number-value attribute
+columns + depth-chart Team view + view-squad (79df876), Club HQ bigger/readable +
+player-file bio layout (ca35cb3), backlog logging (b72f14f), text-size bumps
+(ca769b2), **economy D56 uniform pay-now/next-turn + research-as-upfront-HK-buy**
+(800feba), **era-transition audio-garble fix + tryout-audio instrumentation**
+(a760b44). Player development & aging Phase 1 shipped prior (D55).
+
+### ❗ OPEN BUG #1 — tryout-music fade-in STILL doesn't work (owner-confirmed)
+Highest priority. `[tryout-audio]` console instrumentation is LIVE in
+`BackgroundMusic.tsx` (`primeTryoutAudioElement` + `startTryoutMusic` log
+paused/readyState/currentSrc/volume + play() resolve/reject) — committed a760b44.
+Audio path is now `.mp3` (`data/sceneAudio.ts` → `tryout-signing.mp3`; owner is
+wary of m4a). **NEXT STEP:** owner triggers a tryout on the dev server and pastes
+the `[tryout-audio]` lines; diagnose from that, apply the fix, then REMOVE the
+instrumentation. Suspect: autoplay-gesture scoping OR the crossfade RAF starting
+before the element finishes buffering (compare to the working scene-music path in
+the same file).
+
+### ▶️ WHAT'S NEXT (owner priorities, in order)
+1. **Fix the tryout-music bug** (above) — needs the owner's console output first.
+2. **Economy follow-up slices** (from the D56 discussion; research half is done):
+   - **Spending-encouragement cues** (Polytopia-style): a little SFX + an
+     "affordable" heart/glow indicator when you can afford a tech/build. Research
+     panel now shows affordability; production side + the SFX are NOT done.
+   - **Center-top calendar** above the map with a turn-over flip animation (move
+     Month/Year there; subtle month-flip on End Turn).
+   - **Inbox triage:** decide modal vs. notification vs. inbox-only per event
+     (inbox is too noisy); then a **right-side notification rail with MUCH LARGER
+     icons** for alerts worth attention (owner chose the right-rail approach).
+3. **Backlog (docs/18, logged not built):** back out the multi-level scout system;
+   Confirm-the-Dynasty screen should show club uniques (special unit/facility/
+   traits), NOT the meaningless resource numbers; uniform overlay sizing (Team/
+   Indies/People/Scouting same responsive footprint); player-file text/dead-space;
+   per-turn hockey loop brainstorm; travel tech branch / team bus; wanderer outcome
+   modal + map animation.
+4. **Rival full economy parity** — DEFERRED by design (see the 2026-07-06 block
+   below); only as a deliberate project once uniques + player dev are built out.
+
+---
+
+## 🌙 SESSION HANDOFF — 2026-07-06 (night)
 
 Mid-session commit at bedtime. This commit bundles a big chunk of work; here's
 exactly where things stand.
