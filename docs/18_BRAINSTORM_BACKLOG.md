@@ -35,28 +35,42 @@ getting the design right, not typing the code.
 
 ## Suggested order (top of backlog)
 
-- ~~Wire Club Formation era exit requirements~~ — ✅ DONE (D52).
-- ~~Smaller default map~~ — ✅ DONE (72×45, experiment shipped 2026-07-06).
+Two lists, because they call for different modes (see CLAUDE.md "match the mode").
+**Design-first** items need a real brainstorm — a decision — before any code;
+**ready-to-build** items are decided and scoped enough that an agent can just
+ship them. Order within each is the current read on priority; expect reshuffling.
 
-- ~~Player development & aging (core)~~ — ✅ Phase 1 DONE (D55); pyramid /
-  coach / self-fog remain (Act IV).
+### Design-first (brainstorm → decide → then build)
 
-1. Research economy model + tech pacing — owner-felt playability problem
-   (techs come too fast); a decision + tuning pass, see Economy & funds.
-2. Back out the multi-level scout system — owner-flagged confusion; subtractive
-   simplification, see Units, scouts & personnel.
-3. EHM player detail + number-value attributes + depth-chart Team tab — owner
-   UI direction (2026-07-07), pairs with the new development system.
-4. Name your rinks — cheap, pure upside, no design risk.
-4. Make the rink → tryouts connection legible — likely a quick UI fix that
-   resolves real player confusion about what forward rinks are for.
-5. Victory conditions & endgame — foundational, everything else assumes an
-   answer eventually.
-6. Rival AI parity (research/tryouts/scouting) — the AI is visibly behind
-   the player's capability curve.
-7. Player development & aging — biggest missing system relative to how much
-   of the roster/scouting arc already assumes it exists.
-8. Season calendar & standings — unblocks the rest of Act III.
+1. **The per-turn hockey loop** — *current owner focus.* The map/4X layer and the
+   hockey/sim layer feel disconnected; the built systems (ratings, scouting,
+   match v0, D55 development) don't yet generate an every-turn hockey habit once
+   you have a roster. Core-loop/cadence session. **Opus.**
+2. **Research economy model + tech pacing** — owner-felt problem (techs come too
+   fast); currency-model fork (Polytopia one-pool vs. keep the HK/Funds split)
+   plus a pacing pass. D56 shipped the research-affordability UX, not this. **Opus.**
+3. **Back out the multi-level scout system** — owner-flagged confusion; a
+   subtractive simplification across scout units / tiers / promotions and several
+   closed unions. **Opus.**
+4. **Travel tech branch + team bus** — pairs with the hockey-loop session; eases
+   the "slog a scout across the map" friction and gives scout tiers a speed
+   reason to exist. **Opus** to place it, **Sonnet** to build.
+5. **Victory conditions & endgame** — foundational; reshapes how Act IV/V scope.
+6. **Rival AI parity** (research/tryouts/scouting) — AI is visibly behind the
+   player's capability curve; needs a playbook-architecture call.
+7. **Season calendar & standings** — unblocks the rest of Act III.
+
+### Ready to build (decided/scoped — mostly Sonnet)
+
+- **Confirm-the-Dynasty screen shows club uniques** instead of meaningless
+  starting resources (owner, 2026-07-07).
+- **Uniform overlay sizing** (Team / Indies / People / Scouting share one
+  responsive footprint) + **player-file text/dead-space** pass.
+- **Name your rinks** — cheap, pure upside, no design risk.
+- **Make the rink → tryouts connection legible** — likely a tooltip/breakdown UI
+  fix for real player confusion about what forward rinks buy.
+- **Wanderer outcome modal + map animation** — the scrap/"passed" resolutions
+  have no on-screen payoff yet.
 
 ---
 

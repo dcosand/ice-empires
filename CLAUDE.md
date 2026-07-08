@@ -4,6 +4,39 @@ A Civ-style hockey strategy game: React 18 + PixiJS 8 + TypeScript + Vite, no
 other runtime deps. This file is the fast path for coding agents — read it
 before exploring. Deeper design intent lives in `docs/` (see map at the bottom).
 
+## Working with the owner: match the mode before you act
+
+The owner (David) works playtest-first and thinks out loud. His input arrives in
+one of three modes; **classify it before responding, and answer IN that mode.**
+The failure to avoid is jumping to code on something that was a design musing.
+
+- **Directive / feedback — a decided, scoped ask.** "Bump the depth-chart text,"
+  "fix the research-selection bug," "the confirm screen shows meaningless
+  numbers." The *what* is settled and the fix is legible. → **Do it now**, verify
+  (`typecheck` + `build` + actually drive it), record it. This is a `TASKS.md`
+  item.
+- **Brainstorm / thinking-out-loud — a want, not a spec.** "Give me hockey things
+  to do throughout the game," "the map and hockey feel disconnected," "should
+  research be Polytopia- or Civ-style?" Touches several systems, carries a real
+  undecided question, or is exploratory. → **Do NOT build.** Design *with* him
+  (options, trade-offs, a recommendation), then capture the outcome in
+  `docs/18_BRAINSTORM_BACKLOG.md` with a model tier. It graduates to a `TASKS.md`
+  task / `DECISIONS.md` entry only once the call is actually made.
+- **Ambiguous — can't tell if it's decided enough to build?** Then it isn't.
+  Treat it as brainstorm and ask "build now, or design-pass first?" One question
+  is cheaper than building the wrong thing.
+
+The classification test: **is this decided AND scoped enough that an agent could
+build it without making a design judgment call?** Yes → task. No → brainstorm.
+The two docs enforce the split — `TASKS.md` holds decided/in-flight work ONLY;
+`docs/18` holds anything still needing a design conversation. Keep material in
+its file: don't log half-formed ideas as tasks, don't leave settled work
+languishing in the backlog.
+
+"Match my mode" cuts both ways: when he's executing, don't over-deliberate — act
+and verify; when he's designing, don't prematurely converge or start editing
+files — think with him first.
+
 ## Commands
 
 - `npm run dev` — Vite dev server

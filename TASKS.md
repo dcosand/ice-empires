@@ -57,12 +57,16 @@ the same file).
    - **Inbox triage:** decide modal vs. notification vs. inbox-only per event
      (inbox is too noisy); then a **right-side notification rail with MUCH LARGER
      icons** for alerts worth attention (owner chose the right-rail approach).
-3. **Backlog (docs/18, logged not built):** back out the multi-level scout system;
-   Confirm-the-Dynasty screen should show club uniques (special unit/facility/
-   traits), NOT the meaningless resource numbers; uniform overlay sizing (Team/
-   Indies/People/Scouting same responsive footprint); player-file text/dead-space;
-   per-turn hockey loop brainstorm; travel tech branch / team bus; wanderer outcome
-   modal + map animation.
+3. **Backlog (docs/18) — split by mode:**
+   - *Needs a design pass FIRST (brainstorm, don't build cold):* the per-turn
+     hockey loop; back out the multi-level scout system; research economy model +
+     tech pacing; travel tech branch / team bus. These are Opus design sessions —
+     see docs/18, decide, THEN build.
+   - *Ready to build (decided/scoped, Sonnet):* Confirm-the-Dynasty screen should
+     show club uniques (special unit/facility/traits) instead of the meaningless
+     resource numbers; uniform overlay sizing (Team/Indies/People/Scouting share
+     one responsive footprint); player-file text/dead-space; wanderer outcome
+     modal + map animation.
 4. **Rival full economy parity** — DEFERRED by design (see the 2026-07-06 block
    below); only as a deliberate project once uniques + player dev are built out.
 
@@ -411,33 +415,18 @@ is deferred to Act III** (D33); do not build it here.
 - [ ] Light unit tests around `endMonth` and selectors.
 - [ ] Scouting map prototype (Step 9) — only after the loop is proven fun.
 
-## Icebox / design themes (not scheduled)
+## Icebox / done record
+
+Design themes that need a brainstorm before building — "make the map more
+meaningful" (roads/trade routes, districts/urban footprint), fundraising/youth
+academy, victory conditions, etc. — live in `docs/18_BRAINSTORM_BACKLOG.md`, NOT
+here. `TASKS.md` holds decided/in-flight work only. Completed experiments are
+recorded below.
+
 - [x] **Compact default map + terrain tuning (2026-07-06)** — world shrunk to
       72×45 (was 120×75); `TILES_PER_MAJOR_CLUB` 1125→400 keeps the full 8
       majors + 12 indies (uniform scale-down of the old placement). Terrain:
       fewer lakes (`LAKE_BASIN` 0.89→0.93), fewer mountains (`MOUNTAIN_RIDGE`
       0.93→0.955, `MOUNTAIN_INLAND` 0.54→0.6), more jitter (0.15/0.22→0.20/0.28),
       `SEA_LEVEL` 0.47→0.42 for a healthy ~58%-land landmass. Headless worldgen
-      sim clean. See docs/18 "Smaller default map" (✅). Backlog items now live
-      in docs/18 (Name your rinks; wandering neutral units; fundraising/youth
-      academy) — the owner-maintained brainstorm doc, not here.
-- [ ] **Make the map more meaningful — urban footprint, districts & travel**
-      (parked 2026-07-05, unrelated to the scouting/attributes work). Sense-check
-      from playtest: building local rinks + harvesting stickwood is not enough to
-      make the map feel alive. Explore, roughly in Civ terms:
-      - **Roads / trade routes (movement).** Establishing a scouting network with an
-        independent lays a visible **route** between it and your HQ that **speeds
-        unit travel** along it (Civ-style roads). Makes the scouting network a
-        *physical* investment in the map, and rewards a hub-and-spoke footprint —
-        ties directly into the scout-reach/traversal theme in `docs/15` §5.
-      - **Districts / improvements (Civ VI-style urban footprint).** Let the player
-        build out the **hockey civilization's urban footprint within a few tiles of
-        HQ**: e.g. **Team Shop** (merch sales → recurring Funds), **Marketing /
-        Promo space** (grow community presence → reputation / influence / larger
-        tryout draw), arena-district tiles, etc. Some improvements could also be
-        placed **around independents** on the map to project presence/influence there
-        (feeds the Anchor/Affiliate race).
-      - **Why:** gives territory (Act II §2.3) more to *do* than income + claims,
-        makes expansion a real build-decision, and turns "the map" into an economy
-        and identity layer, not just a board for rinks. Design-explore before
-        committing; likely wants its own `docs/` doc once it firms up.
+      sim clean. See docs/18 "Smaller default map" (✅).
