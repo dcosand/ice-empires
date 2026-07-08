@@ -133,7 +133,6 @@ export function BackgroundMusic({
   const musicIntentRef = useRef(false); // does the player want continuous music?
   const startedRef = useRef(false); // has playback ever begun / user taken over?
   const mounted = useRef(false);
-  const indexInitRef = useRef(false); // first [scene,eraId] run stays on track 0
   const suppressGamePauseRef = useRef(false);
   const suppressTryoutPauseRef = useRef(false);
   const tryoutWasActiveRef = useRef(false);
@@ -241,13 +240,22 @@ export function BackgroundMusic({
   // tryout transition cross-fade cleanly instead of popping.
   const primeTryoutAudioElement = () => {
     const tryout = tryoutRef.current;
+    console.log("[tryout-audio] prime called", {
+      hasEl: !!tryout,
+      paused: tryout?.paused,
+      src: tryout?.currentSrc,
+      readyState: tryout?.readyState,
+    });
     if (!tryout || !tryout.paused) return;
     tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
     // Just unlock playback within the gesture; the element already preloads
     // (preload="auto"). Do NOT call load() here — re-fetching stalls the very
     // first play(), which is what left tryouts opening in silence.
-    tryout.play().catch(() => {});
+    tryout
+      .play()
+      .then(() => console.log("[tryout-audio] prime play() resolved"))
+      .catch((e) => console.log("[tryout-audio] prime play() rejected:", e?.name, e?.message));
   };
 
   const startTryoutMusic = (restart = false) => {
@@ -260,6 +268,13 @@ export function BackgroundMusic({
     if (!tryout.src) tryout.src = tryoutTrack.url;
     if (restart) tryout.currentTime = 0;
     tryout.volume = TRYOUT_START_VOLUME;
+    console.log("[tryout-audio] startTryoutMusic", {
+      restart,
+      paused: tryout.paused,
+      readyState: tryout.readyState,
+      currentSrc: tryout.currentSrc,
+      volume: tryout.volume,
+    });
 
     // Always drive the fade off a real play() resolution. The old code skipped
     // play() when the primed bed was merely "not paused" and attached the fade
@@ -270,12 +285,14 @@ export function BackgroundMusic({
     tryout
       .play()
       .then(() => {
+        console.log("[tryout-audio] start play() resolved, fading in from", tryout.volume);
         fadeCleanupsRef.current.push(
           fadeAudio(tryout, TRYOUT_VOLUME, MUSIC_CROSSFADE_MS),
         );
         fadeOutGame(MUSIC_CROSSFADE_MS);
       })
-      .catch(() => {
+      .catch((e) => {
+        console.log("[tryout-audio] start play() REJECTED:", e?.name, e?.message);
         // If browser policy blocks the event track, keep the normal track
         // audible instead of fading into silence. The next click retries.
         if (musicIntentRef.current && game.paused) {
@@ -335,12 +352,13 @@ export function BackgroundMusic({
     };
   }, []);
 
-  // On the very first mount start at track 0 (the autoplay effect below loaded
-  // it); on every later scene/era change jump to a RANDOM track in the new pool
-  // so eras don't always open on the same song.
+  // Each scene/era opens on track 0 — a single deterministic crossfade. (An
+  // earlier version randomized the index here, but that re-rendered to a second
+  // track mid-transition and fired TWO overlapping crossfades → garbled audio
+  // that then stalled. Variety comes from advanceTrack picking a random next
+  // track when the current one ENDS, which is one clean swap at a time.)
   useEffect(() => {
-    setIndex(indexInitRef.current ? Math.floor(Math.random() * tracks.length) : 0);
-    indexInitRef.current = true;
+    setIndex(0);
   }, [scene, eraId]);
 
   // Track change: cross-fade instead of replacing the active element's src.
